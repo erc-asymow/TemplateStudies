@@ -13,22 +13,26 @@ using namespace ROOT;
 typedef ROOT::VecOps::RVec<double> RVecD;
 using ROOT::RDF::RNode; 
 
-//std::vector<std::string> helicities = {"UL", "A0"};
-std::vector<std::string> helicities = {"UL"};
+//std::vector<std::string> helicities = {"UL", "A0", "A1", "A4"};
+std::vector<std::string> helicities = {"A4"};
 
 constexpr double MW = 80.;
 constexpr double GW = 2.0;
 
-enum pdf_type { pdf_x=0, pdf_y, corr_x, corr_y, A0_x, A0_y, unknown};
+enum pdf_type { pdf_x=0, pdf_y, corr_x, corr_y, A0_x, A0_y, A1_x, A1_y, A4_x, A4_y, unknown};
 
 auto degs = [](const pdf_type& pdf){
   switch(pdf){
-  case pdf_type::pdf_x:  return  5; // f(x)
-  case pdf_type::pdf_y:  return  5; // f(y|0)
+  case pdf_type::pdf_x:  return  2; // f(x)
+  case pdf_type::pdf_y:  return  2; // f(y|0)
   case pdf_type::corr_x: return  2; // P(x,.)
   case pdf_type::corr_y: return  2; // P(.,y)
   case pdf_type::A0_x:   return  2; // A0(x,.)
   case pdf_type::A0_y:   return  2; // A0(.,y)
+  case pdf_type::A1_x:   return  2; // A1(x,.)
+  case pdf_type::A1_y:   return  2; // A1(.,y)
+  case pdf_type::A4_x:   return  2; // A4(x,.)
+  case pdf_type::A4_y:   return  2; // A4(.,y)
   default: return 1;
   }
 };
@@ -36,6 +40,10 @@ auto degs = [](const pdf_type& pdf){
 auto get_pdf_type = [](const std::string& name) {
   if     (name=="A0_x") return pdf_type::A0_x; 
   else if(name=="A0_y") return pdf_type::A0_y;
+  if     (name=="A1_x") return pdf_type::A1_x; 
+  else if(name=="A1_y") return pdf_type::A1_y;
+  else if(name=="A4_x") return pdf_type::A4_x; 
+  else if(name=="A4_y") return pdf_type::A4_y;
   else return pdf_type::unknown;
 };
 
@@ -44,35 +52,24 @@ auto cheb = [](double x, double scale, double offset, int n, int m){
   double den = 0.;
   double num = 0.;
   for(unsigned int i = 0; i <= n ; i++){
+    int sign = i%2==0 ? +1 :-1;
     double xj = (TMath::Cos(i*TMath::Pi()/n) + offset)*scale;
-    if(x==xj) return 1.0;                                                          
-    double val = 0.;
-    if(i==0) val = 0.5/(x-xj);
-    else if(i==n) val = 0.5*(n%2==0?1:-1)/(x-xj);
-    else val = (i%2==0?1:-1)/(x-xj);
-    if(i==m) num=val;
-    //cout << n << "," << m << "," << i << "," << x << "," << xj << "," << 
+    if(x==xj) return 1.0;// protect from nan      
+    double val = sign/(x-xj);
+    if(i==0 || i==n) val *= 0.5;
     den += val;
+    if(i==m) num = val;
   }
   //std::cout << x << "==>" <<  num << "," << den << std::endl;                                             
   return num/den;
 };
 
 
-/*
-auto w_ijklmno = [](double x, double xscale, double xoffset, double y, double yscale, double yoffset, int i, int j, int k, int l, int m, int n, int o){
-  double pdf0 = cheb(x, xscale, xoffset, n, degs(m));
-  double pdf1 = cheb(y, yscale, yoffset, o, degs(m+1));
-  return w_ijkl(x,xscale,xoffset,y,yscale,yoffset,i,j,k,l)*pdf0*pdf1;
-};
-*/
-
 int main(int argc, char* argv[])
 {
 
   ROOT::EnableImplicitMT();
   
-
   long nevents = 1000;
   std::string tag = "";
   if(argc>1) nevents = strtol(argv[1], NULL, 10);
@@ -80,7 +77,7 @@ int main(int argc, char* argv[])
 
   const double max_x = 0.15;
   const double max_y = 2.5;
-  const int nbinsX   = 25; 
+  const int nbinsX   = 12; 
   const double xLow  = 0.0;
   const double xHigh = +2.5;
   const int nbinsY   = 15; 
@@ -147,12 +144,16 @@ int main(int argc, char* argv[])
 						}, {"Q", "cos", "phi", "x", "y"}));
   
   
-
-  for(int i = 0; i<=degs(pdf_type::pdf_x); i++)
+  std::vector<ROOT::RDF::RResultPtr<double> > sums = {};
+  for(int i = 0; i<=degs(pdf_type::pdf_x); i++){
     dlast = std::make_unique<RNode>(dlast->Define(Form("pdfx_%d", i), [i,max_x](double x){return cheb(x, 0.5*max_x, 1.0, degs(pdf_type::pdf_x), i);}, {"x"} ));
+    sums.emplace_back( dlast->Sum<double>( Form("pdfx_%d", i)) );
+  }
 
-  for(int j = 0; j<=degs(pdf_type::pdf_y); j++)
+  for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
     dlast = std::make_unique<RNode>(dlast->Define(Form("pdfy_%d", j), [j,max_y](double y){return cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::pdf_y), j);} , {"y"} ));
+    //sums.emplace_back( dlast->Sum( Form("pdfy_%d", j)) );
+  }
  
   for(int k = 0; k<=degs(pdf_type::corr_x); k++){
     dlast = std::make_unique<RNode>(dlast->Define(Form("corrxy_%d", k), [k,max_x](double x){return cheb(x, 0.5*max_x, 1.0, degs(pdf_type::corr_x), k); } , {"x"} ));
@@ -162,12 +163,15 @@ int main(int argc, char* argv[])
   }
 
   for(auto name : helicities){
-    dlast = std::make_unique<RNode>(dlast->Define(name, [&](double cos, double phi, double y ){
+
+    dlast = std::make_unique<RNode>(dlast->Define(name, [name](double cos, double phi, double y ){
 	  double val  = 1.0;
 	  double cosS = y>0 ? cos : -cos;
 	  double phiS = y>0 ? phi : -phi;
 	  if     (name=="UL") val = 1+cosS*cosS;
 	  else if(name=="A0") val = 0.5*(1-3*cosS*cosS);
+	  else if(name=="A1") val = 2*cosS*TMath::Sqrt(1-cosS*cosS)*TMath::Cos(phiS);
+	  else if(name=="A4") val = cosS;
 	  return val;
 	}, {"cos", "phi", "y"})
       );
@@ -184,38 +188,6 @@ int main(int argc, char* argv[])
     }
     
   }
-
-  /*
-  for(int i = 0; i<=degs(pdf_type::pdf_x); i++){
-    for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
-      for(int k = 0; k<=degs(pdf_type::corr_x); k++){
-	for(int l = 0; l<=degs(pdf_type::corr_y); l++){
-	  auto w_ijkl = [i,j,k,l,max_x, max_y](double x, double y){	    
-	    double pdf0 = cheb(x, 0.5*max_x, 1.0, degs(pdf_type::pdf_x), i);
-	    double pdf1 = cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::pdf_y), j);
-	    double pdf2 = cheb(x, 0.5*max_x, 1.0, degs(pdf_type::corr_x), k);
-	    double pdf3 = cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::corr_y), l);
-	    //cout << pdf0 << "," << pdf1 << "," << pdf2 << "," << pdf3 << endl;
-	    return pdf0*pdf1*pdf2*pdf3;
-	  };
-	  dlast = std::make_unique<RNode>(dlast->Define(Form("w_%d%d%d%d", i,j,k,l), w_ijkl, {"x","y"} ));
-
-	  for(int n = 0; n<=degs(pdf_type::A0_x); n++){
-	    for(int o = 0; o<=degs(pdf_type::A0_y); o++){
-	      auto w_ijkl_A0_no = [n,o,max_x, max_y, w_ijkl](double x, double y){	    
-		double pdf0 = cheb(x, 0.5*max_x, 1.0, degs(pdf_type::A0_x), n);
-		double pdf1 = cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::A0_y), o);
-		return w_ijkl(x,y)*pdf0*pdf1;
-	      };	      
-	      dlast = std::make_unique<RNode>(dlast->Define(Form("w_%d%d%d%d_A0_%d%d", i,j,k,l,n,o), w_ijkl_A0_no, {"x","y"} ));
-	    }
-	  }	  
-
-	}
-      }
-    }
-  }  
-  */
 
   /*
   auto h1 = dlast->Histo1D({"cos","", 10, -1,1}, "cos" );
@@ -244,14 +216,14 @@ int main(int argc, char* argv[])
     for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
       for(int k = 0; k<=degs(pdf_type::corr_x); k++){
 	for(int l = 0; l<=degs(pdf_type::corr_y); l++){
-	  std::string wname(Form("w_%d_%d_%d_%d",i,j,k,l));
 	  for(auto name : helicities){
-	    std::string whname = wname + "_" + name; 
-	    dlast = std::make_unique<RNode>(dlast->Define(whname, prod6, {"wM", Form("pdfx_%d",i), Form("pdfy_%d",j), Form("corrxy_%d",k), Form("corryx_%d",l), name } ));	    
-	    histos2D.emplace_back(dlast->Histo2D({whname.c_str(), "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", whname));
-
-	    if(name=="UL") continue;
-
+	    if(name=="UL"){	    
+	      std::string whname(Form("w_%d_%d_%d_%d",i,j,k,l));
+	      whname += ("_"+name); 
+	      dlast = std::make_unique<RNode>(dlast->Define(whname, prod6, {"wM", Form("pdfx_%d",i), Form("pdfy_%d",j), Form("corrxy_%d",k), Form("corryx_%d",l), name } ));	    
+	      histos2D.emplace_back(dlast->Histo2D({whname.c_str(), "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", whname));
+	      continue;
+	    }
 	    for(int m = 0; m<=degs(get_pdf_type(name+"_x")); m++){
 	      std::string wx = name+"x_"+std::string(Form("%d",m)); 
 	      for(int n = 0; n<=degs(get_pdf_type(name+"_y")); n++){
@@ -268,15 +240,18 @@ int main(int argc, char* argv[])
       }
     }
   }
-  //histos2D.emplace_back(d1.Histo2D({"pteta", "", 50, -2.5, 2.5, 40, 20, 60}, "eta", "pt", "pdf_x"));
 
-  //auto colNames = dlast->GetColumnNames();
+  //histos2D.emplace_back(d1.Histo2D({"pteta", "", 50, -2.5, 2.5, 40, 20, 60}, "eta", "pt", "pdf_x"));
+  auto colNames = dlast->GetColumnNames();
   //for (auto &&colName : colNames) std::cout << colName << std::endl;
+  std::cout << colNames.size() << " columns created" << std::endl;
 
   fout->cd();
   std::cout << "Writing histos..." << std::endl;
   for(auto h : histos1D) h->Write();
   for(auto h : histos2D) h->Write();
+  double total = *(dlast->Count());
+  for(auto sum : sums) std::cout << *sum/total << std::endl;
   fout->Close();
   return 1;
 }
