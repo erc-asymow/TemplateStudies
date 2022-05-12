@@ -1,5 +1,6 @@
 #include "TFile.h"
 #include "TTree.h"
+#include "TF1.h"
 
 using namespace std;
 using namespace ROOT;
@@ -8,8 +9,8 @@ enum pdf_type { pdf_x=0, pdf_y, corr_x, corr_y, A0_x, A0_y, A1_x, A1_y, A4_x, A4
 
 auto degs = [](const pdf_type& pdf){
   switch(pdf){
-  case pdf_type::pdf_x:  return  5; // f(x)
-  case pdf_type::pdf_y:  return  5; // f(y|0)
+  case pdf_type::pdf_x:  return  10; // f(x)
+  case pdf_type::pdf_y:  return  10; // f(y|0)
   case pdf_type::corr_x: return  2; // P(x,.)
   case pdf_type::corr_y: return  2; // P(.,y)
   case pdf_type::A0_x:   return  2; // A0(x,.)
@@ -35,17 +36,24 @@ int main(int argc, char* argv[]){
   const double max_x = 0.15;
   const double max_y = 2.5;
 
+  TF1* toy_x = new TF1("toy_x", "[0]/(x-[1])", 0.0, max_x);  
+  toy_x->SetParameter(0, 1.0);
+  toy_x->SetParameter(1, -2.35e-03);
   double pdf_x[NMAX];
   for(int i = 0; i<=degs(pdf_type::pdf_x); i++){
     tree->Branch(Form("pdfx_%d", i), &(pdf_x[i]), Form("pdfx_%d/D", i));
-    pdf_x[i] = 1.0/max_x;
-    //pdf_x[i] = i==degs(pdf_type::pdf_x)? 1.0 : 0.0;
+    //pdf_x[i] = 1.0/max_x;
+    pdf_x[i] = toy_x->Eval( (TMath::Cos(i*TMath::Pi()/degs(pdf_type::pdf_x))+1.0)*0.5*max_x );
   }
 
+  TF1* toy_y = new TF1("toy_y", "1/TMath::Sqrt(2*TMath::Pi()*[1])*TMath::Exp(-0.5*(x-[0])*(x-[0])/[1]/[1])", -max_y, max_y);
+  toy_y->SetParameter(0, 0.0);
+  toy_y->SetParameter(1, 1.0);
   double pdf_y[NMAX];
   for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
     tree->Branch(Form("pdfy_%d", j), &(pdf_y[j]), Form("pdfy_%d/D", j));
-    pdf_y[j] = 1.0/(2*max_y);
+    //pdf_y[j] = 1.0/(2*max_y);
+    pdf_y[j] = toy_y->Eval( (TMath::Cos(j*TMath::Pi()/degs(pdf_type::pdf_y))+1.0)*0.5*max_y );
   }
 
   double corr_xy[NMAX];

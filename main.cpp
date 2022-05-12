@@ -4,6 +4,7 @@
 #include "TVector.h"
 #include "TVectorT.h"
 #include "TMath.h"
+#include "TF1.h"
 #include <TMatrixD.h>
 #include <ROOT/RVec.hxx>
 #include <stdlib.h>
@@ -24,8 +25,8 @@ enum pdf_type { pdf_x=0, pdf_y, corr_x, corr_y, A0_x, A0_y, A1_x, A1_y, A4_x, A4
 
 auto degs = [](const pdf_type& pdf){
   switch(pdf){
-  case pdf_type::pdf_x:  return  2; // f(x)
-  case pdf_type::pdf_y:  return  2; // f(y|0)
+  case pdf_type::pdf_x:  return  10; // f(x)
+  case pdf_type::pdf_y:  return  10; // f(y|0)
   case pdf_type::corr_x: return  2; // P(x,.)
   case pdf_type::corr_y: return  2; // P(.,y)
   case pdf_type::A0_x:   return  2; // A0(x,.)
@@ -246,6 +247,14 @@ int main(int argc, char* argv[])
 
 
   if(input!=""){
+
+    TF1* toy_x = new TF1("toy_x", "[0]/(x-[1])", 0.0, max_x);  
+    toy_x->SetParameter(0, 1.0);
+    toy_x->SetParameter(1, -2.35e-03);
+    TF1* toy_y = new TF1("toy_y", "1/TMath::Sqrt(2*TMath::Pi()*[1])*TMath::Exp(-0.5*(x-[0])*(x-[0])/[1]/[1])", -max_y, max_y);
+    toy_y->SetParameter(0, 0.0);
+    toy_y->SetParameter(1, 1.0);
+
     TFile* fin = TFile::Open(("input_"+input+".root").c_str(), "READ");
     if(fin==nullptr) return 0;
     TTree* tree = fin->Get<TTree>("tree");
@@ -277,43 +286,63 @@ int main(int argc, char* argv[])
     
 
     dlast = std::make_unique<RNode>(dlast->Define("w", [&](double x, double y, double cos, double phi, double mW ){
-	  double w = 0.0;
+	  double w{0.0};
 	  for(auto name : helicities){	    
-	    double wh  = 1.0;
+
+	    double whel  = 1.0;
 	    double cosS = y>0 ? cos : -cos;
 	    double phiS = y>0 ? phi : -phi;
-	    if     (name=="UL") wh *= (1+cosS*cosS);
-	    else if(name=="A0") wh *= (0.5*(1-3*cosS*cosS));
-	    else if(name=="A1") wh *= 2*cosS*TMath::Sqrt(1-cosS*cosS)*TMath::Cos(phiS);
-	    else if(name=="A4") wh *= cosS;
+	    if     (name=="UL") whel = (1+cosS*cosS);
+	    else if(name=="A0") whel = (0.5*(1-3*cosS*cosS));
+	    else if(name=="A1") whel = 2*cosS*TMath::Sqrt(1-cosS*cosS)*TMath::Cos(phiS);
+	    else if(name=="A4") whel = cosS;
+	    
+	    double pdfx_ = 0.0;
 	    for(int i = 0; i<=degs(pdf_type::pdf_x); i++){
-	      double pdf0 = cheb(x, 0.5*max_x, 1.0, degs(pdf_type::pdf_x), i);
-	      for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
-		double pdf1 = cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::pdf_y), j);
-		for(int k = 0; k<=degs(pdf_type::corr_x); k++){
-		  double pdf2 = cheb(x, 0.5*max_x, 1.0, degs(pdf_type::corr_x), k);
-		  for(int l = 0; l<=degs(pdf_type::corr_y); l++){
-		    double pdf3 = cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::corr_y), l);
-		    wh *= (pdf0*pdf1*pdf2*pdf3)*(pdf_x[i]*pdf_y[j]*corr_xy[ (degs(pdf_type::corr_y)+1)*k + l]);
-		    if(name=="A0"){
-		      for(int m = 0; m<=degs(pdf_type::A0_x); m++){
-			double pdf4 = cheb(x, 0.5*max_x, 1.0, degs(pdf_type::A0_x), m);
-			for(int n = 0; n<=degs(pdf_type::A0_y); n++){
-			  double pdf5 = cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::A0_y), n);
-			  wh *= (pdf4*pdf5)*(A0_xy[ (degs(pdf_type::A0_y)+1)*m + n]);
-			}
-		      }
-		    }
-		    // others Ai go here 
-		    // ...
-		    w += wh; 
-		  }
-		}
+	      pdfx_ += cheb(x, 0.5*max_x, 1.0, degs(pdf_type::pdf_x), i)*pdf_x[i];
+	    }
+	    //////
+	    ///pdfx_ = toy_x->Eval(x);
+
+	    double pdfy_ = 0.0;
+	    for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
+	      pdfy_ += cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::pdf_y), j)*pdf_y[j];
+	    }
+	    //////
+	    ///pdfy_ = toy_y->Eval(y);
+
+	    double corrxy_  = 0.0;
+	    for(int k = 0; k<=degs(pdf_type::corr_x); k++){
+	      for(int l = 0; l<=degs(pdf_type::corr_y); l++){       
+		corrxy_ += 
+		  cheb(x, 0.5*max_x, 1.0, degs(pdf_type::corr_x), k)*
+		  cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::corr_y), l)*
+		  corr_xy[ (degs(pdf_type::corr_y)+1)*k + l];
 	      }
 	    }
+	    whel *= (pdfx_*pdfy_*corrxy_);
+
+	    double pdfA0_ = 0.0;
+	    if(name=="A0"){
+	      for(int m = 0; m<=degs(pdf_type::A0_x); m++){
+		for(int n = 0; n<=degs(pdf_type::A0_y); n++){
+		 pdfA0_ += 
+		   cheb(x, 0.5*max_x, 1.0, degs(pdf_type::A0_x), m)*
+		   cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::A0_y), n)*
+		   A0_xy[ (degs(pdf_type::A0_y)+1)*m + n];
+		}
+	      }
+	      whel *= pdfA0_;
+	    }
+
+	    // others Ai go here 
+	    // ...
+
+	    w += whel;  
 	  }
 	  return w*mW;
 	}, {"x","y","cos","phi","wM"}));
+
     histos2D.clear();
     histos2D.emplace_back(dlast->Histo2D({"w", "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "w"));      
   }
