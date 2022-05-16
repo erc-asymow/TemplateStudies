@@ -86,6 +86,8 @@ int main(int argc, char* argv[])
   std::string run{""};
   int degs_pdf_x = -1;
   int degs_pdf_y = -1;
+  int degs_corr_x = -1;
+  int degs_corr_y = -1;
   if(argc>1) nevents = strtol(argv[1], NULL, 10);
   if(argc>2) tag = std::string(argv[2]);
   if(argc>3) run = std::string(argv[3]);
@@ -97,6 +99,14 @@ int main(int argc, char* argv[])
     degs_pdf_y = strtol(argv[5], NULL, 10);
     tag += "_"+std::string(argv[5]); 
   }
+  if(argc>6){
+    degs_corr_x = strtol(argv[6], NULL, 10);
+    tag += "_"+std::string(argv[6]); 
+  }
+  if(argc>7){
+    degs_corr_y = strtol(argv[7], NULL, 10);
+    tag += "_"+std::string(argv[7]); 
+  }
 
   const double max_x = 0.4;
   const double max_y = 3.0;
@@ -107,7 +117,7 @@ int main(int argc, char* argv[])
   const double yLow  = 25.;
   const double yHigh = 55.;
 
-  auto degs = [degs_pdf_x,degs_pdf_y](const pdf_type& pdf){
+  auto degs = [degs_pdf_x,degs_pdf_y,degs_corr_x, degs_corr_y](const pdf_type& pdf){
     switch(pdf){
     case pdf_type::pdf_x:             // f(x)
     if(degs_pdf_x>0) return degs_pdf_x;
@@ -115,8 +125,12 @@ int main(int argc, char* argv[])
     case pdf_type::pdf_y:             // f(y|0)  
     if(degs_pdf_y>0) return degs_pdf_y;
     else return 2; 
-    case pdf_type::corr_x: return  2; // P(x,.)
-    case pdf_type::corr_y: return  2; // P(.,y)
+    case pdf_type::corr_x:            // P(x,.) 
+    if(degs_corr_x>0) return degs_corr_x;
+    else return 2; 
+    case pdf_type::corr_y:            // P(.,y)
+    if(degs_corr_y>0) return degs_corr_y;
+    else return 2;
     case pdf_type::A0_x:   return  2; // A0(x,.)
     case pdf_type::A0_y:   return  2; // A0(.,y)
     case pdf_type::A1_x:   return  2; // A1(x,.)
@@ -136,6 +150,13 @@ int main(int argc, char* argv[])
   //TF1* toy_y = new TF1("toy_y", "[0]+[1]", -max_y, max_y);
   toy_y->SetParameter(0, 0.0);
   toy_y->SetParameter(1, 5.0);
+
+  TFile* fWJets = TFile::Open("WJets.root","READ");
+  TH2F* h2 = 0;
+  if(fWJets!=nullptr && !fWJets->IsZombie()){
+    std::cout << "WJets file found! Taking h2 as corrxy" << std::endl;
+     h2 = fWJets->Get<TH2F>("h2");
+  }
 
   // preprare inputs
   if(nevents<0){
@@ -163,6 +184,13 @@ int main(int argc, char* argv[])
       int idx = (degs(pdf_type::corr_y)+1)*k + l; 
       tree->Branch(Form("corrxy_%d_%d", k,l), &(corr_xy[idx]), Form("corrxy_%d_%d/D", k,l));
       corr_xy[idx] = 1.0;
+      if(h2!=0){
+	double x = (TMath::Cos(k*TMath::Pi()/degs(pdf_type::pdf_x))+1.0)*0.5*max_x;
+	double y = (TMath::Cos(l*TMath::Pi()/degs(pdf_type::pdf_y))+1.0)*0.5*max_y;
+	int bin = h2->FindBin(y,x);
+	corr_xy[idx] = h2->GetBinContent(bin);
+	//std::cout << "corr_xy " << " " << x << "," << y << "=>" << idx << ": " << corr_xy[idx] << std::endl;
+      }      
     }
   }
   
@@ -431,9 +459,17 @@ int main(int argc, char* argv[])
 		  cheb(x, 0.5*max_x, 1.0, degs(pdf_type::corr_x), k)*
 		  cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::corr_y), l)*
 		  corr_xy[ (degs(pdf_type::corr_y)+1)*k + l];
+		//std::cout << k << "," << l << " += " << cheb(x, 0.5*max_x, 1.0, degs(pdf_type::corr_x), k) << " * " <<
+		//cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::corr_y), l) << " * " << corr_xy[ (degs(pdf_type::corr_y)+1)*k + l] << " = " <<
+		//delta << std::endl;
+		//corrxy_ += delta;
 	      }
 	    }
 	    double corrxyMC_  = corrxy_;
+	    if(h2!=0){
+	      corrxyMC_  = h2->GetBinContent( h2->FindBin(TMath::Abs(y),x) );
+	      //std::cout << corrxyMC_ << " vs " << corrxy_ << std::endl;
+	    }
 
 	    whel   *= (pdfx_*pdfy_*corrxy_);
 	    whelMC *= (pdfxMC_*pdfyMC_*corrxyMC_);

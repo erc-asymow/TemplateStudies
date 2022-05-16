@@ -3,7 +3,7 @@
 
   bool normalize = true;
 
-  TString name = "mass_0p4_3p0";
+  TString name = "test_corrxy";
 
   std::vector<TString> tags{};
 
@@ -14,9 +14,9 @@
 
   for(auto X : ROOT::TSeqI(11) ){
     for(auto Y : ROOT::TSeqI(11) ){
-      if(X<9) continue;
-      //if(Y!=6) continue;
-      TString tag(Form("%d_%d",X,Y));
+      if(X<6 || X>8) continue;
+      if(Y<6 || Y>8) continue;
+      TString tag(Form("8_6_%d_%d",X,Y));
       cout << "file " << tag << endl;
       TFile* f = TFile::Open("root/histos_"+name+"_"+tag+"_closure.root");
       if(f==nullptr || f->IsZombie()) continue;
@@ -69,8 +69,8 @@
   i = 0;
   for(auto h : histos){
     if(i==0){
-      h->SetMinimum(0.998);
-      h->SetMaximum(1.002);
+      h->SetMinimum(0.995);
+      h->SetMaximum(1.005);
       h->Draw("HIST");
     }
     else h->Draw("HISTSAME");

@@ -1,5 +1,5 @@
 GCC=g++
-CXXFLAGS=`root-config --libs --cflags` -O3 -fPIC
+CXXFLAGS=`root-config --libs --cflags` -O3
 
 SRCDIR=./
 BINDIR=./
