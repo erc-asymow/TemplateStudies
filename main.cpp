@@ -98,8 +98,8 @@ int main(int argc, char* argv[])
     tag += "_"+std::string(argv[5]); 
   }
 
-  const double max_x = 0.3;
-  const double max_y = 2.5;
+  const double max_x = 0.4;
+  const double max_y = 3.0;
   const int nbinsX   = 12; 
   const double xLow  = 0.0;
   const double xHigh = +2.5;
@@ -198,7 +198,13 @@ int main(int argc, char* argv[])
   ROOT::RDataFrame d(nevents);
   auto dlast = std::make_unique<RNode>(d);
 
-  dlast = std::make_unique<RNode>(dlast->Define("Q",  [&](){ return TMath::Tan(R.Uniform(-TMath::Pi()*0.5, +TMath::Pi()*0.5))*GW + MW; } ));
+  dlast = std::make_unique<RNode>(dlast->Define("Q",  [&](){ 
+	double Q = TMath::Tan(R.Uniform(-TMath::Pi()*0.5, +TMath::Pi()*0.5))*GW + MW; 
+	while(Q < 50.0){
+	  Q = TMath::Tan(R.Uniform(-TMath::Pi()*0.5, +TMath::Pi()*0.5))*GW + MW; 
+	}
+	return Q;
+      } ));
   dlast = std::make_unique<RNode>(dlast->Define("cos",[&](){ return R.Uniform(-1.0, 1.0);} ));
   dlast = std::make_unique<RNode>(dlast->Define("phi",[&](){ return R.Uniform(-TMath::Pi(), +TMath::Pi());} ));
   dlast = std::make_unique<RNode>(dlast->Define("x",  [&](){ return R.Uniform(0.0, max_x); }));
@@ -207,6 +213,20 @@ int main(int argc, char* argv[])
 						[&](double x){
 						  double gen = 1./TMath::Pi()/(1 + (x-MW)*(x-MW)/GW/GW);
 						  double target = gen;
+						  return target/gen; 
+						}, {"Q"}));
+  dlast = std::make_unique<RNode>(dlast->Define("wM_up", 
+						[&](double x){
+						  double MW_up = MW+0.010;
+						  double gen    = 1./TMath::Pi()/(1 + (x-MW)*(x-MW)/GW/GW);
+						  double target = 1./TMath::Pi()/(1 + (x-MW_up)*(x-MW_up)/GW/GW);
+						  return target/gen; 
+						}, {"Q"}));
+  dlast = std::make_unique<RNode>(dlast->Define("wM_down", 
+						[&](double x){
+						  double MW_down = MW-0.010;
+						  double gen    = 1./TMath::Pi()/(1 + (x-MW)*(x-MW)/GW/GW);
+						  double target = 1./TMath::Pi()/(1 + (x-MW_down)*(x-MW_down)/GW/GW);
 						  return target/gen; 
 						}, {"Q"}));
   dlast = std::make_unique<RNode>(dlast->Define("p4lab",
@@ -372,7 +392,7 @@ int main(int argc, char* argv[])
     }
     tree->GetEntry(0);    
 
-    dlast = std::make_unique<RNode>(dlast->Define("weights", [&](double x, double y, double cos, double phi, double mW )->RVecD {
+    dlast = std::make_unique<RNode>(dlast->Define("weights", [&](double x, double y, double cos, double phi, double mW, double mW_up, double mW_down )->RVecD {
 	  RVecD out;
 	  double   w{0.0};
 	  double wMC{0.0};
@@ -444,14 +464,20 @@ int main(int argc, char* argv[])
 	  }
 	  out.emplace_back(w*mW);
 	  out.emplace_back(wMC*mW);
+	  out.emplace_back(wMC*mW_up);
+	  out.emplace_back(wMC*mW_down);
 	  return out;
-	}, {"x","y","cos","phi","wM"}));
+	}, {"x","y","cos","phi","wM", "wM_up", "wM_down"}));
 
-    dlast = std::make_unique<RNode>(dlast->Define("w",   [](RVecD weights){ return weights.at(0);}, {"weights"} ));
-    dlast = std::make_unique<RNode>(dlast->Define("wMC", [](RVecD weights){ return weights.at(1);}, {"weights"} ));
+    dlast = std::make_unique<RNode>(dlast->Define("w",        [](RVecD weights){ return weights.at(0);}, {"weights"} ));
+    dlast = std::make_unique<RNode>(dlast->Define("wMC",      [](RVecD weights){ return weights.at(1);}, {"weights"} ));
+    dlast = std::make_unique<RNode>(dlast->Define("wMC_up",   [](RVecD weights){ return weights.at(2);}, {"weights"} ));
+    dlast = std::make_unique<RNode>(dlast->Define("wMC_down", [](RVecD weights){ return weights.at(3);}, {"weights"} ));
     
-    histos2D.emplace_back(dlast->Histo2D({"w",   "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "w"));      
-    histos2D.emplace_back(dlast->Histo2D({"wMC", "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "wMC"));      
+    histos2D.emplace_back(dlast->Histo2D({"w",       "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "w"));      
+    histos2D.emplace_back(dlast->Histo2D({"wMC",     "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "wMC"));      
+    histos2D.emplace_back(dlast->Histo2D({"wMC_up",  "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "wMC_up"));      
+    histos2D.emplace_back(dlast->Histo2D({"wMC_down","", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "wMC_down"));      
     fin->Close();
   }
 
