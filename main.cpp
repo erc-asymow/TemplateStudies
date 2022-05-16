@@ -7,7 +7,8 @@
 #include "TF1.h"
 #include <TMatrixD.h>
 #include <ROOT/RVec.hxx>
-#include <stdlib.h>
+#include <iostream>
+//#include <boost/program_options.hpp>
 
 using namespace std;
 using namespace ROOT;
@@ -25,8 +26,8 @@ enum pdf_type { pdf_x=0, pdf_y, corr_x, corr_y, A0_x, A0_y, A1_x, A1_y, A4_x, A4
 
 auto degs = [](const pdf_type& pdf){
   switch(pdf){
-  case pdf_type::pdf_x:  return  10; // f(x)
-  case pdf_type::pdf_y:  return  10; // f(y|0)
+  case pdf_type::pdf_x:  return  35; // f(x)
+  case pdf_type::pdf_y:  return  35; // f(y|0)
   case pdf_type::corr_x: return  2; // P(x,.)
   case pdf_type::corr_y: return  2; // P(.,y)
   case pdf_type::A0_x:   return  2; // A0(x,.)
@@ -70,16 +71,40 @@ auto cheb = [](double x, double scale, double offset, int n, int m){
 int main(int argc, char* argv[])
 {
 
-  ROOT::EnableImplicitMT();
-  
+  ROOT::EnableImplicitMT(64);
+
+  /*
+  try
+    {
+      options_description desc{"Options"};
+      desc.add_options()
+	("help,h", "Help screen")
+	("pi", value<float>()->default_value(3.14f), "Pi")
+	("age", value<int>()->notifier(on_age), "Age");
+      variables_map vm;
+      store(parse_command_line(argc, argv, desc), vm);
+      notify(vm);
+      if (vm.count("help"))
+	std::cout << desc << '\n';
+      else if (vm.count("age"))
+	std::cout << "Age: " << vm["age"].as<int>() << '\n';
+      else if (vm.count("pi"))
+	std::cout << "Pi: " << vm["pi"].as<float>() << '\n';
+    }
+  catch (const error &ex)
+    {
+      std::cerr << ex.what() << '\n';
+    }
+  */
+
   long nevents = 1000;
   std::string tag{""};
-  std::string input{""};
+  std::string run{""};
   if(argc>1) nevents = strtol(argv[1], NULL, 10);
   if(argc>2) tag = std::string(argv[2]);
-  if(argc>3) input = std::string(argv[3]);
+  if(argc>3) run = std::string(argv[3]);
 
-  const double max_x = 0.15;
+  const double max_x = 0.3;
   const double max_y = 2.5;
   const int nbinsX   = 12; 
   const double xLow  = 0.0;
@@ -88,8 +113,63 @@ int main(int argc, char* argv[])
   const double yLow  = 25.;
   const double yHigh = 55.;
 
+  //TF1* toy_x = new TF1("toy_x", "[0]*x/(x*x+[1])", 0.0, max_x);  
+  TF1* toy_x = new TF1("toy_x", "[0]+[1]", 0.0, max_x);  
+  toy_x->SetParameter(0, 1.0);
+  toy_x->SetParameter(1, +2.35e-03);
+  //TF1* toy_y = new TF1("toy_y", "1/TMath::Sqrt(2*TMath::Pi()*[1])*TMath::Exp(-0.5*(x-[0])*(x-[0])/[1]/[1])", -max_y, max_y);
+  TF1* toy_y = new TF1("toy_y", "[0]+[1]", -max_y, max_y);
+  toy_y->SetParameter(0, 0.0);
+  toy_y->SetParameter(1, 2.0);
+
+  // preprare inputs
+  if(nevents<0){
+
+    TFile* fout = TFile::Open(("input_"+tag+".root").c_str(), "RECREATE");
+    TTree* tree = new TTree("tree", "tree");
+
+    double pdf_x[NMAX];
+    for(int i = 0; i<=degs(pdf_type::pdf_x); i++){
+      tree->Branch(Form("pdfx_%d", i), &(pdf_x[i]), Form("pdfx_%d/D", i));
+      //pdf_x[i] = 1.0/max_x;
+      pdf_x[i] = toy_x->Eval( (TMath::Cos(i*TMath::Pi()/degs(pdf_type::pdf_x))+1.0)*0.5*max_x );
+    }
+    
+    double pdf_y[NMAX];
+    for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
+      tree->Branch(Form("pdfy_%d", j), &(pdf_y[j]), Form("pdfy_%d/D", j));
+      //pdf_y[j] = 1.0/(2*max_y);
+      pdf_y[j] = toy_y->Eval( (TMath::Cos(j*TMath::Pi()/degs(pdf_type::pdf_y))+1.0)*0.5*max_y );
+    }
+    
+  double corr_xy[NMAX];
+  for(int k = 0; k<=degs(pdf_type::corr_x); k++){
+    for(int l = 0; l<=degs(pdf_type::corr_y); l++){      
+      int idx = (degs(pdf_type::corr_y)+1)*k + l; 
+      tree->Branch(Form("corrxy_%d_%d", k,l), &(corr_xy[idx]), Form("corrxy_%d_%d/D", k,l));
+      corr_xy[idx] = 1.0;
+    }
+  }
+  
+  double A0_xy[NMAX];
+  for(int m = 0; m<=degs(pdf_type::A0_x); m++){
+    for(int n = 0; n<=degs(pdf_type::A0_y); n++){
+      int idx = (degs(pdf_type::A0_y)+1)*m + n; 
+      tree->Branch(Form("A0_xy_%d_%d", m,n), &(A0_xy[idx]), Form("A0_xy_%d_%d/D", m,n));
+      A0_xy[idx] = 0.0;      
+    }
+  }
+
+  tree->Fill();
+  tree->Write();
+  fout->Close();
+
+  return 0;
+  }
+
+
   // We prepare an input tree to run on
-  TFile* fout = TFile::Open(("histos_"+tag+".root").c_str(), "RECREATE");
+  TFile* fout = TFile::Open(("histos_"+tag+"_"+run+".root").c_str(), "RECREATE");
 
   //auto fileName = "rdf.root";
   //auto treeName = "tree";
@@ -116,7 +196,7 @@ int main(int argc, char* argv[])
 						}, {"Q"}));
   dlast = std::make_unique<RNode>(dlast->Define("p4lab",
 						[&](double Q, double cos, double phi, double x, double y)->RVecD {
-						  double qT2 = x*Q*Q;
+						  double qT2 = x*x*Q*Q;
 						  double qT = TMath::Sqrt(qT2);
 						  double XT = TMath::Sqrt(qT2 + Q*Q);
 						  double Q0 = XT*TMath::CosH(y);
@@ -216,46 +296,40 @@ int main(int argc, char* argv[])
   auto prod6 = [](double a, double b, double c, double d, double e, double f){ return a*b*c*d*e*f;};
   auto prod8 = [](double a, double b, double c, double d, double e, double f, double g, double h){ return a*b*c*d*e*f*g*h;};
 
-  for(int i = 0; i<=degs(pdf_type::pdf_x); i++){
-    for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
-      for(int k = 0; k<=degs(pdf_type::corr_x); k++){
-	for(int l = 0; l<=degs(pdf_type::corr_y); l++){
-	  for(auto name : helicities){
-	    if(name=="UL"){	    
-	      std::string whname(Form("w_%d_%d_%d_%d",i,j,k,l));
-	      whname += ("_"+name); 
-	      dlast = std::make_unique<RNode>(dlast->Define(whname, prod6, {"wM", Form("pdfx_%d",i), Form("pdfy_%d",j), Form("corrxy_%d",k), Form("corryx_%d",l), name } ));	    
-	      histos2D.emplace_back(dlast->Histo2D({whname.c_str(), "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", whname));
-	      continue;
-	    }
- 	    for(int m = 0; m<=degs(get_pdf_type(name+"_x")); m++){
-	      std::string wx = name+"x_"+std::string(Form("%d",m)); 
-	      for(int n = 0; n<=degs(get_pdf_type(name+"_y")); n++){
-		std::string wy = name+"y_"+std::string(Form("%d",n)); 
-		std::string whname(Form("w_%d_%d_%d_%d_%d_%d",i,j,k,l,m,n));
-		whname += ("_"+name);
-		dlast = std::make_unique<RNode>(dlast->Define(whname, prod8, {"wM", Form("pdfx_%d",i), Form("pdfy_%d",j), Form("corrxy_%d",k), Form("corryx_%d",l), wx, wy, name } ));	    
+  if(run=="templates"){
+    for(int i = 0; i<=degs(pdf_type::pdf_x); i++){
+      for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
+	for(int k = 0; k<=degs(pdf_type::corr_x); k++){
+	  for(int l = 0; l<=degs(pdf_type::corr_y); l++){
+	    for(auto name : helicities){
+	      if(name=="UL"){	    
+		std::string whname(Form("w_%d_%d_%d_%d",i,j,k,l));
+		whname += ("_"+name); 
+		dlast = std::make_unique<RNode>(dlast->Define(whname, prod6, {"wM", Form("pdfx_%d",i), Form("pdfy_%d",j), Form("corrxy_%d",k), Form("corryx_%d",l), name } ));	    
 		histos2D.emplace_back(dlast->Histo2D({whname.c_str(), "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", whname));
+		continue;
 	      }
+	      for(int m = 0; m<=degs(get_pdf_type(name+"_x")); m++){
+		std::string wx = name+"x_"+std::string(Form("%d",m)); 
+		for(int n = 0; n<=degs(get_pdf_type(name+"_y")); n++){
+		  std::string wy = name+"y_"+std::string(Form("%d",n)); 
+		  std::string whname(Form("w_%d_%d_%d_%d_%d_%d",i,j,k,l,m,n));
+		  whname += ("_"+name);
+		  dlast = std::make_unique<RNode>(dlast->Define(whname, prod8, {"wM", Form("pdfx_%d",i), Form("pdfy_%d",j), Form("corrxy_%d",k), Form("corryx_%d",l), wx, wy, name } ));	    
+		  histos2D.emplace_back(dlast->Histo2D({whname.c_str(), "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", whname));
+		}
+	      }
+	      
 	    }
-
 	  }
 	}
       }
     }
   }
 
+  else if(run.find("closure")!=string::npos){
 
-  if(input!=""){
-
-    TF1* toy_x = new TF1("toy_x", "[0]/(x-[1])", 0.0, max_x);  
-    toy_x->SetParameter(0, 1.0);
-    toy_x->SetParameter(1, -2.35e-03);
-    TF1* toy_y = new TF1("toy_y", "1/TMath::Sqrt(2*TMath::Pi()*[1])*TMath::Exp(-0.5*(x-[0])*(x-[0])/[1]/[1])", -max_y, max_y);
-    toy_y->SetParameter(0, 0.0);
-    toy_y->SetParameter(1, 1.0);
-
-    TFile* fin = TFile::Open(("input_"+input+".root").c_str(), "READ");
+    TFile* fin = TFile::Open(("input_"+tag+".root").c_str(), "READ");
     if(fin==nullptr) return 0;
     TTree* tree = fin->Get<TTree>("tree");
 
@@ -281,9 +355,7 @@ int main(int argc, char* argv[])
 	tree->SetBranchAddress(Form("A0_xy_%d_%d", m,n), &(A0_xy[idx]));
       }
     }
-    tree->GetEntry(0);
-    for(int i = 0; i<=degs(pdf_type::pdf_x); i++)  std::cout << pdf_x[i] << std::endl;
-    
+    tree->GetEntry(0);    
 
     dlast = std::make_unique<RNode>(dlast->Define("w", [&](double x, double y, double cos, double phi, double mW ){
 	  double w{0.0};
@@ -298,18 +370,26 @@ int main(int argc, char* argv[])
 	    else if(name=="A4") whel = cosS;
 	    
 	    double pdfx_ = 0.0;
-	    for(int i = 0; i<=degs(pdf_type::pdf_x); i++){
-	      pdfx_ += cheb(x, 0.5*max_x, 1.0, degs(pdf_type::pdf_x), i)*pdf_x[i];
+	    if(run.find("truth")==string::npos){
+	      for(int i = 0; i<=degs(pdf_type::pdf_x); i++){
+		pdfx_ += cheb(x, 0.5*max_x, 1.0, degs(pdf_type::pdf_x), i)*pdf_x[i];
+	      }
+	      //if (TMath::Abs(pdfx_-toy_x->Eval(x))/toy_x->Eval(x)>0.0001) std::cout << "pdfx " << pdfx_ << " != " << toy_x->Eval(x) << " for x=" << x << std::endl;
 	    }
 	    //////
-	    ///pdfx_ = toy_x->Eval(x);
+	    else pdfx_ = toy_x->Eval(x);
+	    //std::cout << "pdfx " << pdfx_ << std::endl;
 
 	    double pdfy_ = 0.0;
-	    for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
-	      pdfy_ += cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::pdf_y), j)*pdf_y[j];
+	    if(run.find("truth")==string::npos){
+	      for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
+		pdfy_ += cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::pdf_y), j)*pdf_y[j];
+	      }
+	      //if (TMath::Abs(pdfy_-toy_y->Eval(y))/toy_y->Eval(y)>0.0001) std::cout << "pdfy " << pdfy_ << " != " << toy_y->Eval(y) << " for y=" << y << std::endl;
 	    }
 	    //////
-	    ///pdfy_ = toy_y->Eval(y);
+	    else pdfy_ = toy_y->Eval(y);
+	    //std::cout << "pdfy " << pdfy_ << std::endl;
 
 	    double corrxy_  = 0.0;
 	    for(int k = 0; k<=degs(pdf_type::corr_x); k++){
@@ -321,6 +401,7 @@ int main(int argc, char* argv[])
 	      }
 	    }
 	    whel *= (pdfx_*pdfy_*corrxy_);
+	    //std::cout << "corrxy " << corrxy_ << std::endl;
 
 	    double pdfA0_ = 0.0;
 	    if(name=="A0"){
@@ -333,6 +414,7 @@ int main(int argc, char* argv[])
 		}
 	      }
 	      whel *= pdfA0_;
+	      //std::cout << "pdfA0 " << pdfA0_ << std::endl;
 	    }
 
 	    // others Ai go here 
@@ -342,9 +424,8 @@ int main(int argc, char* argv[])
 	  }
 	  return w*mW;
 	}, {"x","y","cos","phi","wM"}));
-
-    histos2D.clear();
     histos2D.emplace_back(dlast->Histo2D({"w", "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "w"));      
+    fin->Close();
   }
 
 
@@ -355,12 +436,10 @@ int main(int argc, char* argv[])
 
   fout->cd();
   std::cout << "Writing histos..." << std::endl;
-  if(tag!="debug" || input!=""){
-    for(auto h : histos1D) h->Write();
-    for(auto h : histos2D) h->Write();
-  }
+  for(auto h : histos1D) h->Write();
+  for(auto h : histos2D) h->Write();
   double total = *(dlast->Count());
-  for(auto sum : sums) std::cout << *sum/total << std::endl;
+  //for(auto sum : sums) std::cout << *sum/total << std::endl;
   fout->Close();
   return 1;
 }
