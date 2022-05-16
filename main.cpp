@@ -24,22 +24,6 @@ constexpr int NMAX = 100;
 
 enum pdf_type { pdf_x=0, pdf_y, corr_x, corr_y, A0_x, A0_y, A1_x, A1_y, A4_x, A4_y, unknown};
 
-auto degs = [](const pdf_type& pdf){
-  switch(pdf){
-  case pdf_type::pdf_x:  return  35; // f(x)
-  case pdf_type::pdf_y:  return  35; // f(y|0)
-  case pdf_type::corr_x: return  2; // P(x,.)
-  case pdf_type::corr_y: return  2; // P(.,y)
-  case pdf_type::A0_x:   return  2; // A0(x,.)
-  case pdf_type::A0_y:   return  2; // A0(.,y)
-  case pdf_type::A1_x:   return  2; // A1(x,.)
-  case pdf_type::A1_y:   return  2; // A1(.,y)
-  case pdf_type::A4_x:   return  2; // A4(x,.)
-  case pdf_type::A4_y:   return  2; // A4(.,y)
-  default: return 1;
-  }
-};
-
 auto get_pdf_type = [](const std::string& name) {
   if     (name=="A0_x") return pdf_type::A0_x; 
   else if(name=="A0_y") return pdf_type::A0_y;
@@ -71,7 +55,7 @@ auto cheb = [](double x, double scale, double offset, int n, int m){
 int main(int argc, char* argv[])
 {
 
-  ROOT::EnableImplicitMT(64);
+  ROOT::EnableImplicitMT();
 
   /*
   try
@@ -100,9 +84,19 @@ int main(int argc, char* argv[])
   long nevents = 1000;
   std::string tag{""};
   std::string run{""};
+  int degs_pdf_x = -1;
+  int degs_pdf_y = -1;
   if(argc>1) nevents = strtol(argv[1], NULL, 10);
   if(argc>2) tag = std::string(argv[2]);
   if(argc>3) run = std::string(argv[3]);
+  if(argc>4){
+    degs_pdf_x = strtol(argv[4], NULL, 10); 
+    tag += "_"+std::string(argv[4]);
+  }
+  if(argc>5){
+    degs_pdf_y = strtol(argv[5], NULL, 10);
+    tag += "_"+std::string(argv[5]); 
+  }
 
   const double max_x = 0.3;
   const double max_y = 2.5;
@@ -113,19 +107,40 @@ int main(int argc, char* argv[])
   const double yLow  = 25.;
   const double yHigh = 55.;
 
-  //TF1* toy_x = new TF1("toy_x", "[0]*x/(x*x+[1])", 0.0, max_x);  
-  TF1* toy_x = new TF1("toy_x", "[0]+[1]", 0.0, max_x);  
+  auto degs = [degs_pdf_x,degs_pdf_y](const pdf_type& pdf){
+    switch(pdf){
+    case pdf_type::pdf_x:             // f(x)
+    if(degs_pdf_x>0) return degs_pdf_x;
+    else return 2;
+    case pdf_type::pdf_y:             // f(y|0)  
+    if(degs_pdf_y>0) return degs_pdf_y;
+    else return 2; 
+    case pdf_type::corr_x: return  2; // P(x,.)
+    case pdf_type::corr_y: return  2; // P(.,y)
+    case pdf_type::A0_x:   return  2; // A0(x,.)
+    case pdf_type::A0_y:   return  2; // A0(.,y)
+    case pdf_type::A1_x:   return  2; // A1(x,.)
+    case pdf_type::A1_y:   return  2; // A1(.,y)
+    case pdf_type::A4_x:   return  2; // A4(x,.)
+    case pdf_type::A4_y:   return  2; // A4(.,y)
+    default: return 1;
+    }
+  };
+  
+
+  TF1* toy_x = new TF1("toy_x", "[0]*x/(x*x+[1])", 0.0, max_x);  
+  //TF1* toy_x = new TF1("toy_x", "[0]+[1]", 0.0, max_x);  
   toy_x->SetParameter(0, 1.0);
   toy_x->SetParameter(1, +2.35e-03);
-  //TF1* toy_y = new TF1("toy_y", "1/TMath::Sqrt(2*TMath::Pi()*[1])*TMath::Exp(-0.5*(x-[0])*(x-[0])/[1]/[1])", -max_y, max_y);
-  TF1* toy_y = new TF1("toy_y", "[0]+[1]", -max_y, max_y);
+  TF1* toy_y = new TF1("toy_y", "1/TMath::Sqrt(2*TMath::Pi()*[1])*TMath::Exp(-0.5*(x-[0])*(x-[0])/[1]/[1])", -max_y, max_y);
+  //TF1* toy_y = new TF1("toy_y", "[0]+[1]", -max_y, max_y);
   toy_y->SetParameter(0, 0.0);
-  toy_y->SetParameter(1, 2.0);
+  toy_y->SetParameter(1, 5.0);
 
   // preprare inputs
   if(nevents<0){
 
-    TFile* fout = TFile::Open(("input_"+tag+".root").c_str(), "RECREATE");
+    TFile* fout = TFile::Open(("root/input_"+tag+".root").c_str(), "RECREATE");
     TTree* tree = new TTree("tree", "tree");
 
     double pdf_x[NMAX];
@@ -169,7 +184,7 @@ int main(int argc, char* argv[])
 
 
   // We prepare an input tree to run on
-  TFile* fout = TFile::Open(("histos_"+tag+"_"+run+".root").c_str(), "RECREATE");
+  TFile* fout = TFile::Open(("root/histos_"+tag+"_"+run+".root").c_str(), "RECREATE");
 
   //auto fileName = "rdf.root";
   //auto treeName = "tree";
@@ -230,20 +245,20 @@ int main(int argc, char* argv[])
   
   std::vector<ROOT::RDF::RResultPtr<double> > sums = {};
   for(int i = 0; i<=degs(pdf_type::pdf_x); i++){
-    dlast = std::make_unique<RNode>(dlast->Define(Form("pdfx_%d", i), [i,max_x](double x){return cheb(x, 0.5*max_x, 1.0, degs(pdf_type::pdf_x), i);}, {"x"} ));
+    dlast = std::make_unique<RNode>(dlast->Define(Form("pdfx_%d", i), [i,max_x,degs](double x){return cheb(x, 0.5*max_x, 1.0, degs(pdf_type::pdf_x), i);}, {"x"} ));
     sums.emplace_back( dlast->Sum<double>( Form("pdfx_%d", i)) );
   }
 
   for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
-    dlast = std::make_unique<RNode>(dlast->Define(Form("pdfy_%d", j), [j,max_y](double y){return cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::pdf_y), j);} , {"y"} ));
+    dlast = std::make_unique<RNode>(dlast->Define(Form("pdfy_%d", j), [j,max_y,degs](double y){return cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::pdf_y), j);} , {"y"} ));
     //sums.emplace_back( dlast->Sum( Form("pdfy_%d", j)) );
   }
  
   for(int k = 0; k<=degs(pdf_type::corr_x); k++){
-    dlast = std::make_unique<RNode>(dlast->Define(Form("corrxy_%d", k), [k,max_x](double x){return cheb(x, 0.5*max_x, 1.0, degs(pdf_type::corr_x), k); } , {"x"} ));
+    dlast = std::make_unique<RNode>(dlast->Define(Form("corrxy_%d", k), [k,max_x,degs](double x){return cheb(x, 0.5*max_x, 1.0, degs(pdf_type::corr_x), k); } , {"x"} ));
   }
   for(int l = 0; l<=degs(pdf_type::corr_y); l++){
-    dlast = std::make_unique<RNode>(dlast->Define(Form("corryx_%d", l), [l,max_y](double y){return cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::corr_y), l); }, {"y"} ));
+    dlast = std::make_unique<RNode>(dlast->Define(Form("corryx_%d", l), [l,max_y,degs](double y){return cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::corr_y), l); }, {"y"} ));
   }
 
   for(auto name : helicities){
@@ -264,11 +279,11 @@ int main(int argc, char* argv[])
     
     for(int m = 0; m<=degs(get_pdf_type(name+"_x")); m++){
       std::string wname = name+"x_"+std::string(Form("%d",m));
-      dlast = std::make_unique<RNode>(dlast->Define(wname.c_str(), [m,max_x,name](double x){return cheb(x, 0.5*max_x, 1.0, degs(get_pdf_type(name+"_x")), m); } , {"x"} ));
+      dlast = std::make_unique<RNode>(dlast->Define(wname.c_str(), [m,max_x,name,degs](double x){return cheb(x, 0.5*max_x, 1.0, degs(get_pdf_type(name+"_x")), m); } , {"x"} ));
     }
     for(int n = 0; n<=degs(get_pdf_type(name+"_y")); n++){
       std::string wname = name+"y_"+std::string(Form("%d",n));
-      dlast = std::make_unique<RNode>(dlast->Define(wname.c_str(), [n,max_y,name](double y){return cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(get_pdf_type(name+"_y")), n); }, {"y"} ));
+      dlast = std::make_unique<RNode>(dlast->Define(wname.c_str(), [n,max_y,name,degs](double y){return cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(get_pdf_type(name+"_y")), n); }, {"y"} ));
     }
     
   }
@@ -329,7 +344,7 @@ int main(int argc, char* argv[])
 
   else if(run.find("closure")!=string::npos){
 
-    TFile* fin = TFile::Open(("input_"+tag+".root").c_str(), "READ");
+    TFile* fin = TFile::Open(("root/input_"+tag+".root").c_str(), "READ");
     if(fin==nullptr) return 0;
     TTree* tree = fin->Get<TTree>("tree");
 
@@ -357,8 +372,10 @@ int main(int argc, char* argv[])
     }
     tree->GetEntry(0);    
 
-    dlast = std::make_unique<RNode>(dlast->Define("w", [&](double x, double y, double cos, double phi, double mW ){
-	  double w{0.0};
+    dlast = std::make_unique<RNode>(dlast->Define("weights", [&](double x, double y, double cos, double phi, double mW )->RVecD {
+	  RVecD out;
+	  double   w{0.0};
+	  double wMC{0.0};
 	  for(auto name : helicities){	    
 
 	    double whel  = 1.0;
@@ -368,28 +385,24 @@ int main(int argc, char* argv[])
 	    else if(name=="A0") whel = (0.5*(1-3*cosS*cosS));
 	    else if(name=="A1") whel = 2*cosS*TMath::Sqrt(1-cosS*cosS)*TMath::Cos(phiS);
 	    else if(name=="A4") whel = cosS;
-	    
+	    double whelMC  = whel;
+
 	    double pdfx_ = 0.0;
-	    if(run.find("truth")==string::npos){
-	      for(int i = 0; i<=degs(pdf_type::pdf_x); i++){
-		pdfx_ += cheb(x, 0.5*max_x, 1.0, degs(pdf_type::pdf_x), i)*pdf_x[i];
-	      }
-	      //if (TMath::Abs(pdfx_-toy_x->Eval(x))/toy_x->Eval(x)>0.0001) std::cout << "pdfx " << pdfx_ << " != " << toy_x->Eval(x) << " for x=" << x << std::endl;
+	    for(int i = 0; i<=degs(pdf_type::pdf_x); i++){
+	      pdfx_ += cheb(x, 0.5*max_x, 1.0, degs(pdf_type::pdf_x), i)*pdf_x[i];
 	    }
 	    //////
-	    else pdfx_ = toy_x->Eval(x);
+	    double pdfxMC_ = toy_x->Eval(x);
 	    //std::cout << "pdfx " << pdfx_ << std::endl;
 
 	    double pdfy_ = 0.0;
-	    if(run.find("truth")==string::npos){
-	      for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
-		pdfy_ += cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::pdf_y), j)*pdf_y[j];
-	      }
-	      //if (TMath::Abs(pdfy_-toy_y->Eval(y))/toy_y->Eval(y)>0.0001) std::cout << "pdfy " << pdfy_ << " != " << toy_y->Eval(y) << " for y=" << y << std::endl;
+	    for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
+	      pdfy_ += cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::pdf_y), j)*pdf_y[j];
 	    }
 	    //////
-	    else pdfy_ = toy_y->Eval(y);
+	    double  pdfyMC_ = toy_y->Eval(y);
 	    //std::cout << "pdfy " << pdfy_ << std::endl;
+	    //std::cout << "pdfyMC " << pdfyMC_ << std::endl;
 
 	    double corrxy_  = 0.0;
 	    for(int k = 0; k<=degs(pdf_type::corr_x); k++){
@@ -400,11 +413,14 @@ int main(int argc, char* argv[])
 		  corr_xy[ (degs(pdf_type::corr_y)+1)*k + l];
 	      }
 	    }
-	    whel *= (pdfx_*pdfy_*corrxy_);
+	    double corrxyMC_  = corrxy_;
+
+	    whel   *= (pdfx_*pdfy_*corrxy_);
+	    whelMC *= (pdfxMC_*pdfyMC_*corrxyMC_);
 	    //std::cout << "corrxy " << corrxy_ << std::endl;
 
-	    double pdfA0_ = 0.0;
 	    if(name=="A0"){
+	      double pdfA0_ = 0.0;
 	      for(int m = 0; m<=degs(pdf_type::A0_x); m++){
 		for(int n = 0; n<=degs(pdf_type::A0_y); n++){
 		 pdfA0_ += 
@@ -413,18 +429,29 @@ int main(int argc, char* argv[])
 		   A0_xy[ (degs(pdf_type::A0_y)+1)*m + n];
 		}
 	      }
-	      whel *= pdfA0_;
+	      double pdfA0MC_ = pdfA0_;
+	      whel   *= pdfA0_;
+	      whelMC *= pdfA0MC_;
 	      //std::cout << "pdfA0 " << pdfA0_ << std::endl;
 	    }
 
 	    // others Ai go here 
 	    // ...
 
-	    w += whel;  
+	    // sum it up
+	    w   += whel;  
+	    wMC += whelMC;  
 	  }
-	  return w*mW;
+	  out.emplace_back(w*mW);
+	  out.emplace_back(wMC*mW);
+	  return out;
 	}, {"x","y","cos","phi","wM"}));
-    histos2D.emplace_back(dlast->Histo2D({"w", "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "w"));      
+
+    dlast = std::make_unique<RNode>(dlast->Define("w",   [](RVecD weights){ return weights.at(0);}, {"weights"} ));
+    dlast = std::make_unique<RNode>(dlast->Define("wMC", [](RVecD weights){ return weights.at(1);}, {"weights"} ));
+    
+    histos2D.emplace_back(dlast->Histo2D({"w",   "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "w"));      
+    histos2D.emplace_back(dlast->Histo2D({"wMC", "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "wMC"));      
     fin->Close();
   }
 
