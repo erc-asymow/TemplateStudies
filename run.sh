@@ -2,12 +2,19 @@
 
 GRID=$1
 
-for X in 6 7 8
+
+for X in 10
 do
-    for Y in 6 7 8
+    for Y in 6
     do
-	echo 'Now doing ', $X, $Y
-	./main -1 $GRID closure 8 6 $X $Y
-	./main 10000000 $GRID closure 8 6 $X $Y
+	for CORRX in 6
+	do
+	    for CORRY in 6
+	    do
+		echo 'Now doing ', $X, $Y, $CORRX, $CORRY
+ 		./main        -1 $GRID closure $X $Y $CORRX $CORRY
+		./main   100000 $GRID closure $X $Y $CORRX $CORRY
+	    done
+	done
     done
 done

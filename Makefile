@@ -1,5 +1,5 @@
 GCC=g++
-CXXFLAGS=`root-config --libs --cflags` -O3
+CXXFLAGS=`root-config --libs --cflags` -O3 -I/usr/include/boost/
 
 SRCDIR=.
 BINDIR=.

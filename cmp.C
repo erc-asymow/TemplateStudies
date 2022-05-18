@@ -1,9 +1,11 @@
 
 {
 
+  int axis = 1;
+  
   bool normalize = true;
 
-  TString name = "fix";
+  TString name = "test";
 
   std::vector<TString> tags{};
 
@@ -13,7 +15,7 @@
   std::vector<TH1D*> histos_mass{};
 
   for(auto X : ROOT::TSeqI(11) ){
-    if(X<10) continue;
+    if(X<9) continue;
     for(auto Y : ROOT::TSeqI(11) ){
       if(Y<4) continue;
       for(auto CORRX : ROOT::TSeqI(11) ){
@@ -38,22 +40,22 @@
   int i = 0;
   for(auto tag : tags){
     TH2D* h_truth = files[i]->Get<TH2D>("wMC");
-    TH1D* hT = h_truth->ProjectionX("hT_py");
+    TH1D* hT = axis==0?h_truth->ProjectionX("hT_py"):h_truth->ProjectionY("hT_py");
     TH2D* h_cheb = files[i]->Get<TH2D>("w");
-    TH1D* hC = h_cheb->ProjectionX("hC_py");
+    TH1D* hC = axis==0?h_cheb->ProjectionX("hC_py"):h_cheb->ProjectionY("hC_py");
 
     if(i==0){
       files[i]->cd();
       if(files[i]->FindObjectAny("wMC_up")){
 	TH2D* h_up = files[i]->Get<TH2D>("wMC_up");
-	TH1D* hMup =  h_up->ProjectionX("hMup_py");
+	TH1D* hMup =  axis==0?h_up->ProjectionX("hMup_py"):h_up->ProjectionY("hMup_py");
 	hMup->Divide(hT);
 	histos_mass.emplace_back((TH1D*)hMup->Clone("hMUp"));
 	cout << tag << " pushed back" << endl;
       }
       if(files[i]->FindObjectAny("wMC_down")){
 	TH2D* h_down = files[i]->Get<TH2D>("wMC_down");
-	TH1D* hMdown =  h_down->ProjectionX("hMdown_py");
+	TH1D* hMdown =  axis==0?h_down->ProjectionX("hMdown_py"):h_down->ProjectionY("hMdown_py");
 	hMdown->Divide(hT);
 	histos_mass.emplace_back((TH1D*)hMdown->Clone("hMDown"));
 	cout << tag << " pushed back" << endl;

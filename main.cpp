@@ -305,7 +305,7 @@ int main(int argc, char* argv[])
 
   for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
     dlast = std::make_unique<RNode>(dlast->Define(Form("pdfy_%d", j), [j,max_y,degs](double y){return cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::pdf_y), j);} , {"y"} ));
-    //sums.emplace_back( dlast->Sum( Form("pdfy_%d", j)) );
+    sums.emplace_back( dlast->Sum<double>( Form("pdfy_%d", j)) );
   }
  
   for(int k = 0; k<=degs(pdf_type::corr_x); k++){
@@ -521,7 +521,16 @@ int main(int argc, char* argv[])
     histos2D.emplace_back(dlast->Histo2D({"w",       "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "w"));      
     histos2D.emplace_back(dlast->Histo2D({"wMC",     "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "wMC"));      
     histos2D.emplace_back(dlast->Histo2D({"wMC_up",  "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "wMC_up"));      
-    histos2D.emplace_back(dlast->Histo2D({"wMC_down","", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "wMC_down"));      
+    histos2D.emplace_back(dlast->Histo2D({"wMC_down","", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "wMC_down"));
+
+    histos1D.emplace_back(dlast->Histo1D({"w_pdfx",    "", 20, 0.0, max_x}, "x", "w"));      
+    histos1D.emplace_back(dlast->Histo1D({"w_pdfy",    "", 20, 0.0, max_y}, "y", "w"));      
+    histos2D.emplace_back(dlast->Histo2D({"w_corrxy",  "", 20, 0.0, max_y, 20, 0.0, max_x}, "y", "x", "w"));      
+    histos1D.emplace_back(dlast->Histo1D({"wMC_pdfx",  "", 20, 0.0, max_x}, "x", "wMC"));      
+    histos1D.emplace_back(dlast->Histo1D({"wMC_pdfy",  "", 20, 0.0, max_y}, "y", "wMC"));      
+    histos2D.emplace_back(dlast->Histo2D({"wMC_corrxy","", 20, 0.0, max_y, 20, 0.0, max_x}, "y", "x", "wMC"));      
+
+      
     fin->Close();
   }
 
@@ -537,6 +546,28 @@ int main(int argc, char* argv[])
   for(auto h : histos2D) h->Write();
   double total = *(dlast->Count());
   //for(auto sum : sums) std::cout << *sum/total << std::endl;
+
+  TTree* outtree = new TTree("outtree", "tree");
+
+  int n_pdfx = degs(pdf_type::pdf_x) + 1;
+  double norms_pdfx[ degs(pdf_type::pdf_x) + 1];
+  outtree->Branch("n_pdfx", &n_pdfx, "n_pdfx/I");
+  outtree->Branch("norms_pdfx", &norms_pdfx, "norms_pdfx[n_pdfx]/D");
+
+  int n_pdfy = degs(pdf_type::pdf_y) + 1;
+  double norms_pdfy[ degs(pdf_type::pdf_y) + 1];
+  outtree->Branch("n_pdfy", &n_pdfy, "n_pdfy/I");
+  outtree->Branch("norms_pdfy", &norms_pdfy, "norms_pdfy[n_pdfy]/D");
+
+  for(int i = 0; i<=degs(pdf_type::pdf_x); i++){
+    norms_pdfx[i] = *(sums[i])/total;
+  }
+  for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
+    norms_pdfy[j] = *(sums[degs(pdf_type::pdf_x) + 1 + j])/total;
+  }
+  outtree->Fill();
+  outtree->Write();
+  
   fout->Close();
   return 1;
 }
