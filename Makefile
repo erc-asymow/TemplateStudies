@@ -1,8 +1,8 @@
 GCC=g++
 CXXFLAGS=`root-config --libs --cflags` -O3
 
-SRCDIR=./
-BINDIR=./
+SRCDIR=.
+BINDIR=.
 
 OBJ=main.cpp
 

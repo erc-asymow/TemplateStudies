@@ -5,6 +5,7 @@
 #include "TVectorT.h"
 #include "TMath.h"
 #include "TF1.h"
+#include "TF2.h"
 #include <TMatrixD.h>
 #include <ROOT/RVec.hxx>
 #include <iostream>
@@ -153,6 +154,9 @@ int main(int argc, char* argv[])
 
   TFile* fWJets = TFile::Open("WJets.root","READ");
   TH2F* h2 = 0;
+  TF2* f2 = new TF2("f2","0.1*(-0.35*x + 1.0)*TMath::Erf(5.0*y) + 1.0", 0., max_y, 0., max_x);
+  //TF2* f2 = new TF2("f2","1.0 + x*0.1 + y*0.1", 0., max_y, 0., max_x);
+  //TF2* f2 = new TF2("f2","1.0", 0., max_y+0.1, 0., max_x+0.1);
   if(fWJets!=nullptr && !fWJets->IsZombie()){
     std::cout << "WJets file found! Taking h2 as corrxy" << std::endl;
      h2 = fWJets->Get<TH2F>("h2");
@@ -178,17 +182,19 @@ int main(int argc, char* argv[])
       pdf_y[j] = toy_y->Eval( (TMath::Cos(j*TMath::Pi()/degs(pdf_type::pdf_y))+1.0)*0.5*max_y );
     }
     
-  double corr_xy[NMAX];
+  double corr_xy[NMAX*NMAX];
   for(int k = 0; k<=degs(pdf_type::corr_x); k++){
     for(int l = 0; l<=degs(pdf_type::corr_y); l++){      
       int idx = (degs(pdf_type::corr_y)+1)*k + l; 
       tree->Branch(Form("corrxy_%d_%d", k,l), &(corr_xy[idx]), Form("corrxy_%d_%d/D", k,l));
       corr_xy[idx] = 1.0;
       if(h2!=0){
-	double x = (TMath::Cos(k*TMath::Pi()/degs(pdf_type::pdf_x))+1.0)*0.5*max_x;
-	double y = (TMath::Cos(l*TMath::Pi()/degs(pdf_type::pdf_y))+1.0)*0.5*max_y;
-	int bin = h2->FindBin(y,x);
-	corr_xy[idx] = h2->GetBinContent(bin);
+	double x = (TMath::Cos(k*TMath::Pi()/degs(pdf_type::corr_x))+1.0)*0.5*max_x;
+	double y = (TMath::Cos(l*TMath::Pi()/degs(pdf_type::corr_y))+1.0)*0.5*max_y;
+	//int bin = h2->FindBin(y,x);
+	//corr_xy[idx] = h2->GetBinContent(bin);
+	corr_xy[idx] = h2->Interpolate(y,x);
+	//corr_xy[idx] = f2->Eval(y,x);
 	//std::cout << "corr_xy " << " " << x << "," << y << "=>" << idx << ": " << corr_xy[idx] << std::endl;
       }      
     }
@@ -404,7 +410,7 @@ int main(int argc, char* argv[])
     for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
       tree->SetBranchAddress(Form("pdfy_%d", j), &(pdf_y[j]));
     }
-    double corr_xy[NMAX];
+    double corr_xy[NMAX*NMAX];
     for(int k = 0; k<=degs(pdf_type::corr_x); k++){
       for(int l = 0; l<=degs(pdf_type::corr_y); l++){      
 	int idx = (degs(pdf_type::corr_y)+1)*k + l; 
@@ -419,8 +425,9 @@ int main(int argc, char* argv[])
       }
     }
     tree->GetEntry(0);    
+    fin->Close();
 
-    dlast = std::make_unique<RNode>(dlast->Define("weights", [&](double x, double y, double cos, double phi, double mW, double mW_up, double mW_down )->RVecD {
+    dlast = std::make_unique<RNode>(dlast->Define("weights", [&,pdf_x,pdf_y,corr_xy,A0_xy](double x, double y, double cos, double phi, double mW, double mW_up, double mW_down )->RVecD {
 	  RVecD out;
 	  double   w{0.0};
 	  double wMC{0.0};
@@ -453,21 +460,22 @@ int main(int argc, char* argv[])
 	    //std::cout << "pdfyMC " << pdfyMC_ << std::endl;
 
 	    double corrxy_  = 0.0;
+
 	    for(int k = 0; k<=degs(pdf_type::corr_x); k++){
 	      for(int l = 0; l<=degs(pdf_type::corr_y); l++){       
+		int idx = (degs(pdf_type::corr_y)+1)*k + l; 
 		corrxy_ += 
 		  cheb(x, 0.5*max_x, 1.0, degs(pdf_type::corr_x), k)*
 		  cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::corr_y), l)*
-		  corr_xy[ (degs(pdf_type::corr_y)+1)*k + l];
-		//std::cout << k << "," << l << " += " << cheb(x, 0.5*max_x, 1.0, degs(pdf_type::corr_x), k) << " * " <<
-		//cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::corr_y), l) << " * " << corr_xy[ (degs(pdf_type::corr_y)+1)*k + l] << " = " <<
-		//delta << std::endl;
-		//corrxy_ += delta;
+		  corr_xy[idx];
+		//std::cout << k << ":" << l << " => " << cheb(x, 0.5*max_x, 1.0, degs(pdf_type::corr_x), k) << "," << cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::corr_y), l) << "," << corr_xy[idx] << std::endl;
 	      }
 	    }
 	    double corrxyMC_  = corrxy_;
 	    if(h2!=0){
-	      corrxyMC_  = h2->GetBinContent( h2->FindBin(TMath::Abs(y),x) );
+	      //corrxyMC_  = h2->GetBinContent( h2->FindBin(TMath::Abs(y),x) );
+	      corrxyMC_  = h2->Interpolate(TMath::Abs(y),x);
+	      //corrxyMC_  = f2->Eval(TMath::Abs(y),x);
 	      //std::cout << corrxyMC_ << " vs " << corrxy_ << std::endl;
 	    }
 
