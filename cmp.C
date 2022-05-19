@@ -5,7 +5,7 @@
   
   bool normalize = true;
 
-  TString name = "test";
+  TString name = "testy";
 
   std::vector<TString> tags{};
 
@@ -14,14 +14,14 @@
   std::vector<TH1D*> histos{};
   std::vector<TH1D*> histos_mass{};
 
-  for(auto X : ROOT::TSeqI(11) ){
-    if(X<9) continue;
-    for(auto Y : ROOT::TSeqI(11) ){
-      if(Y<4) continue;
-      for(auto CORRX : ROOT::TSeqI(11) ){
-	if(CORRX<4) continue;
-	for(auto CORRY : ROOT::TSeqI(11) ){
-	  if(CORRY<4) continue;
+  for(auto X : ROOT::TSeqI(16) ){
+    if(X<8) continue;
+    for(auto Y : ROOT::TSeqI(13) ){
+      if(Y>8) continue;
+      for(auto CORRX : ROOT::TSeqI(13) ){
+	if(CORRX<2) continue;
+	for(auto CORRY : ROOT::TSeqI(13) ){
+	  if(CORRY>8) continue;
 	  TString tag(Form("%d_%d_%d_%d",X,Y,CORRX,CORRY));
 	  cout << "file " << tag << endl;
 	  TFile* f = TFile::Open("root/histos_"+name+"_"+tag+"_closure.root");
@@ -34,7 +34,7 @@
   }
 
   TCanvas* c = new TCanvas();
-  TLegend* leg = new TLegend();
+  TLegend* leg = new TLegend(0.1,0.7,0.4,0.9);
   c->cd();
 
   int i = 0;
@@ -77,8 +77,8 @@
   i = 0;
   for(auto h : histos){
     if(i==0){
-      h->SetMinimum(0.995);
-      h->SetMaximum(1.005);
+      h->SetMinimum(0.998);
+      h->SetMaximum(1.002);
       h->Draw("HIST");
     }
     else h->Draw("HISTSAME");
@@ -86,10 +86,12 @@
     i++;
   }
 
+  i=0;
   for(auto h : histos_mass){
     h->SetLineWidth(3);
     h->Draw("HISTSAME");
-    leg->AddEntry(h, "#pm 10 MeV", "L");
+    if(i==0) leg->AddEntry(h, "#pm 10 MeV", "L");
+    i++;
   }
 
   leg->Draw()

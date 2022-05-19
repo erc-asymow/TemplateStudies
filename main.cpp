@@ -176,7 +176,7 @@ int main(int argc, char* argv[])
       //pdf_x[i] = 1.0/max_x;
       pdf_x[i] = toy_x->Eval( (TMath::Cos(i*TMath::Pi()/degs(pdf_type::pdf_x))+1.0)*0.5*max_x );
     }
-    
+     
     double pdf_y[NMAX];
     for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
       tree->Branch(Form("pdfy_%d", j), &(pdf_y[j]), Form("pdfy_%d/D", j));
@@ -568,19 +568,25 @@ int main(int argc, char* argv[])
 
   int n_pdfx = degs(pdf_type::pdf_x) + 1;
   double norms_pdfx[ degs(pdf_type::pdf_x) + 1];
+  double points_x[ degs(pdf_type::pdf_x) + 1];
   outtree->Branch("n_pdfx", &n_pdfx, "n_pdfx/I");
   outtree->Branch("norms_pdfx", &norms_pdfx, "norms_pdfx[n_pdfx]/D");
+  outtree->Branch("points_x", &points_x, "points_x[n_pdfx]/D");
 
   int n_pdfy = degs(pdf_type::pdf_y) + 1;
   double norms_pdfy[ degs(pdf_type::pdf_y) + 1];
+  double points_y[ degs(pdf_type::pdf_y) + 1];
   outtree->Branch("n_pdfy", &n_pdfy, "n_pdfy/I");
   outtree->Branch("norms_pdfy", &norms_pdfy, "norms_pdfy[n_pdfy]/D");
+  outtree->Branch("points_y", &points_y, "points_y[n_pdfy]/D");
 
   for(int i = 0; i<=degs(pdf_type::pdf_x); i++){
     norms_pdfx[i] = *(sums[i])/total;
+    points_x[i]   = TMath::Cos(i*TMath::Pi()/degs(pdf_type::pdf_x))+1.0)*0.5*max_x;
   }
   for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
     norms_pdfy[j] = *(sums[degs(pdf_type::pdf_x) + 1 + j])/total;
+    points_y[j]   = do_absY ? TMath::Cos(j*TMath::Pi()/degs(pdf_type::pdf_y))+1.0)*0.5*max_x : TMath::Cos(j*TMath::Pi()/degs(pdf_type::pdf_y))*max_x;
   }
   outtree->Fill();
   outtree->Write();
