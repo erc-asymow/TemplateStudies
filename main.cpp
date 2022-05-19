@@ -118,6 +118,8 @@ int main(int argc, char* argv[])
   const double yLow  = 25.;
   const double yHigh = 55.;
 
+  bool do_absY = false;
+
   auto degs = [degs_pdf_x,degs_pdf_y,degs_corr_x, degs_corr_y](const pdf_type& pdf){
     switch(pdf){
     case pdf_type::pdf_x:             // f(x)
@@ -179,7 +181,10 @@ int main(int argc, char* argv[])
     for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
       tree->Branch(Form("pdfy_%d", j), &(pdf_y[j]), Form("pdfy_%d/D", j));
       //pdf_y[j] = 1.0/(2*max_y);
-      pdf_y[j] = toy_y->Eval( (TMath::Cos(j*TMath::Pi()/degs(pdf_type::pdf_y))+1.0)*0.5*max_y );
+      if(do_absY) 
+	pdf_y[j] = toy_y->Eval( (TMath::Cos(j*TMath::Pi()/degs(pdf_type::pdf_y))+1.0)*0.5*max_y );
+      else
+	pdf_y[j] = toy_y->Eval( TMath::Cos(j*TMath::Pi()/degs(pdf_type::pdf_y))*max_y );
     }
     
   double corr_xy[NMAX*NMAX];
@@ -190,10 +195,10 @@ int main(int argc, char* argv[])
       corr_xy[idx] = 1.0;
       if(h2!=0){
 	double x = (TMath::Cos(k*TMath::Pi()/degs(pdf_type::corr_x))+1.0)*0.5*max_x;
-	double y = (TMath::Cos(l*TMath::Pi()/degs(pdf_type::corr_y))+1.0)*0.5*max_y;
+	double y = do_absY ? (TMath::Cos(l*TMath::Pi()/degs(pdf_type::corr_y))+1.0)*0.5*max_y : TMath::Cos(l*TMath::Pi()/degs(pdf_type::corr_y))*max_y;
 	//int bin = h2->FindBin(y,x);
 	//corr_xy[idx] = h2->GetBinContent(bin);
-	corr_xy[idx] = h2->Interpolate(y,x);
+	corr_xy[idx] = h2->Interpolate(TMath::Abs(y),x);
 	//corr_xy[idx] = f2->Eval(y,x);
 	//std::cout << "corr_xy " << " " << x << "," << y << "=>" << idx << ": " << corr_xy[idx] << std::endl;
       }      
@@ -304,7 +309,10 @@ int main(int argc, char* argv[])
   }
 
   for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
-    dlast = std::make_unique<RNode>(dlast->Define(Form("pdfy_%d", j), [j,max_y,degs](double y){return cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::pdf_y), j);} , {"y"} ));
+    if(do_absY)
+      dlast = std::make_unique<RNode>(dlast->Define(Form("pdfy_%d", j), [j,max_y,degs](double y){return cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::pdf_y), j);} , {"y"} ));
+    else
+      dlast = std::make_unique<RNode>(dlast->Define(Form("pdfy_%d", j), [j,max_y,degs](double y){return cheb(y, max_y, 0.0, degs(pdf_type::pdf_y), j);} , {"y"} ));
     sums.emplace_back( dlast->Sum<double>( Form("pdfy_%d", j)) );
   }
  
@@ -312,7 +320,10 @@ int main(int argc, char* argv[])
     dlast = std::make_unique<RNode>(dlast->Define(Form("corrxy_%d", k), [k,max_x,degs](double x){return cheb(x, 0.5*max_x, 1.0, degs(pdf_type::corr_x), k); } , {"x"} ));
   }
   for(int l = 0; l<=degs(pdf_type::corr_y); l++){
-    dlast = std::make_unique<RNode>(dlast->Define(Form("corryx_%d", l), [l,max_y,degs](double y){return cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::corr_y), l); }, {"y"} ));
+    if(do_absY) 
+      dlast = std::make_unique<RNode>(dlast->Define(Form("corryx_%d", l), [l,max_y,degs](double y){return cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::corr_y), l); }, {"y"} ));
+    else
+      dlast = std::make_unique<RNode>(dlast->Define(Form("corryx_%d", l), [l,max_y,degs](double y){return cheb(y, max_y, 0.0, degs(pdf_type::corr_y), l); }, {"y"} ));
   }
 
   for(auto name : helicities){
@@ -337,7 +348,10 @@ int main(int argc, char* argv[])
     }
     for(int n = 0; n<=degs(get_pdf_type(name+"_y")); n++){
       std::string wname = name+"y_"+std::string(Form("%d",n));
-      dlast = std::make_unique<RNode>(dlast->Define(wname.c_str(), [n,max_y,name,degs](double y){return cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(get_pdf_type(name+"_y")), n); }, {"y"} ));
+      if(do_absY) 
+	dlast = std::make_unique<RNode>(dlast->Define(wname.c_str(), [n,max_y,name,degs](double y){return cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(get_pdf_type(name+"_y")), n); }, {"y"} ));
+      else
+	dlast = std::make_unique<RNode>(dlast->Define(wname.c_str(), [n,max_y,name,degs](double y){return cheb(y, max_y, 0.0, degs(get_pdf_type(name+"_y")), n); }, {"y"} ));
     }
     
   }
@@ -452,7 +466,10 @@ int main(int argc, char* argv[])
 
 	    double pdfy_ = 0.0;
 	    for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
-	      pdfy_ += cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::pdf_y), j)*pdf_y[j];
+	      if(do_absY)
+		pdfy_ += cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::pdf_y), j)*pdf_y[j];
+	      else
+		pdfy_ += cheb(y, max_y, 0.0, degs(pdf_type::pdf_y), j)*pdf_y[j];
 	    }
 	    //////
 	    double  pdfyMC_ = toy_y->Eval(y);
@@ -466,7 +483,7 @@ int main(int argc, char* argv[])
 		int idx = (degs(pdf_type::corr_y)+1)*k + l; 
 		corrxy_ += 
 		  cheb(x, 0.5*max_x, 1.0, degs(pdf_type::corr_x), k)*
-		  cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::corr_y), l)*
+		  (do_absY ? cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::corr_y), l) : cheb(y, max_y, 0.0, degs(pdf_type::corr_y), l))*
 		  corr_xy[idx];
 		//std::cout << k << ":" << l << " => " << cheb(x, 0.5*max_x, 1.0, degs(pdf_type::corr_x), k) << "," << cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::corr_y), l) << "," << corr_xy[idx] << std::endl;
 	      }
@@ -489,7 +506,7 @@ int main(int argc, char* argv[])
 		for(int n = 0; n<=degs(pdf_type::A0_y); n++){
 		 pdfA0_ += 
 		   cheb(x, 0.5*max_x, 1.0, degs(pdf_type::A0_x), m)*
-		   cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::A0_y), n)*
+		   (do_absY ? cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::A0_y), n) : cheb(y, max_y, 0.0, degs(pdf_type::A0_y), n))*
 		   A0_xy[ (degs(pdf_type::A0_y)+1)*m + n];
 		}
 	      }
