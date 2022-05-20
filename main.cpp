@@ -9,12 +9,14 @@
 #include <TMatrixD.h>
 #include <ROOT/RVec.hxx>
 #include <iostream>
-//#include <boost/program_options.hpp>
+#include <boost/program_options.hpp>
 
 using namespace std;
 using namespace ROOT;
 typedef ROOT::VecOps::RVec<double> RVecD;
 using ROOT::RDF::RNode; 
+
+using namespace boost::program_options;
 
 //std::vector<std::string> helicities = {"UL", "A0", "A1", "A4"};
 std::vector<std::string> helicities = {"UL", "A0"};
@@ -58,56 +60,59 @@ int main(int argc, char* argv[])
 
   ROOT::EnableImplicitMT();
 
-  /*
+  variables_map vm;
   try
     {
       options_description desc{"Options"};
       desc.add_options()
 	("help,h", "Help screen")
-	("pi", value<float>()->default_value(3.14f), "Pi")
-	("age", value<int>()->notifier(on_age), "Age");
-      variables_map vm;
+	("nevents",     value<long>()->default_value(1000), "number of events")
+	("degs_pdf_x",  value<int>()->default_value(5), "max degree of pdf_x")
+	("degs_pdf_y" , value<int>()->default_value(5), "max degree of pdf_y")
+	("degs_corr_x", value<int>()->default_value(2), "max degree in x of corrxy")
+	("degs_corr_y", value<int>()->default_value(2), "max degree in y of corrxy")
+	("tag", value<std::string>()->default_value(""), "tag name")
+	("run", value<std::string>()->default_value("closure"), "run type")
+	("do_absY",  value<int>()->default_value(1), "polycheb in abs(y)");
       store(parse_command_line(argc, argv, desc), vm);
       notify(vm);
-      if (vm.count("help"))
+      if (vm.count("help")){
 	std::cout << desc << '\n';
-      else if (vm.count("age"))
-	std::cout << "Age: " << vm["age"].as<int>() << '\n';
-      else if (vm.count("pi"))
-	std::cout << "Pi: " << vm["pi"].as<float>() << '\n';
+	return 0;
+      }
+      if (vm.count("nevents"))    std::cout << "Number of events: " << vm["nevents"].as<long>() << '\n';
+      if (vm.count("tag"))        std::cout << "Tag: " << vm["tag"].as<std::string>() << '\n';
+      if (vm.count("run"))        std::cout << "Run: " << vm["run"].as<std::string>() << '\n';
+      if (vm.count("degs_pdf_x")) std::cout << "Degree of pdf_x: " << vm["degs_pdf_x"].as<int>() << '\n';
+      if (vm.count("degs_pdf_y")) std::cout << "Degree of pdf_y: " << vm["degs_pdf_y"].as<int>() << '\n';
+      if (vm.count("degs_corr_y")) std::cout << "Degree in x of corrxy: " << vm["degs_corr_x"].as<int>() << '\n';
+      if (vm.count("degs_corr_y")) std::cout << "Degree in y of corrxy: " << vm["degs_corr_y"].as<int>() << '\n';
+      if (vm.count("do_absY"))     std::cout << "Do abs(Y): " << vm["do_absY"].as<int>() << '\n';
     }
   catch (const error &ex)
     {
       std::cerr << ex.what() << '\n';
     }
-  */
 
-  long nevents = 1000;
-  std::string tag{""};
-  std::string run{""};
-  int degs_pdf_x = -1;
-  int degs_pdf_y = -1;
-  int degs_corr_x = -1;
-  int degs_corr_y = -1;
-  if(argc>1) nevents = strtol(argv[1], NULL, 10);
-  if(argc>2) tag = std::string(argv[2]);
-  if(argc>3) run = std::string(argv[3]);
-  if(argc>4){
-    degs_pdf_x = strtol(argv[4], NULL, 10); 
-    tag += "_"+std::string(argv[4]);
-  }
-  if(argc>5){
-    degs_pdf_y = strtol(argv[5], NULL, 10);
-    tag += "_"+std::string(argv[5]); 
-  }
-  if(argc>6){
-    degs_corr_x = strtol(argv[6], NULL, 10);
-    tag += "_"+std::string(argv[6]); 
-  }
-  if(argc>7){
-    degs_corr_y = strtol(argv[7], NULL, 10);
-    tag += "_"+std::string(argv[7]); 
-  }
+
+  //std::string tag{""};
+  //std::string run{""};  
+  //if(argc>1) nevents = strtol(argv[1], NULL, 10);
+  //if(argc>2) tag = std::string(argv[2]);
+  //if(argc>3) run = std::string(argv[3]);
+
+  long nevents    = vm["nevents"].as<long>();
+  std::string tag = vm["tag"].as<std::string>();
+  std::string run = vm["run"].as<std::string>();
+  int degs_pdf_x  = vm["degs_pdf_x"].as<int>();
+  int degs_pdf_y  = vm["degs_pdf_y"].as<int>();
+  int degs_corr_x = vm["degs_corr_x"].as<int>();
+  int degs_corr_y = vm["degs_corr_y"].as<int>();
+  int do_absY     = vm["do_absY"].as<int>();
+  if(vm.count("degs_pdf_x"))  tag += std::string(Form("_%d", degs_pdf_x));
+  if(vm.count("degs_pdf_y"))  tag += std::string(Form("_%d", degs_pdf_y));
+  if(vm.count("degs_corr_x")) tag += std::string(Form("_%d", degs_corr_x));
+  if(vm.count("degs_corr_y")) tag += std::string(Form("_%d", degs_corr_y));
 
   const double max_x = 0.4;
   const double max_y = 3.0;
@@ -117,8 +122,6 @@ int main(int argc, char* argv[])
   const int nbinsY   = 15; 
   const double yLow  = 25.;
   const double yHigh = 55.;
-
-  bool do_absY = false;
 
   auto degs = [degs_pdf_x,degs_pdf_y,degs_corr_x, degs_corr_y](const pdf_type& pdf){
     switch(pdf){
@@ -582,11 +585,11 @@ int main(int argc, char* argv[])
 
   for(int i = 0; i<=degs(pdf_type::pdf_x); i++){
     norms_pdfx[i] = *(sums[i])/total;
-    points_x[i]   = TMath::Cos(i*TMath::Pi()/degs(pdf_type::pdf_x))+1.0)*0.5*max_x;
+    points_x[i]   = (TMath::Cos(i*TMath::Pi()/degs(pdf_type::pdf_x))+1.0)*0.5*max_x;
   }
   for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
     norms_pdfy[j] = *(sums[degs(pdf_type::pdf_x) + 1 + j])/total;
-    points_y[j]   = do_absY ? TMath::Cos(j*TMath::Pi()/degs(pdf_type::pdf_y))+1.0)*0.5*max_x : TMath::Cos(j*TMath::Pi()/degs(pdf_type::pdf_y))*max_x;
+    points_y[j]   = do_absY ? (TMath::Cos(j*TMath::Pi()/degs(pdf_type::pdf_y))+1.0)*0.5*max_x : TMath::Cos(j*TMath::Pi()/degs(pdf_type::pdf_y))*max_x;
   }
   outtree->Fill();
   outtree->Write();
