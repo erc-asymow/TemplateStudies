@@ -168,7 +168,7 @@ int main(int argc, char* argv[])
   }
 
   // preprare inputs
-  if(nevents<0){
+  if(true){
 
     TFile* fout = TFile::Open(("root/input_"+tag+".root").c_str(), "RECREATE");
     TTree* tree = new TTree("tree", "tree");
@@ -221,7 +221,7 @@ int main(int argc, char* argv[])
   tree->Write();
   fout->Close();
 
-  return 0;
+  if(nevents<0) return 0;
   }
 
 
