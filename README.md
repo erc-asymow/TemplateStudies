@@ -1,6 +1,6 @@
 # TemplateStudies
 ```
-./setup.sh
+. setup
 make
-./main tag
+./main --help
 ```

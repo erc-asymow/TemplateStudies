@@ -5,7 +5,7 @@
   
   bool normalize = true;
 
-  TString name = "testy";
+  TString name = "norm1abs";
 
   std::vector<TString> tags{};
 
@@ -21,7 +21,7 @@
       for(auto CORRX : ROOT::TSeqI(13) ){
 	if(CORRX<2) continue;
 	for(auto CORRY : ROOT::TSeqI(13) ){
-	  if(CORRY>8) continue;
+	  if(CORRY<4) continue;
 	  TString tag(Form("%d_%d_%d_%d",X,Y,CORRX,CORRY));
 	  cout << "file " << tag << endl;
 	  TFile* f = TFile::Open("root/histos_"+name+"_"+tag+"_closure.root");
