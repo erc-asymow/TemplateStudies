@@ -73,7 +73,11 @@ int main(int argc, char* argv[])
 	("degs_corr_y", value<int>()->default_value(2), "max degree in y of corrxy")
 	("tag", value<std::string>()->default_value(""), "tag name")
 	("run", value<std::string>()->default_value("closure"), "run type")
-	("do_absY",  value<int>()->default_value(1), "polycheb in abs(y)");
+	("do_absY",  value<int>()->default_value(1), "polycheb in abs(y)")
+	("flat_corr",  bool_switch()->default_value(true), "flat corr(x,y)")
+	("getbin_extTH2_corr",  bool_switch()->default_value(true), "get bin corr(x,y)")
+	("inter_extTH2_corr",  bool_switch()->default_value(true), "interpol corr(x,y)")
+	("toyTF2_corr",  bool_switch()->default_value(true), "toy TF2 corr(x,y)");
       store(parse_command_line(argc, argv, desc), vm);
       notify(vm);
       if (vm.count("help")){
@@ -109,6 +113,11 @@ int main(int argc, char* argv[])
   int degs_corr_x = vm["degs_corr_x"].as<int>();
   int degs_corr_y = vm["degs_corr_y"].as<int>();
   int do_absY     = vm["do_absY"].as<int>();
+  bool flat_corr= vm["flat_corr"].as<bool>();
+  bool getbin_extTH2_corr= vm["getbin_extTH2_corr"].as<bool>();
+  bool inter_extTH2_corr= vm["inter_extTH2_corr"].as<bool>();
+  bool toyTF2_corr= vm["toyTF2_corr"].as<bool>();
+
   if(vm.count("degs_pdf_x"))  tag += std::string(Form("_%d", degs_pdf_x));
   if(vm.count("degs_pdf_y"))  tag += std::string(Form("_%d", degs_pdf_y));
   if(vm.count("degs_corr_x")) tag += std::string(Form("_%d", degs_corr_x));
@@ -196,15 +205,12 @@ int main(int argc, char* argv[])
       int idx = (degs(pdf_type::corr_y)+1)*k + l; 
       tree->Branch(Form("corrxy_%d_%d", k,l), &(corr_xy[idx]), Form("corrxy_%d_%d/D", k,l));
       corr_xy[idx] = 1.0;
-      if(h2!=0){
-	double x = (TMath::Cos(k*TMath::Pi()/degs(pdf_type::corr_x))+1.0)*0.5*max_x;
-	double y = do_absY ? (TMath::Cos(l*TMath::Pi()/degs(pdf_type::corr_y))+1.0)*0.5*max_y : TMath::Cos(l*TMath::Pi()/degs(pdf_type::corr_y))*max_y;
-	//int bin = h2->FindBin(y,x);
-	//corr_xy[idx] = h2->GetBinContent(bin);
-	corr_xy[idx] = h2->Interpolate(TMath::Abs(y),x);
-	//corr_xy[idx] = f2->Eval(y,x);
-	//std::cout << "corr_xy " << " " << x << "," << y << "=>" << idx << ": " << corr_xy[idx] << std::endl;
-      }      
+      double x = (TMath::Cos(k*TMath::Pi()/degs(pdf_type::corr_x))+1.0)*0.5*max_x;
+      double y = do_absY ? (TMath::Cos(l*TMath::Pi()/degs(pdf_type::corr_y))+1.0)*0.5*max_y : TMath::Cos(l*TMath::Pi()/degs(pdf_type::corr_y))*max_y;
+      if(flat_corr) continue;
+      else if(getbin_extTH2_corr && h2!=0) corr_xy[idx] = h2->GetBinContent( h2->FindBin(TMath::Abs(y), x) );
+      else if(inter_extTH2_corr && h2!=0) corr_xy[idx] = h2->Interpolate(TMath::Abs(y),x);
+      else if(toyTF2_corr) corr_xy[idx] = f2->Eval(y,x);
     }
   }
   
@@ -480,7 +486,6 @@ int main(int argc, char* argv[])
 	    //std::cout << "pdfyMC " << pdfyMC_ << std::endl;
 
 	    double corrxy_  = 0.0;
-
 	    for(int k = 0; k<=degs(pdf_type::corr_x); k++){
 	      for(int l = 0; l<=degs(pdf_type::corr_y); l++){       
 		int idx = (degs(pdf_type::corr_y)+1)*k + l; 
@@ -491,13 +496,11 @@ int main(int argc, char* argv[])
 		//std::cout << k << ":" << l << " => " << cheb(x, 0.5*max_x, 1.0, degs(pdf_type::corr_x), k) << "," << cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::corr_y), l) << "," << corr_xy[idx] << std::endl;
 	      }
 	    }
-	    double corrxyMC_  = corrxy_;
-	    if(h2!=0){
-	      //corrxyMC_  = h2->GetBinContent( h2->FindBin(TMath::Abs(y),x) );
-	      corrxyMC_  = h2->Interpolate(TMath::Abs(y),x);
-	      //corrxyMC_  = f2->Eval(TMath::Abs(y),x);
-	      //std::cout << corrxyMC_ << " vs " << corrxy_ << std::endl;
-	    }
+	    double corrxyMC_  = 0.0;
+	    if(flat_corr) corrxyMC_  = 1.0;
+	    else if(getbin_extTH2_corr && h2!=0) corrxyMC_ = h2->GetBinContent( h2->FindBin(TMath::Abs(y),x) );
+	    else if(inter_extTH2_corr && h2!=0) corrxyMC_ = h2->Interpolate(TMath::Abs(y),x);
+	    else if(toyTF2_corr) corrxyMC_ = f2->Eval(TMath::Abs(y),x);
 
 	    whel   *= (pdfx_*pdfy_*corrxy_);
 	    whelMC *= (pdfxMC_*pdfyMC_*corrxyMC_);
