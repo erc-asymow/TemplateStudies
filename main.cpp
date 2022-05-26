@@ -19,35 +19,12 @@ using ROOT::RDF::RNode;
 using namespace boost::program_options;
 
 //std::vector<std::string> helicities = {"UL", "A0", "A1", "A4"};
+
 std::vector<std::string> helicities = {"UL", "A0"};
 
 constexpr double MW = 80.;
 constexpr double GW = 2.0;
 constexpr int NMAX  = 100;
-
-std::vector<double> norms_cheb10 = {
-  0.0050270, 
-  0.0472754, 
-  0.0928301,
-  0.1269291,
-  0.1495699,
-  0.1569254,
-  0.1495699,
-  0.1269291,
-  0.0928301,
-  0.0472754, 
-  0.0050270
-};
-
-std::vector<double> norms_cheb6 = {
-  0.0142427,
-  0.1269909,
-  0.2285385,
-  0.2603778,
-  0.2286853,
-  0.1269592,
-  0.0142053
-};
 
 enum pdf_type { pdf_x=0, pdf_y, corr_x, corr_y, A0_x, A0_y, A1_x, A1_y, A4_x, A4_y, unknown};
 
@@ -102,7 +79,8 @@ int main(int argc, char* argv[])
 	("getbin_extTH2_corr",  bool_switch()->default_value(false), "get bin corr(x,y)")
 	("inter_extTH2_corr",  bool_switch()->default_value(false), "interpol corr(x,y)")
 	("toyTF2_corr",  bool_switch()->default_value(false), "toy TF2 corr(x,y)")
-	("normalize_pdfx",  bool_switch()->default_value(false), "normalize cheb interpolant");
+	("normalize_pdfx",  bool_switch()->default_value(false), "normalize pdfx interpolant")
+	("normalize_pdfy",  bool_switch()->default_value(false), "normalize pdfy interpolant");
 
       store(parse_command_line(argc, argv, desc), vm);
       notify(vm);
@@ -125,6 +103,39 @@ int main(int argc, char* argv[])
     }
 
 
+  std::vector<double> norms_cheb10 = {
+    0.0050270, 
+    0.0472754, 
+    0.0928301,
+    0.1269291,
+    0.1495699,
+    0.1569254,
+    0.1495699,
+    0.1269291,
+    0.0928301,
+    0.0472754, 
+    0.0050270
+  };
+  
+  std::vector<double> norms_cheb6 = {
+    0.0142427,
+    0.1269909,
+    0.2285385,
+    0.2603778,
+    0.2286853,
+    0.1269592,
+    0.0142053
+  };
+
+  auto nu_cheb_i = [norms_cheb10,norms_cheb6](const int& n, const int& m){
+    //assert(m<=n);
+    switch(n){
+    case 10: return 0.5*(norms_cheb10[m] + norms_cheb10[n-m]); 
+    case  6: return 0.5*(norms_cheb6[m]  + norms_cheb6[n-m]); 
+    default: return 1.0;
+    }
+  };
+
   //std::string tag{""};
   //std::string run{""};  
   //if(argc>1) nevents = strtol(argv[1], NULL, 10);
@@ -144,6 +155,7 @@ int main(int argc, char* argv[])
   bool inter_extTH2_corr= vm["inter_extTH2_corr"].as<bool>();
   bool toyTF2_corr= vm["toyTF2_corr"].as<bool>();
   bool normalize_pdfx = vm["normalize_pdfx"].as<bool>();
+  bool normalize_pdfy = vm["normalize_pdfy"].as<bool>();
 
   if(vm.count("degs_pdf_x"))  tag += std::string(Form("_%d", degs_pdf_x));
   if(vm.count("degs_pdf_y"))  tag += std::string(Form("_%d", degs_pdf_y));
@@ -159,7 +171,7 @@ int main(int argc, char* argv[])
   const double yLow  = 25.;
   const double yHigh = 55.;
 
-  auto degs = [degs_pdf_x,degs_pdf_y,degs_corr_x, degs_corr_y](const pdf_type& pdf){
+  auto degs = [degs_pdf_x,degs_pdf_y,degs_corr_x,degs_corr_y](const pdf_type& pdf){
     switch(pdf){
     case pdf_type::pdf_x:             // f(x)
     if(degs_pdf_x>0) return degs_pdf_x;
@@ -174,7 +186,7 @@ int main(int argc, char* argv[])
     if(degs_corr_y>0) return degs_corr_y;
     else return 2;
     case pdf_type::A0_x:   return  2; // A0(x,.)
-    case pdf_type::A0_y:   return  2; // A0(.,y)
+    case pdf_type::A0_y:   return  4; // A0(.,y)
     case pdf_type::A1_x:   return  2; // A1(x,.)
     case pdf_type::A1_y:   return  2; // A1(.,y)
     case pdf_type::A4_x:   return  2; // A4(x,.)
@@ -200,13 +212,15 @@ int main(int argc, char* argv[])
   toy_y->SetParameter(2, 1.0/int_toy_y);
 
   TFile* fWJets = TFile::Open("WJets.root","READ");
-  TH2F* h2 = 0;
-  TF2* f2 = new TF2("f2","0.1*(-0.5*x + 1.0 - 0.1*x*x)*TMath::Erf(5.0*y) + 1.0", 0., max_y, 0., max_x);
+  TH2F* th2_corrxy = 0;
+  TF2* toy_corrxy = new TF2("toy_corrxy","0.1*(1.0 - 0.3*x*x)*TMath::Erf(5.0*y) + 1.0", 0., max_y, 0., max_x);
   if(fWJets!=nullptr && !fWJets->IsZombie()){
     std::cout << "WJets file found! Taking h2 as corrxy" << std::endl;
-     h2 = fWJets->Get<TH2F>("h2");
+    th2_corrxy = fWJets->Get<TH2F>("h2");
   }
 
+  TF2* toy_A0 = new TF2("toy_A0", "2*y*y*(1/(1 + 0.02*x*x))", 0., max_y, 0., max_x);
+		       
   // preprare inputs
   if(true){
 
@@ -239,9 +253,9 @@ int main(int argc, char* argv[])
       double x = (TMath::Cos(k*TMath::Pi()/degs(pdf_type::corr_x))+1.0)*0.5*max_x;
       double y = do_absY ? (TMath::Cos(l*TMath::Pi()/degs(pdf_type::corr_y))+1.0)*0.5*max_y : TMath::Cos(l*TMath::Pi()/degs(pdf_type::corr_y))*max_y;
       if(flat_corr) corr_xy[idx] = 1.0;
-      else if(getbin_extTH2_corr && h2!=0) corr_xy[idx] = h2->GetBinContent( h2->FindBin(TMath::Abs(y), x) );
-      else if(inter_extTH2_corr && h2!=0)  corr_xy[idx] = h2->Interpolate(TMath::Abs(y),x);
-      else if(toyTF2_corr) corr_xy[idx] = f2->Eval(TMath::Abs(y),x);
+      else if(getbin_extTH2_corr) corr_xy[idx] = th2_corrxy->GetBinContent( th2_corrxy->FindBin(TMath::Abs(y), x) );
+      else if(inter_extTH2_corr)  corr_xy[idx] = th2_corrxy->Interpolate(TMath::Abs(y),x);
+      else if(toyTF2_corr) corr_xy[idx] = toy_corrxy->Eval(TMath::Abs(y),x);
     }
   }
   
@@ -250,7 +264,9 @@ int main(int argc, char* argv[])
     for(int n = 0; n<=degs(pdf_type::A0_y); n++){
       int idx = (degs(pdf_type::A0_y)+1)*m + n; 
       tree->Branch(Form("A0_xy_%d_%d", m,n), &(A0_xy[idx]), Form("A0_xy_%d_%d/D", m,n));
-      A0_xy[idx] = 0.0;      
+      double x = (TMath::Cos(m*TMath::Pi()/degs(pdf_type::A0_x))+1.0)*0.5*max_x;
+      double y = do_absY ? (TMath::Cos(n*TMath::Pi()/degs(pdf_type::A0_y))+1.0)*0.5*max_y : TMath::Cos(n*TMath::Pi()/degs(pdf_type::A0_y))*max_y;
+      A0_xy[idx] = toy_A0->Eval(TMath::Abs(y),x);      
     }
   }
 
@@ -485,75 +501,110 @@ int main(int argc, char* argv[])
 	  RVecD out;
 	  double   w{0.0};
 	  double wMC{0.0};
+	  double cosS = y>0 ? cos : -cos;
+	  double phiS = y>0 ? phi : -phi;
+
+	  double whelUL{1.0};
+	  double whelULMC{1.0};
+
 	  for(auto name : helicities){	    
 
-	    double whel  = 1.0;
-	    double cosS = y>0 ? cos : -cos;
-	    double phiS = y>0 ? phi : -phi;
-	    if     (name=="UL") whel = (1+cosS*cosS);
-	    else if(name=="A0") whel = (0.5*(1-3*cosS*cosS));
-	    else if(name=="A1") whel = 2*cosS*TMath::Sqrt(1-cosS*cosS)*TMath::Cos(phiS);
-	    else if(name=="A4") whel = cosS;
-	    double whelMC  = whel;
+	    //if     (name=="UL") whel = (1+cosS*cosS);
+	    //else if(name=="A0") whel = (0.5*(1-3*cosS*cosS));
+	    //else if(name=="A1") whel = 2*cosS*TMath::Sqrt(1-cosS*cosS)*TMath::Cos(phiS);
+	    //else if(name=="A4") whel = cosS;
+	    double whel  = whelUL;
+	    double whelMC = whelULMC;
 
-	    double pdfx_ = 0.0;
-	    for(int i = 0; i<=degs(pdf_type::pdf_x); i++){
-	      pdfx_ += cheb(x, 0.5*max_x, 1.0, degs(pdf_type::pdf_x), i)*pdf_x[i];
-	    }
-
-	    if(normalize_pdfx){
-	      //double norm = 0.0;
-	      //for(int i = 0; i<=degs(pdf_type::pdf_x); i++){
-	      //norm += pdf_x[i]*norms_cheb10[i];
-	      //}
-	      //pdfx_ /= norm;
-	      pdfx_ = 0.0;
-	      for(int i = 0; i<degs(pdf_type::pdf_x); i++){
-		double chebprime = 
-		  (cheb(x, 0.5*max_x, 1.0, degs(pdf_type::pdf_x), i) - 
-		   cheb(x, 0.5*max_x, 1.0, degs(pdf_type::pdf_x), degs(pdf_type::pdf_x))*norms_cheb10[i]/norms_cheb10[degs(pdf_type::pdf_x)] )*
-		  pdf_x[i];
-		pdfx_ += chebprime;
+	    if( name=="UL" ){
+	      double pdfx_ = 0.0;
+	      if(!normalize_pdfx){
+		for(int i = 0; i<=degs(pdf_type::pdf_x); i++){
+		  pdfx_ += cheb(x, 0.5*max_x, 1.0, degs(pdf_type::pdf_x), i)*pdf_x[i];
+		}
 	      }
-	      pdfx_ += cheb(x, 0.5*max_x, 1.0, degs(pdf_type::pdf_x), degs(pdf_type::pdf_x))/norms_cheb10[degs(pdf_type::pdf_x)]/max_x;
-	    }
-	    //////
-	    double pdfxMC_ = toy_x->Eval(x);
-	    //std::cout << "pdfx " << pdfx_ << " : pdfxMC_ " << pdfxMC_ << " at x=" << x << std::endl;
-
-	    double pdfy_ = 0.0;
-	    for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
-	      if(do_absY)
-		pdfy_ += cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::pdf_y), j)*pdf_y[j];
-	      else
-		pdfy_ += cheb(y, max_y, 0.0, degs(pdf_type::pdf_y), j)*pdf_y[j];
-	    }
-	    //////
-	    double  pdfyMC_ = toy_y->Eval(y);
-	    //std::cout << "pdfy " << pdfy_ << std::endl;
-	    //std::cout << "pdfyMC " << pdfyMC_ << std::endl;
-
-	    double corrxy_  = 0.0;
-	    for(int k = 0; k<=degs(pdf_type::corr_x); k++){
-	      for(int l = 0; l<=degs(pdf_type::corr_y); l++){       
-		int idx = (degs(pdf_type::corr_y)+1)*k + l; 
-		corrxy_ += 
-		  cheb(x, 0.5*max_x, 1.0, degs(pdf_type::corr_x), k)*
+	      else{
+		for(int i = 0; i<degs(pdf_type::pdf_x); i++){
+		  double chebprime = 
+		    (cheb(x, 0.5*max_x, 1.0, degs(pdf_type::pdf_x), i) - 
+		     cheb(x, 0.5*max_x, 1.0, degs(pdf_type::pdf_x), degs(pdf_type::pdf_x))*
+		     nu_cheb_i(degs(pdf_type::pdf_x), i)/nu_cheb_i(degs(pdf_type::pdf_x), degs(pdf_type::pdf_x)) )*
+		    pdf_x[i];
+		  pdfx_ += chebprime;
+		}
+		pdfx_ += cheb(x, 0.5*max_x, 1.0, degs(pdf_type::pdf_x), degs(pdf_type::pdf_x))/ nu_cheb_i(degs(pdf_type::pdf_x), degs(pdf_type::pdf_x))  /max_x;
+	      }
+	      
+	      double pdfxMC_ = toy_x->Eval(x);
+	      //std::cout << "pdfx " << pdfx_ << " : pdfxMC_ " << pdfxMC_ << " at x=" << x << std::endl;
+	      
+	      double pdfy_ = 0.0;
+	      if(!normalize_pdfy){
+		for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
+		  if(do_absY)
+		    pdfy_ += cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::pdf_y), j)*pdf_y[j];
+		  else
+		    pdfy_ += cheb(y, max_y, 0.0, degs(pdf_type::pdf_y), j)*pdf_y[j];
+		}
+	      }
+	      else{	      
+		//protect for the moment
+		assert( degs(pdf_type::pdf_y)==6 );
+		for(int j = 0; j<degs(pdf_type::pdf_y); j++){
+		  double chebprime = 0.0;
+		  if(do_absY){
+		    chebprime = 
+		      (cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::pdf_y), j) - 
+		       cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::pdf_y), degs(pdf_type::pdf_y))*norms_cheb6[j]/norms_cheb6[degs(pdf_type::pdf_y)] )*
+		      pdf_y[j];
+		  }
+		  else{
+		    chebprime = 
+		      (cheb(y, max_y, 0.0, degs(pdf_type::pdf_y), j) - 
+		       cheb(y, max_y, 0.0, degs(pdf_type::pdf_y), degs(pdf_type::pdf_y))*norms_cheb6[j]/norms_cheb6[degs(pdf_type::pdf_y)] )*
+		      pdf_y[j];
+		  }
+		  pdfy_ += chebprime;
+		}
+		if(do_absY)
+		  pdfy_ += cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::pdf_y), degs(pdf_type::pdf_y))/norms_cheb6[degs(pdf_type::pdf_y)]/(2*max_y);
+		else
+		  pdfy_ += cheb(y, max_y, 0.0, degs(pdf_type::pdf_y), degs(pdf_type::pdf_y))/norms_cheb6[degs(pdf_type::pdf_y)]/(2*max_y);
+	      }
+	      double  pdfyMC_ = toy_y->Eval(y);
+	      //std::cout << "pdfy " << pdfy_ << std::endl;
+	      //std::cout << "pdfyMC " << pdfyMC_ << std::endl;
+	      
+	      double corrxy_  = 0.0;
+	      for(int k = 0; k<=degs(pdf_type::corr_x); k++){
+		for(int l = 0; l<=degs(pdf_type::corr_y); l++){       
+		  int idx = (degs(pdf_type::corr_y)+1)*k + l; 
+		  corrxy_ += 
+		    cheb(x, 0.5*max_x, 1.0, degs(pdf_type::corr_x), k)*
 		  (do_absY ? cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::corr_y), l) : cheb(y, max_y, 0.0, degs(pdf_type::corr_y), l))*
-		  corr_xy[idx];
-		//std::cout << k << ":" << l << " => " << cheb(x, 0.5*max_x, 1.0, degs(pdf_type::corr_x), k) << "," << cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::corr_y), l) << "," << corr_xy[idx] << std::endl;
+		    corr_xy[idx];
+		  //std::cout << k << ":" << l << " => " << cheb(x, 0.5*max_x, 1.0, degs(pdf_type::corr_x), k) << "," << cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::corr_y), l) << "," << corr_xy[idx] << std::endl;
+		}
 	      }
+	      double corrxyMC_  = 0.0;
+	      if(flat_corr) corrxyMC_  = 1.0;
+	      else if(getbin_extTH2_corr) corrxyMC_ = th2_corrxy->GetBinContent( th2_corrxy->FindBin(TMath::Abs(y),x) );
+	      else if(inter_extTH2_corr)  corrxyMC_ = th2_corrxy->Interpolate(TMath::Abs(y),x);
+	      else if(toyTF2_corr) corrxyMC_ = toy_corrxy->Eval(TMath::Abs(y),x);	   
+	      
+	      whel   *= (pdfx_*pdfy_*corrxy_);
+	      whelMC *= (pdfxMC_*pdfyMC_*corrxyMC_);
+
+	      // copy these values for other helicities
+	      whelUL   = whel;
+	      whelULMC = whelMC;
+
+	      whel   *= (1+cosS*cosS);
+	      whelMC *= (1+cosS*cosS);
 	    }
-	    double corrxyMC_  = 0.0;
-	    if(flat_corr) corrxyMC_  = 1.0;
-	    else if(getbin_extTH2_corr && h2!=0) corrxyMC_ = h2->GetBinContent( h2->FindBin(TMath::Abs(y),x) );
-	    else if(inter_extTH2_corr && h2!=0) corrxyMC_ = h2->Interpolate(TMath::Abs(y),x);
-	    else if(toyTF2_corr) corrxyMC_ = f2->Eval(TMath::Abs(y),x);	   
-	    whel   *= (pdfx_*pdfy_*corrxy_);
-	    whelMC *= (pdfxMC_*pdfyMC_*corrxyMC_);
 	    //std::cout << "corrxyMC " << corrxyMC_ << std::endl;
 
-	    if(name=="A0"){
+	    else if(name=="A0"){
 	      double pdfA0_ = 0.0;
 	      for(int m = 0; m<=degs(pdf_type::A0_x); m++){
 		for(int n = 0; n<=degs(pdf_type::A0_y); n++){
@@ -563,9 +614,13 @@ int main(int argc, char* argv[])
 		   A0_xy[ (degs(pdf_type::A0_y)+1)*m + n];
 		}
 	      }
-	      double pdfA0MC_ = pdfA0_;
+	      double pdfA0MC_ = toy_A0->Eval(TMath::Abs(y),x);
+
 	      whel   *= pdfA0_;
 	      whelMC *= pdfA0MC_;
+
+	      whel   *= (0.5*(1-3*cosS*cosS));
+	      whelMC *= (0.5*(1-3*cosS*cosS));
 	      //std::cout << "pdfA0 " << pdfA0_ << std::endl;
 	    }
 

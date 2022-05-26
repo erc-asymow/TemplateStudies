@@ -12,7 +12,12 @@ do
 	    do
 		echo 'Now doing ', $X, $Y, $CORRX, $CORRY
 		#./main      --nevents=-1 --tag=$GRID --run=closure --degs_pdf_x=$X --degs_pdf_y=$Y --degs_corr_x=$CORRX --degs_corr_y=$CORRY --do_absY=1
-		./main --nevents=100000000 --tag=$GRID --run=closure --degs_pdf_x=$X --degs_pdf_y=$Y --degs_corr_x=$CORRX --degs_corr_y=$CORRY --toyTF2_corr --normalize_pdfx --do_absY
+		./main --nevents=1000000 --tag=$GRID --run=closure \
+		    --degs_pdf_x=$X --degs_pdf_y=$Y --degs_corr_x=$CORRX --degs_corr_y=$CORRY \
+		    --toyTF2_corr \
+		    --normalize_pdfx \
+		    --normalize_pdfy \
+		    #--do_absY
 	    done
 	done
     done
