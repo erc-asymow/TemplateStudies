@@ -44,7 +44,7 @@ auto cheb = [](double x, double scale, double offset, unsigned int n, unsigned i
   double num = 0.;
   for(unsigned int i = 0; i <= n ; i++){
     int sign = i%2==0 ? +1 :-1;
-    double xj = (TMath::Cos(i*TMath::Pi()/n) + offset)*scale;
+    double xj = (TMath::Cos((n-i)*TMath::Pi()/n) + offset)*scale;
     if(x==xj) return 1.0;// protect from nan      
     double val = sign/(x-xj);
     if(i==0 || i==n) val *= 0.5;
@@ -194,7 +194,22 @@ int main(int argc, char* argv[])
     default: return 1;
     }
   };
-  
+
+  unsigned int njacs = 0;
+  njacs += (degs(pdf_type::pdf_x) - int(normalize_pdfx) - 1);
+  //njacs += (degs(pdf_type::pdf_y) - int(normalize_pdfy) );
+  //njacs += (degs(pdf_type::corr_x) - 1)*degs(pdf_type::corr_y);
+  //njacs += degs(pdf_type::A0_x)*degs(pdf_type::A0_y);
+
+  /* ... */
+  /* auto index_map = [&](unsigned int g_idx)->std::pair<pdf_type, unsigned int>{
+    std::pair<pdf_type,unsigned int> out; 
+    if(g_idx <= (degs(pdf_type::pdf_x) - int(normalize_pdfx) - 1) ) 
+      out = std::make_pair(pdf_type::pdf_x, g_idx+1);
+    else if( g_idx )
+    return out;
+    }; */
+
   auto toy_mass = [](double Q, double M, double G){
     return 1./TMath::Pi()/(1 + (Q-M)*(Q-M)/G/G);
   };
@@ -235,7 +250,7 @@ int main(int argc, char* argv[])
     for(int i = 0; i<=degs(pdf_type::pdf_x); i++){
       tree->Branch(Form("pdfx_%d", i), &(pdf_x[i]), Form("pdfx_%d/D", i));
       //pdf_x[i] = 1.0/max_x;
-      pdf_x[i] = toy_x->Eval( (TMath::Cos(i*TMath::Pi()/degs(pdf_type::pdf_x))+1.0)*0.5*max_x );
+      pdf_x[i] = toy_x->Eval( (TMath::Cos((degs(pdf_type::pdf_x)-i)*TMath::Pi()/degs(pdf_type::pdf_x))+1.0)*0.5*max_x );
     }
      
     double pdf_y[NMAX];
@@ -243,9 +258,9 @@ int main(int argc, char* argv[])
       tree->Branch(Form("pdfy_%d", j), &(pdf_y[j]), Form("pdfy_%d/D", j));
       //pdf_y[j] = 1.0/(2*max_y);
       if(do_absy) 
-	pdf_y[j] = toy_y->Eval( (TMath::Cos(j*TMath::Pi()/degs(pdf_type::pdf_y))+1.0)*0.5*max_y );
+	pdf_y[j] = toy_y->Eval( (TMath::Cos((degs(pdf_type::pdf_y)-j)*TMath::Pi()/degs(pdf_type::pdf_y))+1.0)*0.5*max_y );
       else
-	pdf_y[j] = toy_y->Eval( TMath::Cos(j*TMath::Pi()/degs(pdf_type::pdf_y))*max_y );
+	pdf_y[j] = toy_y->Eval( TMath::Cos((degs(pdf_type::pdf_y)-j)*TMath::Pi()/degs(pdf_type::pdf_y))*max_y );
     }
     
   double corr_xy[NMAX*NMAX];
@@ -254,8 +269,8 @@ int main(int argc, char* argv[])
       int idx = (degs(pdf_type::corr_y)+1)*k + l; 
       tree->Branch(Form("corrxy_%d_%d", k,l), &(corr_xy[idx]), Form("corrxy_%d_%d/D", k,l));
       corr_xy[idx] = 1.0;
-      double x = (TMath::Cos(k*TMath::Pi()/degs(pdf_type::corr_x))+1.0)*0.5*max_x;
-      double y = do_absy ? (TMath::Cos(l*TMath::Pi()/degs(pdf_type::corr_y))+1.0)*0.5*max_y : TMath::Cos(l*TMath::Pi()/degs(pdf_type::corr_y))*max_y;
+      double x = (TMath::Cos((degs(pdf_type::corr_x)-k)*TMath::Pi()/degs(pdf_type::corr_x))+1.0)*0.5*max_x;
+      double y = do_absy ? (TMath::Cos((degs(pdf_type::corr_y)-l)*TMath::Pi()/degs(pdf_type::corr_y))+1.0)*0.5*max_y : TMath::Cos((degs(pdf_type::corr_y)-l)*TMath::Pi()/degs(pdf_type::corr_y))*max_y;
       if(flat_corr) corr_xy[idx] = 1.0;
       else if(getbin_extTH2_corr) corr_xy[idx] = th2_corrxy->GetBinContent( th2_corrxy->FindBin(TMath::Abs(y), x) );
       else if(inter_extTH2_corr)  corr_xy[idx] = th2_corrxy->Interpolate(TMath::Abs(y),x);
@@ -268,8 +283,8 @@ int main(int argc, char* argv[])
     for(int n = 0; n<=degs(pdf_type::A0_y); n++){
       int idx = (degs(pdf_type::A0_y)+1)*m + n; 
       tree->Branch(Form("A0_xy_%d_%d", m,n), &(A0_xy[idx]), Form("A0_xy_%d_%d/D", m,n));
-      double x = (TMath::Cos(m*TMath::Pi()/degs(pdf_type::A0_x))+1.0)*0.5*max_x;
-      double y = do_absy ? (TMath::Cos(n*TMath::Pi()/degs(pdf_type::A0_y))+1.0)*0.5*max_y : TMath::Cos(n*TMath::Pi()/degs(pdf_type::A0_y))*max_y;
+      double x = (TMath::Cos((degs(pdf_type::A0_x)-m)*TMath::Pi()/degs(pdf_type::A0_x))+1.0)*0.5*max_x;
+      double y = do_absy ? (TMath::Cos((degs(pdf_type::A0_y)-n)*TMath::Pi()/degs(pdf_type::A0_y))+1.0)*0.5*max_y : TMath::Cos((degs(pdf_type::A0_y)-n)*TMath::Pi()/degs(pdf_type::A0_y))*max_y;
       A0_xy[idx] = toy_A0->Eval(TMath::Abs(y),x);      
     }
   }
@@ -498,7 +513,30 @@ int main(int argc, char* argv[])
 							     return out; } 
 							     ));
     */    
+    
+    RVecD pdfx_in;
+    for(int i = 0; i<=degs(pdf_type::pdf_x); i++) 
+      pdfx_in.emplace_back( (normalize_pdfx && i==degs(pdf_type::pdf_x)) ? 1.0 : pdf_x[i] );
+    RVecD pdfy_in;
+    for(int j = 0; j<=degs(pdf_type::pdf_y); j++) 
+      pdfy_in.emplace_back( (normalize_pdfy && j==degs(pdf_type::pdf_y)) ? 1.0 : pdf_y[j] );
+    RVecD corrxy_in;
+    for(int k = 0; k<=degs(pdf_type::corr_x); k++){
+      for(int l = 0; l<=degs(pdf_type::corr_y); l++){      
+	int idx = (degs(pdf_type::corr_y)+1)*k + l; 
+	corrxy_in.emplace_back( corr_xy[idx] );
+      }
+    }
+    RVecD A0xy_in;
+    for(int k = 0; k<=degs(pdf_type::A0_x); k++){
+      for(int l = 0; l<=degs(pdf_type::A0_y); l++){      
+	int idx = (degs(pdf_type::A0_y)+1)*k + l; 
+	A0xy_in.emplace_back( A0_xy[idx] );
+      }
+    }
+		
 
+    /*
     dlast = std::make_unique<RNode>(dlast->Define("pdfx_in", 
 						  [&,pdf_x]()->RVecD { 
 						    RVecD out;
@@ -539,6 +577,7 @@ int main(int argc, char* argv[])
 						    return out; } 
 						  ));
 
+    */
 
     dlast = std::make_unique<RNode>(dlast->Define("harmonics", [&](double x, double y, double cos, double phi) -> RVecD{
 	  RVecD out;
@@ -552,7 +591,7 @@ int main(int argc, char* argv[])
 
     dlast = std::make_unique<RNode>(dlast->Define("weightsMC", [&](double x, double y, RVecD harmonics, RVecD weightsM  )->RVecD {
 	  RVecD out;
-	  double wMC{1.0};
+	  double wMC{3./16/TMath::Pi()};
 	  wMC *= toy_x->Eval(x);
 	  wMC *= toy_y->Eval(y);
 	  double corrxyMC  = 1.0;
@@ -571,14 +610,15 @@ int main(int argc, char* argv[])
 	  return out;
 	}, {"x", "y", "harmonics", "weightsM"} ));
     
-    dlast = std::make_unique<RNode>(dlast->Define("weights", [&](RVecD pdfx_vec,   RVecD pdfx_in,
-								 RVecD pdfy_vec,   RVecD pdfy_in,
-								 RVecD corrxy_vec, RVecD corrxy_in,
-								 RVecD A0xy_vec,   RVecD A0xy_in,
-								 RVecD harmonics,
-								 RVecD weightsM  )->RVecD {
+    dlast = std::make_unique<RNode>(dlast->Define("weights", [& ,pdfx_in,pdfy_in,corrxy_in,A0xy_in ]
+						  (RVecD pdfx_vec,//   RVecD pdfx_in,
+						   RVecD pdfy_vec,//   RVecD pdfy_in,
+						   RVecD corrxy_vec,// RVecD corrxy_in,
+						   RVecD A0xy_vec,//   RVecD A0xy_in,
+						   RVecD harmonics,
+						   RVecD weightsM  )->RVecD {
 						    RVecD out;
-						    double wUL{1.0};	  
+						    double wUL{3./16/TMath::Pi()};	  
 						    wUL *= ROOT::VecOps::Dot(pdfx_vec,pdfx_in);
 						    wUL *= ROOT::VecOps::Dot(pdfy_vec,pdfy_in);
 						    wUL *= ROOT::VecOps::Dot(corrxy_vec,corrxy_in);
@@ -588,22 +628,67 @@ int main(int argc, char* argv[])
 								    ); 
 						    out.emplace_back( w*weightsM.at(0) );
 						    return out;
-						  },  {"pdfx_vec", "pdfx_in", 
-						      "pdfy_vec", "pdfy_in",
-						      "corrxy_vec", "corrxy_in", 
-						      "A0xy_vec", "A0xy_in", 
+						  }, {"pdfx_vec", //"pdfx_in", 
+						      "pdfy_vec", //"pdfy_in",
+						      "corrxy_vec", //"corrxy_in", 
+						      "A0xy_vec", //"A0xy_in", 
 						      "harmonics",
 						      "weightsM"} ));
-    
+
+    dlast = std::make_unique<RNode>(dlast->Define("weights_jac", [&,pdfx_in,pdfy_in,corrxy_in,A0xy_in]
+						  (RVecD pdfx_vec,   //RVecD pdfx_in,
+						   RVecD pdfy_vec,   //RVecD pdfy_in,
+						   RVecD corrxy_vec, //RVecD corrxy_in,
+						   RVecD A0xy_vec,   //RVecD A0xy_in,
+						   RVecD harmonics,
+						   RVecD weightsM  )->RVecD {
+						    RVecD out;
+						
+						    double wUL{3./16/TMath::Pi()};	  
+						    double A = ROOT::VecOps::Dot(pdfx_vec,pdfx_in);
+						    double B = ROOT::VecOps::Dot(pdfy_vec,pdfy_in);
+						    double C = ROOT::VecOps::Dot(corrxy_vec,corrxy_in);
+						    double D = (harmonics.at(0) + 
+								ROOT::VecOps::Dot(A0xy_vec,A0xy_in)*harmonics.at(1) 
+								);
+
+						    unsigned int njacs_pdfx = (degs(pdf_type::pdf_x) - int(normalize_pdfx) - 1);
+						    for(unsigned int i = 0; i<njacs_pdfx; i++){
+						      RVecD pdfx_in_copy( pdfx_in.size(), 0.0 );
+						      pdfx_in_copy[i+1] = 1.0;
+						      out.emplace_back( wUL*
+									ROOT::VecOps::Dot(pdfx_vec,pdfx_in_copy)*
+									B*C*D*
+									weightsM.at(0) );
+						    }
+						    return out;
+						  }, {"pdfx_vec", //"pdfx_in", 
+						      "pdfy_vec", //"pdfy_in",
+						      "corrxy_vec", //"corrxy_in", 
+						      "A0xy_vec", //"A0xy_in", 
+						      "harmonics",
+						      "weightsM"} ));
+
     dlast = std::make_unique<RNode>(dlast->Define("w",        [](RVecD weights){ return weights.at(0);}, {"weights"} ));
     dlast = std::make_unique<RNode>(dlast->Define("wMC",      [](RVecD weights){ return weights.at(0);}, {"weightsMC"} ));
     dlast = std::make_unique<RNode>(dlast->Define("wMC_up",   [](RVecD weights){ return weights.at(1);}, {"weightsMC"} ));
     dlast = std::make_unique<RNode>(dlast->Define("wMC_down", [](RVecD weights){ return weights.at(2);}, {"weightsMC"} ));
+
+    for(unsigned int i = 0; i < njacs; i++){
+      dlast = std::make_unique<RNode>(dlast->Define(Form("jac_%d", i), [i](RVecD weights){ return weights.at(i);}, {"weights_jac"} ));
+    }
     
+    sums.emplace_back( dlast->Sum<double>("w") );
+    sums.emplace_back( dlast->Sum<double>("wMC") );
+
     histos2D.emplace_back(dlast->Histo2D({"w",       "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "w"));      
     histos2D.emplace_back(dlast->Histo2D({"wMC",     "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "wMC"));      
     histos2D.emplace_back(dlast->Histo2D({"wMC_up",  "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "wMC_up"));      
     histos2D.emplace_back(dlast->Histo2D({"wMC_down","", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "wMC_down"));
+
+    for(unsigned int i = 0; i < njacs; i++){
+      histos2D.emplace_back(dlast->Histo2D({Form("jac_%d",i),"", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", Form("jac_%d",i)));
+    }
     
     /*
     histos1D.emplace_back(dlast->Histo1D({"w_pdfx",    "", 20, 0.0, max_x}, "x", "w"));      
@@ -628,7 +713,7 @@ int main(int argc, char* argv[])
   for(auto h : histos1D) h->Write();
   for(auto h : histos2D) h->Write();
   double total = *(dlast->Count());
-  //for(auto sum : sums) std::cout << *sum/total << std::endl;
+  for(auto sum : sums) std::cout << (*sum)*max_x*2*max_y/total << std::endl;
 
   TTree* outtree = new TTree("outtree", "tree");
 
@@ -648,11 +733,11 @@ int main(int argc, char* argv[])
 
   for(int i = 0; i<=degs(pdf_type::pdf_x); i++){
     //norms_pdfx[i] = *(sums[i])/total;
-    points_x[i]   = (TMath::Cos(i*TMath::Pi()/degs(pdf_type::pdf_x))+1.0)*0.5*max_x;
+    points_x[i]   = (TMath::Cos((degs(pdf_type::pdf_x)-i)*TMath::Pi()/degs(pdf_type::pdf_x))+1.0)*0.5*max_x;
   }
   for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
     //norms_pdfy[j] = *(sums[degs(pdf_type::pdf_x) + 1 + j])/total;
-    points_y[j]   = do_absy ? (TMath::Cos(j*TMath::Pi()/degs(pdf_type::pdf_y))+1.0)*0.5*max_x : TMath::Cos(j*TMath::Pi()/degs(pdf_type::pdf_y))*max_x;
+    points_y[j]   = do_absy ? (TMath::Cos((degs(pdf_type::pdf_y)-j)*TMath::Pi()/degs(pdf_type::pdf_y))+1.0)*0.5*max_x : TMath::Cos((degs(pdf_type::pdf_y)-j)*TMath::Pi()/degs(pdf_type::pdf_y))*max_x;
   }
   outtree->Fill();
   outtree->Write();
