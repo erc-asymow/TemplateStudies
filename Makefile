@@ -1,4 +1,5 @@
 GCC=g++
+#GCC=/cvmfs/sft.cern.ch/lcg/releases/gcc/9.2.0/x86_64-centos7/bin/g++
 CXXFLAGS=`root-config --libs --cflags` -O3 -I/usr/include/boost/ -L/usr/lib64/ -lboost_program_options
 
 SRCDIR=.
@@ -19,3 +20,6 @@ fast:
 
 main.o: main.cpp
 	$(GCC) $(CXXFLAGS) -o $(BINDIR)/main $(OBJ)
+
+jac.o: jac.cpp
+	$(GCC) $(CXXFLAGS) -o $(BINDIR)/jac jac.cpp  

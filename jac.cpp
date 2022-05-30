@@ -1,0 +1,662 @@
+#include <ROOT/RDataFrame.hxx>
+#include "TFile.h"
+#include "TRandom3.h"
+#include "TVector.h"
+#include "TVectorT.h"
+#include "TMath.h"
+#include "TF1.h"
+#include "TF2.h"
+#include <TMatrixD.h>
+#include <ROOT/RVec.hxx>
+#include <iostream>
+#include <boost/program_options.hpp>
+
+using namespace std;
+using namespace ROOT;
+typedef ROOT::VecOps::RVec<double> RVecD;
+using ROOT::RDF::RNode; 
+
+using namespace boost::program_options;
+
+//std::vector<std::string> helicities = {"UL", "A0", "A1", "A4"};
+
+std::vector<std::string> helicities = {"UL", "A0"};
+
+constexpr double MW = 80.;
+constexpr double GW = 2.0;
+constexpr int NMAX  = 100;
+
+enum pdf_type { pdf_x=0, pdf_y, corr_x, corr_y, A0_x, A0_y, A1_x, A1_y, A4_x, A4_y, unknown};
+
+auto get_pdf_type = [](const std::string& name) {
+  if     (name=="A0_x") return pdf_type::A0_x; 
+  else if(name=="A0_y") return pdf_type::A0_y;
+  if     (name=="A1_x") return pdf_type::A1_x; 
+  else if(name=="A1_y") return pdf_type::A1_y;
+  else if(name=="A4_x") return pdf_type::A4_x; 
+  else if(name=="A4_y") return pdf_type::A4_y;
+  else return pdf_type::unknown;
+};
+
+
+auto cheb = [](double x, double scale, double offset, unsigned int n, unsigned int m){
+  double den = 0.;
+  double num = 0.;
+  for(unsigned int i = 0; i <= n ; i++){
+    int sign = i%2==0 ? +1 :-1;
+    double xj = (TMath::Cos(i*TMath::Pi()/n) + offset)*scale;
+    if(x==xj) return 1.0;// protect from nan      
+    double val = sign/(x-xj);
+    if(i==0 || i==n) val *= 0.5;
+    den += val;
+    if(i==m) num = val;
+  }
+  //std::cout << x << "==>" <<  num << "," << den << std::endl;                                             
+  return num/den;
+};
+
+
+int main(int argc, char* argv[])
+{
+
+  ROOT::EnableImplicitMT();
+
+  variables_map vm;
+  try
+    {
+      options_description desc{"Options"};
+      desc.add_options()
+	("help,h", "Help screen")
+	("nevents",     value<long>()->default_value(1000), "number of events")
+	("degs_pdf_x",  value<int>()->default_value(5), "max degree of pdf_x")
+	("degs_pdf_y" , value<int>()->default_value(5), "max degree of pdf_y")
+	("degs_corr_x", value<int>()->default_value(2), "max degree in x of corrxy")
+	("degs_corr_y", value<int>()->default_value(2), "max degree in y of corrxy")
+	("tag", value<std::string>()->default_value(""), "tag name")
+	("run", value<std::string>()->default_value("closure"), "run type")
+	("do_absy",    bool_switch()->default_value(false), "polycheb in abs(y)")
+	("flat_corr",  bool_switch()->default_value(false), "flat corr(x,y)")
+	("getbin_extTH2_corr",  bool_switch()->default_value(false), "get bin corr(x,y)")
+	("inter_extTH2_corr",  bool_switch()->default_value(false), "interpol corr(x,y)")
+	("toyTF2_corr",  bool_switch()->default_value(false), "toy TF2 corr(x,y)")
+	("normalize_pdfx",  bool_switch()->default_value(false), "normalize pdfx interpolant")
+	("normalize_pdfy",  bool_switch()->default_value(false), "normalize pdfy interpolant");
+
+      store(parse_command_line(argc, argv, desc), vm);
+      notify(vm);
+      if (vm.count("help")){
+	std::cout << desc << '\n';
+	return 0;
+      }
+      if (vm.count("nevents"))    std::cout << "Number of events: " << vm["nevents"].as<long>() << '\n';
+      if (vm.count("tag"))        std::cout << "Tag: " << vm["tag"].as<std::string>() << '\n';
+      if (vm.count("run"))        std::cout << "Run: " << vm["run"].as<std::string>() << '\n';
+      if (vm.count("degs_pdf_x")) std::cout << "Degree of pdf_x: " << vm["degs_pdf_x"].as<int>() << '\n';
+      if (vm.count("degs_pdf_y")) std::cout << "Degree of pdf_y: " << vm["degs_pdf_y"].as<int>() << '\n';
+      if (vm.count("degs_corr_y")) std::cout << "Degree in x of corrxy: " << vm["degs_corr_x"].as<int>() << '\n';
+      if (vm.count("degs_corr_y")) std::cout << "Degree in y of corrxy: " << vm["degs_corr_y"].as<int>() << '\n';
+      if (vm.count("do_absy"))     std::cout << "Do abs(Y): " << vm["do_absy"].as<bool>() << '\n';
+    }
+  catch (const error &ex)
+    {
+      std::cerr << ex.what() << '\n';
+    }
+
+
+  std::vector<double> norms_cheb10 = {
+    0.0050270, 
+    0.0472754, 
+    0.0928301,
+    0.1269291,
+    0.1495699,
+    0.1569254,
+    0.1495699,
+    0.1269291,
+    0.0928301,
+    0.0472754, 
+    0.0050270
+  };
+  
+  std::vector<double> norms_cheb6 = {
+    0.0142427,
+    0.1269909,
+    0.2285385,
+    0.2603778,
+    0.2286853,
+    0.1269592,
+    0.0142053
+  };
+
+  auto nu_chebs = [norms_cheb10,norms_cheb6](const int& n, const int& m){
+    //assert(m<=n);
+    switch(n){
+    case 10: return 0.5*(norms_cheb10[m] + norms_cheb10[n-m]); 
+    case  6: return 0.5*(norms_cheb6[m]  + norms_cheb6[n-m]); 
+    default: return 1.0;
+    }
+  };
+
+  //std::string tag{""};
+  //std::string run{""};  
+  //if(argc>1) nevents = strtol(argv[1], NULL, 10);
+  //if(argc>2) tag = std::string(argv[2]);
+  //if(argc>3) run = std::string(argv[3]);
+
+  long nevents    = vm["nevents"].as<long>();
+  std::string tag = vm["tag"].as<std::string>();
+  std::string run = vm["run"].as<std::string>();
+  int degs_pdf_x  = vm["degs_pdf_x"].as<int>();
+  int degs_pdf_y  = vm["degs_pdf_y"].as<int>();
+  int degs_corr_x = vm["degs_corr_x"].as<int>();
+  int degs_corr_y = vm["degs_corr_y"].as<int>();
+  bool do_absy = vm["do_absy"].as<bool>();
+  bool flat_corr = vm["flat_corr"].as<bool>();
+  bool getbin_extTH2_corr= vm["getbin_extTH2_corr"].as<bool>();
+  bool inter_extTH2_corr= vm["inter_extTH2_corr"].as<bool>();
+  bool toyTF2_corr= vm["toyTF2_corr"].as<bool>();
+  bool normalize_pdfx = vm["normalize_pdfx"].as<bool>();
+  bool normalize_pdfy = vm["normalize_pdfy"].as<bool>();
+
+  if(vm.count("degs_pdf_x"))  tag += std::string(Form("_%d", degs_pdf_x));
+  if(vm.count("degs_pdf_y"))  tag += std::string(Form("_%d", degs_pdf_y));
+  if(vm.count("degs_corr_x")) tag += std::string(Form("_%d", degs_corr_x));
+  if(vm.count("degs_corr_y")) tag += std::string(Form("_%d", degs_corr_y));
+
+  const double max_x = 0.4;
+  const double max_y = 3.0;
+  const int nbinsX   = 12; 
+  const double xLow  = 0.0;
+  const double xHigh = +2.5;
+  const int nbinsY   = 15; 
+  const double yLow  = 25.;
+  const double yHigh = 55.;
+
+  auto degs = [degs_pdf_x,degs_pdf_y,degs_corr_x,degs_corr_y](const pdf_type& pdf){
+    switch(pdf){
+    case pdf_type::pdf_x:             // f(x)
+    if(degs_pdf_x>0) return degs_pdf_x;
+    else return 2;
+    case pdf_type::pdf_y:             // f(y|0)  
+    if(degs_pdf_y>0) return degs_pdf_y;
+    else return 2; 
+    case pdf_type::corr_x:            // P(x,.) 
+    if(degs_corr_x>0) return degs_corr_x;
+    else return 2; 
+    case pdf_type::corr_y:            // P(.,y)
+    if(degs_corr_y>0) return degs_corr_y;
+    else return 2;
+    case pdf_type::A0_x:   return  2; // A0(x,.)
+    case pdf_type::A0_y:   return  4; // A0(.,y)
+    case pdf_type::A1_x:   return  2; // A1(x,.)
+    case pdf_type::A1_y:   return  2; // A1(.,y)
+    case pdf_type::A4_x:   return  2; // A4(x,.)
+    case pdf_type::A4_y:   return  2; // A4(.,y)
+    default: return 1;
+    }
+  };
+  
+  auto toy_mass = [](double Q, double M, double G){
+    return 1./TMath::Pi()/(1 + (Q-M)*(Q-M)/G/G);
+  };
+
+  TF1* toy_x = new TF1("toy_x", "[0]*x/(x*x+[1])", 0.0, max_x);  
+  toy_x->SetParameter(0, 1.0);
+  toy_x->SetParameter(1, +2.35e-03);
+  double int_toy_x = toy_x->Integral(0.0, max_x);
+  toy_x->SetParameter(0, 1.0/int_toy_x);
+  //TF1* toy_x = new TF1("toy_x", "[0]", 0.0, max_x);  
+  //toy_x->SetParameter(0, 1./max_x);
+
+  TF1* toy_y = new TF1("toy_y", "[2]/TMath::Sqrt(2*TMath::Pi()*[1])*TMath::Exp(-0.5*(x-[0])*(x-[0])/[1]/[1])", -max_y, max_y);
+  //TF1* toy_y = new TF1("toy_y", "[0]+[1]", -max_y, max_y);
+  toy_y->SetParameter(0, 0.0);
+  toy_y->SetParameter(1, 5.0);
+  toy_y->SetParameter(2, 1.0);
+  double int_toy_y = toy_y->Integral(-max_y, max_y);
+  toy_y->SetParameter(2, 1.0/int_toy_y);
+
+  TFile* fWJets = TFile::Open("WJets.root","READ");
+  TH2F* th2_corrxy = 0;
+  TF2* toy_corrxy = new TF2("toy_corrxy","0.1*(1.0 - 0.3*x*x)*TMath::Erf(5.0*y) + 1.0", 0., max_y, 0., max_x);
+  if(fWJets!=nullptr && !fWJets->IsZombie()){
+    std::cout << "WJets file found! Taking h2 as corrxy" << std::endl;
+    th2_corrxy = fWJets->Get<TH2F>("h2");
+  }
+
+  TF2* toy_A0 = new TF2("toy_A0", "2*y*y*(1/(1 + 0.02*x*x))", 0., max_y, 0., max_x);
+		       
+  // preprare inputs
+  if(true){
+
+    TFile* fout = TFile::Open(("root/input_"+tag+".root").c_str(), "RECREATE");
+    TTree* tree = new TTree("tree", "tree");
+
+    double pdf_x[NMAX];
+    for(int i = 0; i<=degs(pdf_type::pdf_x); i++){
+      tree->Branch(Form("pdfx_%d", i), &(pdf_x[i]), Form("pdfx_%d/D", i));
+      //pdf_x[i] = 1.0/max_x;
+      pdf_x[i] = toy_x->Eval( (TMath::Cos(i*TMath::Pi()/degs(pdf_type::pdf_x))+1.0)*0.5*max_x );
+    }
+     
+    double pdf_y[NMAX];
+    for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
+      tree->Branch(Form("pdfy_%d", j), &(pdf_y[j]), Form("pdfy_%d/D", j));
+      //pdf_y[j] = 1.0/(2*max_y);
+      if(do_absy) 
+	pdf_y[j] = toy_y->Eval( (TMath::Cos(j*TMath::Pi()/degs(pdf_type::pdf_y))+1.0)*0.5*max_y );
+      else
+	pdf_y[j] = toy_y->Eval( TMath::Cos(j*TMath::Pi()/degs(pdf_type::pdf_y))*max_y );
+    }
+    
+  double corr_xy[NMAX*NMAX];
+  for(int k = 0; k<=degs(pdf_type::corr_x); k++){
+    for(int l = 0; l<=degs(pdf_type::corr_y); l++){      
+      int idx = (degs(pdf_type::corr_y)+1)*k + l; 
+      tree->Branch(Form("corrxy_%d_%d", k,l), &(corr_xy[idx]), Form("corrxy_%d_%d/D", k,l));
+      corr_xy[idx] = 1.0;
+      double x = (TMath::Cos(k*TMath::Pi()/degs(pdf_type::corr_x))+1.0)*0.5*max_x;
+      double y = do_absy ? (TMath::Cos(l*TMath::Pi()/degs(pdf_type::corr_y))+1.0)*0.5*max_y : TMath::Cos(l*TMath::Pi()/degs(pdf_type::corr_y))*max_y;
+      if(flat_corr) corr_xy[idx] = 1.0;
+      else if(getbin_extTH2_corr) corr_xy[idx] = th2_corrxy->GetBinContent( th2_corrxy->FindBin(TMath::Abs(y), x) );
+      else if(inter_extTH2_corr)  corr_xy[idx] = th2_corrxy->Interpolate(TMath::Abs(y),x);
+      else if(toyTF2_corr) corr_xy[idx] = toy_corrxy->Eval(TMath::Abs(y),x);
+    }
+  }
+  
+  double A0_xy[NMAX];
+  for(int m = 0; m<=degs(pdf_type::A0_x); m++){
+    for(int n = 0; n<=degs(pdf_type::A0_y); n++){
+      int idx = (degs(pdf_type::A0_y)+1)*m + n; 
+      tree->Branch(Form("A0_xy_%d_%d", m,n), &(A0_xy[idx]), Form("A0_xy_%d_%d/D", m,n));
+      double x = (TMath::Cos(m*TMath::Pi()/degs(pdf_type::A0_x))+1.0)*0.5*max_x;
+      double y = do_absy ? (TMath::Cos(n*TMath::Pi()/degs(pdf_type::A0_y))+1.0)*0.5*max_y : TMath::Cos(n*TMath::Pi()/degs(pdf_type::A0_y))*max_y;
+      A0_xy[idx] = toy_A0->Eval(TMath::Abs(y),x);      
+    }
+  }
+
+  tree->Fill();
+  tree->Write();
+  fout->Close();
+
+  if(nevents<0) return 0;
+  }
+
+
+  // We prepare an input tree to run on
+  TFile* fout = TFile::Open(("root/histos_"+tag+"_"+run+".root").c_str(), "RECREATE");
+
+  TRandom3 R(1);
+  ROOT::RDataFrame d(nevents);
+  auto dlast = std::make_unique<RNode>(d);
+  std::vector<ROOT::RDF::RResultPtr<double> > sums = {};
+
+  dlast = std::make_unique<RNode>(dlast->Define("Q",  [&](){ 
+	double Q = TMath::Tan(R.Uniform(-TMath::Pi()*0.5, +TMath::Pi()*0.5))*GW + MW; 
+	while(Q < 50.0){
+	  Q = TMath::Tan(R.Uniform(-TMath::Pi()*0.5, +TMath::Pi()*0.5))*GW + MW; 
+	}
+	return Q;
+      } ));
+  dlast = std::make_unique<RNode>(dlast->Define("cos",[&](){ return R.Uniform(-1.0, 1.0);} ));
+  dlast = std::make_unique<RNode>(dlast->Define("phi",[&](){ return R.Uniform(-TMath::Pi(), +TMath::Pi());} ));
+  dlast = std::make_unique<RNode>(dlast->Define("x",  [&](){ return R.Uniform(0.0, max_x); }));
+  dlast = std::make_unique<RNode>(dlast->Define("y",  [&](){ return R.Uniform(-max_y, max_y); }));
+  dlast = std::make_unique<RNode>(dlast->Define("weightsM", 
+						[&](double Q)->RVecD{
+						  RVecD out;
+						  double gen = 1./TMath::Pi()/(1 + (Q-MW)*(Q-MW)/GW/GW);
+						  out.emplace_back( toy_mass(Q,MW,GW)/gen );
+						  out.emplace_back( toy_mass(Q,MW+0.010,GW)/gen );
+						  out.emplace_back( toy_mass(Q,MW-0.010,GW)/gen );
+						  return out; 
+						}, {"Q"}));
+  dlast = std::make_unique<RNode>(dlast->Define("wM",     [](RVecD weights){ return weights.at(0);}, {"weightsM"} ));
+  dlast = std::make_unique<RNode>(dlast->Define("wM_up",  [](RVecD weights){ return weights.at(1);}, {"weightsM"} ));
+  dlast = std::make_unique<RNode>(dlast->Define("wM_down",[](RVecD weights){ return weights.at(2);}, {"weightsM"} ));
+  dlast = std::make_unique<RNode>(dlast->Define("p4lab",
+						[&](double Q, double cos, double phi, double x, double y)->RVecD {
+						  double qT2 = x*x*Q*Q;
+						  double qT = TMath::Sqrt(qT2);
+						  double XT = TMath::Sqrt(qT2 + Q*Q);
+						  double Q0 = XT*TMath::CosH(y);
+						  double Q3 = XT*TMath::SinH(y);
+						  TMatrixD A(4,4);
+						  double row0[4] = {Q0/Q,       -qT/Q, 0., -Q3/Q};
+						  double row1[4] = {-qT*Q0/Q/XT,  XT/Q, 0., qT*Q3/Q/XT};
+						  double row2[4] = {0., 0., 1.0, 0.};
+						  double row3[4] = {-Q3/XT, 0., 0., Q0/XT};
+						  A.InsertRow(0, 0, row0);
+						  A.InsertRow(1, 0, row1);
+						  A.InsertRow(2, 0, row2);
+						  A.InsertRow(3, 0, row3);
+						  double cosS = y>0 ? cos : -cos;
+						  double phiS = y>0 ? phi : -phi;
+						  double sinS = TMath::Sqrt(1-cosS*cosS);
+						  //std::cout << Q/2 << "," << sinS << "," << TMath::Cos(phiS) << std::endl;
+						  TVectorD p4_CS(0,3, Q/2, Q/2*sinS*TMath::Cos(phi), Q/2*sinS*TMath::Sin(phi), Q/2*cos, "END");
+						  //std::cout << "CS" << std::endl;
+						  //p4_CS.Print();
+						  TVectorD p4_lab = A.Invert()*p4_CS;
+						  //std::cout << "LAB" << std::endl;
+						  //p4_lab.Print();
+						  double pt  = TMath::Sqrt(p4_lab[1]*p4_lab[1] + p4_lab[2]*p4_lab[2]);
+						  int sign = TMath::Abs(p4_lab[3])>0. ? TMath::Abs(p4_lab[3])/p4_lab[3] : 1;
+						  double eta = TMath::ACosH(p4_lab[0]/pt)*sign;
+						  RVecD p4lab{pt,eta};
+						  return p4lab;
+						}, {"Q", "cos", "phi", "x", "y"}));
+    
+  dlast = std::make_unique<RNode>(dlast->Define("pdfx_vec", 
+						[&](double x)->RVecD{
+						  RVecD out;
+						  unsigned int deg = degs(pdf_type::pdf_x); 
+						  double cheb_last = cheb(x, 0.5*max_x, 1.0, deg, deg);
+						  double nu_last   = nu_chebs(deg, deg);
+						  for(unsigned int i = 0; i<=deg; i++){
+						    double cheb_i = cheb(x, 0.5*max_x, 1.0, deg, i);
+						    if(!normalize_pdfx) out.emplace_back( cheb_i );
+						    else{
+						      if(i<deg){
+							double nu_i = nu_chebs(deg, i);
+							out.emplace_back(cheb_i - cheb_last*nu_i/nu_last);
+						      }
+						      else out.emplace_back( cheb_last/nu_last/max_x );
+						    }
+						  }
+						  return out;
+						}, {"x"} ));
+
+  dlast = std::make_unique<RNode>(dlast->Define("pdfy_vec", 
+						[&](double y)->RVecD{
+						  RVecD out;
+						  unsigned int deg = degs(pdf_type::pdf_y); 
+						  double cheb_last = do_absy ? 
+						    cheb(TMath::Abs(y), 0.5*max_y, 1.0, deg, deg) : cheb(y, max_y, 0.0, deg, deg);
+						  double nu_last   = nu_chebs(deg, deg);
+						  for(unsigned int j = 0; j<=deg; j++){
+						    double cheb_j = do_absy ? 
+						      cheb(TMath::Abs(y), 0.5*max_y, 1.0, deg, j) : cheb(y, max_y, 0.0, deg, j) ;
+						    if(!normalize_pdfy) out.emplace_back( cheb_j );
+						    else{
+						      if(j<deg){
+							double nu_j = nu_chebs(deg, j);
+							out.emplace_back(cheb_j - cheb_last*nu_j/nu_last);
+						      }
+						      else out.emplace_back( cheb_last/nu_last/(2*max_y) );
+						    }
+						  }
+						  return out;
+						}, {"y"} ));
+
+  dlast = std::make_unique<RNode>(dlast->Define("corrxy_vec", 
+						[&](double x, double y)->RVecD{
+						  RVecD out;
+						  for(unsigned int k = 0; k<=degs(pdf_type::corr_x); k++){
+						    double corrx = cheb(x, 0.5*max_x, 1.0, degs(pdf_type::corr_x), k);
+						    for(unsigned int l = 0; l<=degs(pdf_type::corr_y); l++){
+						      double corry = do_absy ? 
+							cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::corr_y), l) : 
+							cheb(y, max_y, 0.0, degs(pdf_type::corr_y), l);
+						      out.emplace_back( corrx*corry );
+						    }
+						  }
+						  return out;
+						}, {"x","y"} ));
+  for(auto hel : helicities){
+    dlast = std::make_unique<RNode>(dlast->Define(hel+"xy_vec", 
+						  [&,hel](double x, double y)->RVecD{
+						    RVecD out;
+						    for(unsigned int k = 0; k<=degs(get_pdf_type(hel+"_x")); k++){
+						      double Ax = cheb(x, 0.5*max_x, 1.0, degs(get_pdf_type(hel+"_x")), k);
+						      for(unsigned int l = 0; l<=degs(get_pdf_type(hel+"_y")); l++){
+							double Ay = do_absy ? 
+							  cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(get_pdf_type(hel+"_y")), l) : 
+							  cheb(y, max_y, 0.0, degs(get_pdf_type(hel+"_y")), l);
+							out.emplace_back( Ax*Ay );
+						      }
+						  }
+						    return out;
+						  }, {"x","y"} ));
+  }
+  
+  dlast = std::make_unique<RNode>(dlast->Define("pt",  [](RVecD p4lab){ return p4lab[0];}, {"p4lab"}));
+  dlast = std::make_unique<RNode>(dlast->Define("eta", [](RVecD p4lab){ return TMath::Abs(p4lab[1]);}, {"p4lab"}));
+  std::vector<ROOT::RDF::RResultPtr<TH1D> > histos1D;
+  //histos1D.emplace_back(dlast->Histo1D({"pt", "", 100, 0, 100}, "pt"));
+  
+  std::vector<ROOT::RDF::RResultPtr<TH2D> > histos2D;
+
+  if(run.find("closure")!=string::npos){
+
+    TFile* fin = TFile::Open(("root/input_"+tag+".root").c_str(), "READ");
+    if(fin==nullptr) return 0;
+    TTree* tree = fin->Get<TTree>("tree");
+
+    double pdf_x[NMAX];
+    for(int i = 0; i<=degs(pdf_type::pdf_x); i++){
+      tree->SetBranchAddress(Form("pdfx_%d", i), &(pdf_x[i]));
+    }
+    double pdf_y[NMAX];
+    for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
+      tree->SetBranchAddress(Form("pdfy_%d", j), &(pdf_y[j]));
+    }
+    double corr_xy[NMAX*NMAX];
+    for(int k = 0; k<=degs(pdf_type::corr_x); k++){
+      for(int l = 0; l<=degs(pdf_type::corr_y); l++){      
+	int idx = (degs(pdf_type::corr_y)+1)*k + l; 
+	tree->SetBranchAddress(Form("corrxy_%d_%d", k,l), &(corr_xy[idx]));
+      }
+    }
+    double A0_xy[NMAX];
+    for(int m = 0; m<=degs(pdf_type::A0_x); m++){
+      for(int n = 0; n<=degs(pdf_type::A0_y); n++){
+	int idx = (degs(pdf_type::A0_y)+1)*m + n; 
+	tree->SetBranchAddress(Form("A0_xy_%d_%d", m,n), &(A0_xy[idx]));
+      }
+    }
+    tree->GetEntry(0);    
+    fin->Close();
+    
+    /*
+    dlast = std::make_unique<RNode>(dlast->DefinePerSample("pdfx_in", 
+							   [&,pdf_x]( unsigned int slot, const ROOT::RDF::RSampleInfo &id )->RVecD { 
+							     RVecD out;
+							     for(int i = 0; i<=degs(pdf_type::pdf_x); i++) 
+							       out.emplace_back( (normalize_pdfx && i==degs(pdf_type::pdf_x)) ? 1.0 : pdf_x[i] );
+							     return out; } 
+							   ));
+
+    dlast = std::make_unique<RNode>(dlast->DefinePerSample("pdfy_in", 
+							   [&,pdf_y]( unsigned int slot, const ROOT::RDF::RSampleInfo &id )->RVecD { 
+							     RVecD out;
+							     for(int j = 0; j<=degs(pdf_type::pdf_y); j++) 
+							       out.emplace_back( (normalize_pdfy && j==degs(pdf_type::pdf_y)) ? 1.0 : pdf_y[j] );
+							     return out; } 
+							   ));
+
+    dlast = std::make_unique<RNode>(dlast->DefinePerSample("corrxy_in", 
+							   [&,corr_xy]( unsigned int slot, const ROOT::RDF::RSampleInfo &id )->RVecD { 
+							     RVecD out;
+							     for(int k = 0; k<=degs(pdf_type::corr_x); k++){
+							       for(int l = 0; l<=degs(pdf_type::corr_y); l++){      
+								 int idx = (degs(pdf_type::corr_y)+1)*k + l; 
+								 out.emplace_back( corr_xy[idx] );
+							       }
+							     }
+							     return out; } 
+							   ));
+
+    dlast = std::make_unique<RNode>(dlast->DefinePerSample("A0xy_in", 
+							   [&,A0_xy]( unsigned int slot, const ROOT::RDF::RSampleInfo &id )->RVecD { 
+							     RVecD out;
+							     for(int k = 0; k<=degs(pdf_type::A0_x); k++){
+							       for(int l = 0; l<=degs(pdf_type::A0_y); l++){      
+								 int idx = (degs(pdf_type::A0_y)+1)*k + l; 
+								 out.emplace_back( A0_xy[idx] );
+							       }
+							     }
+							     return out; } 
+							     ));
+    */    
+
+    dlast = std::make_unique<RNode>(dlast->Define("pdfx_in", 
+						  [&,pdf_x]()->RVecD { 
+						    RVecD out;
+						    for(int i = 0; i<=degs(pdf_type::pdf_x); i++) 
+						      out.emplace_back( (normalize_pdfx && i==degs(pdf_type::pdf_x)) ? 1.0 : pdf_x[i] );
+						    return out; } 
+						  ));
+
+    dlast = std::make_unique<RNode>(dlast->Define("pdfy_in", 
+						  [&,pdf_y]()->RVecD { 
+						    RVecD out;
+						    for(int j = 0; j<=degs(pdf_type::pdf_y); j++) 
+						      out.emplace_back( (normalize_pdfy && j==degs(pdf_type::pdf_y)) ? 1.0 : pdf_y[j] );
+						    return out; } 
+						  ));
+    
+    dlast = std::make_unique<RNode>(dlast->Define("corrxy_in", 
+						  [&,corr_xy]()->RVecD { 
+						    RVecD out;
+						    for(int k = 0; k<=degs(pdf_type::corr_x); k++){
+						      for(int l = 0; l<=degs(pdf_type::corr_y); l++){      
+							int idx = (degs(pdf_type::corr_y)+1)*k + l; 
+							out.emplace_back( corr_xy[idx] );
+						      }
+						    }
+						    return out; } 
+						  ));
+    
+    dlast = std::make_unique<RNode>(dlast->Define("A0xy_in", 
+						  [&,A0_xy]()->RVecD { 
+						    RVecD out;
+						    for(int k = 0; k<=degs(pdf_type::A0_x); k++){
+						      for(int l = 0; l<=degs(pdf_type::A0_y); l++){      
+							int idx = (degs(pdf_type::A0_y)+1)*k + l; 
+							out.emplace_back( A0_xy[idx] );
+						      }
+						    }
+						    return out; } 
+						  ));
+
+
+    dlast = std::make_unique<RNode>(dlast->Define("harmonics", [&](double x, double y, double cos, double phi) -> RVecD{
+	  RVecD out;
+	  double cosS = y>0 ? cos : -cos;
+	  double phiS = y>0 ? phi : -phi;
+	  out.emplace_back( 1.0 + cosS*cosS );
+	  out.emplace_back( 0.5*(1-3*cosS*cosS) );
+	  /* ... */
+	  return out;
+	} , {"x", "y", "cos", "phi"} ));
+
+    dlast = std::make_unique<RNode>(dlast->Define("weightsMC", [&](double x, double y, RVecD harmonics, RVecD weightsM  )->RVecD {
+	  RVecD out;
+	  double wMC{1.0};
+	  wMC *= toy_x->Eval(x);
+	  wMC *= toy_y->Eval(y);
+	  double corrxyMC  = 1.0;
+	  if(flat_corr) corrxyMC  = 1.0;
+	  else if(getbin_extTH2_corr) corrxyMC = th2_corrxy->GetBinContent( th2_corrxy->FindBin(TMath::Abs(y),x) );
+	  else if(inter_extTH2_corr)  corrxyMC = th2_corrxy->Interpolate(TMath::Abs(y),x);
+	  else if(toyTF2_corr)        corrxyMC = toy_corrxy->Eval(TMath::Abs(y),x);	   
+	  wMC *= corrxyMC;
+	  wMC *= (harmonics.at(0) + 
+		  toy_A0->Eval(TMath::Abs(y),x)*harmonics.at(1) 
+		  /* + ... */ 
+		  );
+	  out.emplace_back( wMC*weightsM.at(0) );
+	  out.emplace_back( wMC*weightsM.at(1) );
+	  out.emplace_back( wMC*weightsM.at(2) );
+	  return out;
+	}, {"x", "y", "harmonics", "weightsM"} ));
+    
+    dlast = std::make_unique<RNode>(dlast->Define("weights", [&](RVecD pdfx_vec,   RVecD pdfx_in,
+								 RVecD pdfy_vec,   RVecD pdfy_in,
+								 RVecD corrxy_vec, RVecD corrxy_in,
+								 RVecD A0xy_vec,   RVecD A0xy_in,
+								 RVecD harmonics,
+								 RVecD weightsM  )->RVecD {
+						    RVecD out;
+						    double wUL{1.0};	  
+						    wUL *= ROOT::VecOps::Dot(pdfx_vec,pdfx_in);
+						    wUL *= ROOT::VecOps::Dot(pdfy_vec,pdfy_in);
+						    wUL *= ROOT::VecOps::Dot(corrxy_vec,corrxy_in);
+						    double w = wUL*(harmonics.at(0) + 
+								    ROOT::VecOps::Dot(A0xy_vec,A0xy_in)*harmonics.at(1) 
+								    /* + ... */
+								    ); 
+						    out.emplace_back( w*weightsM.at(0) );
+						    return out;
+						  },  {"pdfx_vec", "pdfx_in", 
+						      "pdfy_vec", "pdfy_in",
+						      "corrxy_vec", "corrxy_in", 
+						      "A0xy_vec", "A0xy_in", 
+						      "harmonics",
+						      "weightsM"} ));
+    
+    dlast = std::make_unique<RNode>(dlast->Define("w",        [](RVecD weights){ return weights.at(0);}, {"weights"} ));
+    dlast = std::make_unique<RNode>(dlast->Define("wMC",      [](RVecD weights){ return weights.at(0);}, {"weightsMC"} ));
+    dlast = std::make_unique<RNode>(dlast->Define("wMC_up",   [](RVecD weights){ return weights.at(1);}, {"weightsMC"} ));
+    dlast = std::make_unique<RNode>(dlast->Define("wMC_down", [](RVecD weights){ return weights.at(2);}, {"weightsMC"} ));
+    
+    histos2D.emplace_back(dlast->Histo2D({"w",       "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "w"));      
+    histos2D.emplace_back(dlast->Histo2D({"wMC",     "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "wMC"));      
+    histos2D.emplace_back(dlast->Histo2D({"wMC_up",  "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "wMC_up"));      
+    histos2D.emplace_back(dlast->Histo2D({"wMC_down","", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "wMC_down"));
+    
+    /*
+    histos1D.emplace_back(dlast->Histo1D({"w_pdfx",    "", 20, 0.0, max_x}, "x", "w"));      
+    histos1D.emplace_back(dlast->Histo1D({"w_pdfy",    "", 20, 0.0, max_y}, "y", "w"));      
+    histos2D.emplace_back(dlast->Histo2D({"w_corrxy",  "", 20, 0.0, max_y, 20, 0.0, max_x}, "y", "x", "w"));      
+    histos1D.emplace_back(dlast->Histo1D({"wMC_pdfx",  "", 20, 0.0, max_x}, "x", "wMC"));      
+    histos1D.emplace_back(dlast->Histo1D({"wMC_pdfy",  "", 20, 0.0, max_y}, "y", "wMC"));      
+    histos2D.emplace_back(dlast->Histo2D({"wMC_corrxy","", 20, 0.0, max_y, 20, 0.0, max_x}, "y", "x", "wMC"));      
+    */
+
+    fin->Close();
+  }
+
+
+  //histos2D.emplace_back(d1.Histo2D({"pteta", "", 50, -2.5, 2.5, 40, 20, 60}, "eta", "pt", "pdf_x"));
+  auto colNames = dlast->GetColumnNames();
+  //for (auto &&colName : colNames) std::cout << colName << std::endl;
+  std::cout << colNames.size() << " columns created" << std::endl;
+
+  fout->cd();
+  std::cout << "Writing histos..." << std::endl;
+  for(auto h : histos1D) h->Write();
+  for(auto h : histos2D) h->Write();
+  double total = *(dlast->Count());
+  //for(auto sum : sums) std::cout << *sum/total << std::endl;
+
+  TTree* outtree = new TTree("outtree", "tree");
+
+  int n_pdfx = degs(pdf_type::pdf_x) + 1;
+  double norms_pdfx[ degs(pdf_type::pdf_x) + 1];
+  double points_x[ degs(pdf_type::pdf_x) + 1];
+  outtree->Branch("n_pdfx", &n_pdfx, "n_pdfx/I");
+  outtree->Branch("norms_pdfx", &norms_pdfx, "norms_pdfx[n_pdfx]/D");
+  outtree->Branch("points_x", &points_x, "points_x[n_pdfx]/D");
+
+  int n_pdfy = degs(pdf_type::pdf_y) + 1;
+  double norms_pdfy[ degs(pdf_type::pdf_y) + 1];
+  double points_y[ degs(pdf_type::pdf_y) + 1];
+  outtree->Branch("n_pdfy", &n_pdfy, "n_pdfy/I");
+  outtree->Branch("norms_pdfy", &norms_pdfy, "norms_pdfy[n_pdfy]/D");
+  outtree->Branch("points_y", &points_y, "points_y[n_pdfy]/D");
+
+  for(int i = 0; i<=degs(pdf_type::pdf_x); i++){
+    //norms_pdfx[i] = *(sums[i])/total;
+    points_x[i]   = (TMath::Cos(i*TMath::Pi()/degs(pdf_type::pdf_x))+1.0)*0.5*max_x;
+  }
+  for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
+    //norms_pdfy[j] = *(sums[degs(pdf_type::pdf_x) + 1 + j])/total;
+    points_y[j]   = do_absy ? (TMath::Cos(j*TMath::Pi()/degs(pdf_type::pdf_y))+1.0)*0.5*max_x : TMath::Cos(j*TMath::Pi()/degs(pdf_type::pdf_y))*max_x;
+  }
+  outtree->Fill();
+  outtree->Write();
+  
+  fout->Close();
+  return 1;
+}
