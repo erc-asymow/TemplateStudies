@@ -2,22 +2,25 @@
 
 GRID=$1
 
-for X in 10
+for X in 12
 do
     for Y in 6
     do
-	for CORRX in 6
+	for CORRX in 3
 	do
-	    for CORRY in 6
+	    for CORRY in 3
 	    do
-		echo 'Now doing ', $X, $Y, $CORRX, $CORRY
-		#./main      --nevents=-1 --tag=$GRID --run=closure --degs_pdf_x=$X --degs_pdf_y=$Y --degs_corr_x=$CORRX --degs_corr_y=$CORRY --do_absY=1
-		./main --nevents=1000000 --tag=$GRID --run=closure \
-		    --degs_pdf_x=$X --degs_pdf_y=$Y --degs_corr_x=$CORRX --degs_corr_y=$CORRY \
-		    --toyTF2_corr \
-		    --normalize_pdfx \
-		    --normalize_pdfy \
-		    #--do_absY
+		for A0X in 5
+		do		    
+		    for A0Y in 5
+		    do		    
+			echo 'Now doing ', $X, $Y, $CORRX, $CORRY
+			#./main  --nevents=100000000 --tag=$GRID --run=closure --degs_pdf_x=$X --degs_pdf_y=$Y --degs_corr_x=$CORRX --degs_corr_y=$CORRY
+			./jac --nevents=1000000 --tag=$GRID --run=closure --degs_pdf_x=$X --degs_pdf_y=$Y --degs_corr_x=$CORRX --degs_corr_y=$CORRY\
+		        --degs_A0_x=$A0X --degs_A0_y=$A0Y\
+		        --toyTF2_corr --normalize_pdfx --normalize_pdfy
+		    done
+		done
 	    done
 	done
     done

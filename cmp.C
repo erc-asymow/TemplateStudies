@@ -1,11 +1,11 @@
 
 {
 
+  TString name = "jacA0";
+
   int axis = 1;
   
   bool normalize = true;
-
-  TString name = "norm1abs";
 
   std::vector<TString> tags{};
 
@@ -15,19 +15,25 @@
   std::vector<TH1D*> histos_mass{};
 
   for(auto X : ROOT::TSeqI(16) ){
-    if(X<8) continue;
+    if(X!=12) continue;
     for(auto Y : ROOT::TSeqI(13) ){
-      if(Y>8) continue;
+      if(Y!=6) continue;
       for(auto CORRX : ROOT::TSeqI(13) ){
-	if(CORRX<2) continue;
+	if(CORRX>5) continue;
 	for(auto CORRY : ROOT::TSeqI(13) ){
-	  if(CORRY<4) continue;
-	  TString tag(Form("%d_%d_%d_%d",X,Y,CORRX,CORRY));
-	  cout << "file " << tag << endl;
-	  TFile* f = TFile::Open("root/histos_"+name+"_"+tag+"_closure.root");
-	  if(f==nullptr || f->IsZombie()) continue;
-	  files.emplace_back(f);    
-	  tags.emplace_back(tag);
+	  if(CORRY>5) continue;
+	  for(auto A0X : ROOT::TSeqI(6) ){
+	    if(A0X<1) continue;
+	    for(auto A0Y : ROOT::TSeqI(6) ){
+	      if(A0Y<1) continue;	      
+	      TString tag(Form("%d_%d_%d_%d_%d_%d",X,Y,CORRX,CORRY,A0X,A0Y));
+	      cout << "file " << tag << endl;
+	      TFile* f = TFile::Open("root/histos_"+name+"_"+tag+"_closure.root");
+	      if(f==nullptr || f->IsZombie()) continue;
+	      files.emplace_back(f);    
+	      tags.emplace_back(tag);
+	    }
+	  }
 	}
       }
     }
@@ -93,6 +99,6 @@
     if(i==0) leg->AddEntry(h, "#pm 10 MeV", "L");
     i++;
   }
-
-  leg->Draw()
+  leg->Draw();
+  gPad->SaveAs("plot_cmp.png");
 }
