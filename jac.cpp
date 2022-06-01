@@ -7,6 +7,7 @@
 #include "TF1.h"
 #include "TF2.h"
 #include <TMatrixD.h>
+#include <TStopwatch.h>
 #include <ROOT/RVec.hxx>
 #include <iostream>
 #include <boost/program_options.hpp>
@@ -58,6 +59,9 @@ auto cheb = [](double x, double scale, double offset, unsigned int n, unsigned i
 
 int main(int argc, char* argv[])
 {
+
+  TStopwatch sw;
+  sw.Start();
 
   ROOT::EnableImplicitMT();
 
@@ -199,7 +203,14 @@ int main(int argc, char* argv[])
   };
 
   unsigned int njacs = 0;
-  njacs += (degs(pdf_type::pdf_x) - int(normalize_pdfx) - 1);
+  unsigned int first_jac_pdfx = njacs;
+  njacs += (degs(pdf_type::pdf_x) - int(normalize_pdfx));
+  unsigned int first_jac_pdfy = njacs;
+  if(do_absy)  
+    njacs += (degs(pdf_type::pdf_y) + 1 - int(normalize_pdfy));
+  else  
+    njacs += (degs(pdf_type::pdf_y)/2 + 1 - int(normalize_pdfy));
+
   //njacs += (degs(pdf_type::pdf_y) - int(normalize_pdfy) );
   //njacs += (degs(pdf_type::corr_x) - 1)*degs(pdf_type::corr_y);
   //njacs += degs(pdf_type::A0_x)*degs(pdf_type::A0_y);
@@ -487,6 +498,7 @@ int main(int argc, char* argv[])
   //histos1D.emplace_back(dlast->Histo1D({"pt", "", 100, 0, 100}, "pt"));
   
   std::vector<ROOT::RDF::RResultPtr<TH2D> > histos2D;
+  std::vector<ROOT::RDF::RResultPtr<TH2D> > histosJac;
 
   if(run.find("closure")!=string::npos){
 
@@ -534,7 +546,7 @@ int main(int argc, char* argv[])
       }
       else{
 	unsigned int mid_deg = degs(pdf_type::pdf_y)/2;
-	for(int j = 0; j<=mid_deg; j++) pdfy_in.emplace_back( j==0 ? 1.0 : pdf_y[j] );
+ 	for(int j = 0; j<=mid_deg; j++) pdfy_in.emplace_back( j==0 ? 1.0 : pdf_y[j] );
       }
     }
 
@@ -651,14 +663,49 @@ int main(int argc, char* argv[])
 								ROOT::VecOps::Dot(A0xy_vec,A0xy_in)*harmonics.at(1) 
 								);
 
-						    unsigned int njacs_pdfx = (degs(pdf_type::pdf_x) - int(normalize_pdfx) - 1);
+						    // Jacobian pdfx
+						    unsigned int njacs_pdfx = (degs(pdf_type::pdf_x) - int(normalize_pdfx)); // +1 -1
 						    for(unsigned int i = 0; i<njacs_pdfx; i++){
 						      RVecD pdfx_in_copy( pdfx_in.size(), 0.0 );
-						      pdfx_in_copy[i+1] = 1.0;
+						      pdfx_in_copy[i+1] = 1.0; //+1 accounts for pdfx[0] constrained to 0.0
 						      out.emplace_back( wUL*
 									ROOT::VecOps::Dot(pdfx_vec,pdfx_in_copy)*
 									B*C*D*
 									weightsM.at(0) );
+						    }
+
+						    // Jacobian pdfy
+						    if(do_absy){
+						      unsigned int njacs_pdfy = (degs(pdf_type::pdf_y) + 1 - int(normalize_pdfy));
+						      for(unsigned int j = 0; j<njacs_pdfy; j++){
+							RVecD pdfy_in_copy( pdfy_in.size(), 0.0 );
+							pdfy_in_copy[j] = 1.0;
+							out.emplace_back( wUL*
+									  A*
+									  ROOT::VecOps::Dot(pdfy_vec,pdfy_in_copy)*
+									  C*D*
+									  weightsM.at(0) );
+						      }
+						    }
+						    else{
+						      unsigned int njacs_pdfy = degs(pdf_type::pdf_y)/2 + 1 - int(normalize_pdfy);
+						      for(int j = 0; j<njacs_pdfy; j++){
+							RVecD pdfy_in_copy( pdfy_in.size(), 0.0 );
+							pdfy_in_copy[(normalize_pdfy ? j+1 : j)] = 1.0;
+							out.emplace_back( wUL*
+									  A*
+									  ROOT::VecOps::Dot(pdfy_vec,pdfy_in_copy)*
+									  C*D*
+									  weightsM.at(0) );
+
+						      }						      
+						    }
+						    
+						    // Jacobian corrxy
+						    unsigned int njacs_corrxy = degs(pdf_type::corr_x)*(do_absy ? degs(pdf_type::corr_y)/2+1 : degs(pdf_type::corr_y)+1);
+						    for(unsigned int k = 0; k<njacs_corrxy; k++){
+						      RVecD corrxy_in_copy( corrxy_in.size(), 0.0 );
+						      /* ..FIX.. */
 						    }
 
 						    return out;
@@ -688,7 +735,12 @@ int main(int argc, char* argv[])
     histos2D.emplace_back(dlast->Histo2D({"wMC_down","", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "wMC_down"));
 
     for(unsigned int i = 0; i < njacs; i++){
-      histos2D.emplace_back(dlast->Histo2D({Form("jac_%d",i),"", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", Form("jac_%d",i)));
+      std::string hname = "";
+      if(i>=first_jac_pdfx && i<first_jac_pdfy) 
+	hname = std::string(Form("jac_%d: d(pdf) / d(pdfx_in[%d])", i, i-first_jac_pdfx+1));
+      else if(i>=first_jac_pdfy)
+	hname = std::string(Form("jac_%d: d(pdf) / d(pdfy_in[%d])", i, i-first_jac_pdfy + 1*(!do_absy && normalize_pdfy) ));
+      histosJac.emplace_back(dlast->Histo2D({ Form("jac_%d",i), hname.c_str(), nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", Form("jac_%d",i)));
     }
     
     /*
@@ -709,12 +761,21 @@ int main(int argc, char* argv[])
   //for (auto &&colName : colNames) std::cout << colName << std::endl;
   std::cout << colNames.size() << " columns created" << std::endl;
 
+  double total = *(dlast->Count());  
+  for(auto sum : sums) std::cout << (*sum)*(max_x*2*max_y*4*TMath::Pi())/total << std::endl;
+
   fout->cd();
   std::cout << "Writing histos..." << std::endl;
   for(auto h : histos1D) h->Write();
   for(auto h : histos2D) h->Write();
-  double total = *(dlast->Count());
-  for(auto sum : sums) std::cout << (*sum)*(max_x*2*max_y*4*TMath::Pi())/total << std::endl;
+  for(auto h : histosJac){
+    h->Scale(1./total);
+    h->Write();
+  }
+
+  sw.Stop();
+  std::cout << "Real time: " << sw.RealTime() << " seconds " << "(CPU time:  " << sw.CpuTime() << " seconds)" << std::endl;
+  std::cout << "Total slots: " << dlast->GetNSlots() << std::endl;
 
   TTree* outtree = new TTree("outtree", "tree");
 
@@ -738,11 +799,13 @@ int main(int argc, char* argv[])
   }
   for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
     //norms_pdfy[j] = *(sums[degs(pdf_type::pdf_x) + 1 + j])/total;
-    points_y[j]   = do_absy ? (TMath::Cos((degs(pdf_type::pdf_y)-j)*TMath::Pi()/degs(pdf_type::pdf_y))+1.0)*0.5*max_x : TMath::Cos((degs(pdf_type::pdf_y)-j)*TMath::Pi()/degs(pdf_type::pdf_y))*max_x;
+    points_y[j]   = do_absy ? (TMath::Cos((degs(pdf_type::pdf_y)-j)*TMath::Pi()/degs(pdf_type::pdf_y))+1.0)*0.5*max_x : 
+      TMath::Cos((degs(pdf_type::pdf_y)-j)*TMath::Pi()/degs(pdf_type::pdf_y))*max_x;
   }
   outtree->Fill();
   outtree->Write();
   
   fout->Close();
+
   return 1;
 }
