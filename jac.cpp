@@ -204,12 +204,11 @@ int main(int argc, char* argv[])
 
   unsigned int njacs = 0;
   unsigned int first_jac_pdfx = njacs;
-  njacs += (degs(pdf_type::pdf_x) - int(normalize_pdfx));
+  njacs += (degs(pdf_type::pdf_x) + 1 - 1 - int(normalize_pdfx));
   unsigned int first_jac_pdfy = njacs;
-  if(do_absy)  
-    njacs += (degs(pdf_type::pdf_y) + 1 - int(normalize_pdfy));
-  else  
-    njacs += (degs(pdf_type::pdf_y)/2 + 1 - int(normalize_pdfy));
+  njacs += (do_absy ? degs(pdf_type::pdf_y) : degs(pdf_type::pdf_y)/2 ) + 1 - int(normalize_pdfy);
+  unsigned int first_jac_corrxy = njacs;  
+  njacs += (degs(pdf_type::corr_x) + 1 - 1)*( (do_absy ? degs(pdf_type::corr_y) : degs(pdf_type::corr_y)/2) + 1 );
 
   //njacs += (degs(pdf_type::pdf_y) - int(normalize_pdfy) );
   //njacs += (degs(pdf_type::corr_x) - 1)*degs(pdf_type::corr_y);
@@ -379,14 +378,12 @@ int main(int argc, char* argv[])
 						  double nu_last   = nu_chebs(deg, deg);
 						  for(unsigned int i = 0; i<=deg; i++){
 						    double cheb_i = cheb(x, 0.5*max_x, 1.0, deg, i);
-						    if(!normalize_pdfx) out.emplace_back( cheb_i );
-						    else{
-						      if(i<deg){
-							double nu_i = nu_chebs(deg, i);
-							out.emplace_back(cheb_i - cheb_last*nu_i/nu_last);
-						      }
-						      else out.emplace_back( cheb_last/nu_last/max_x );
+						    if(!normalize_pdfx){
+						      out.emplace_back( cheb_i );
+						      continue;
 						    }
+						    double nu_i = nu_chebs(deg, i);
+						    out.emplace_back(i<deg ? cheb_i - cheb_last*nu_i/nu_last : cheb_last/nu_last/max_x);
 						  }
 						  return out;
 						}, {"x"} ));
@@ -395,8 +392,50 @@ int main(int argc, char* argv[])
 						[&](double y)->RVecD{
 						  RVecD out;
 						  unsigned int deg = degs(pdf_type::pdf_y); 
+						  unsigned int mid_deg = deg/2;
+						  if(do_absy){
+						    if(!normalize_pdfy){
+						      for(unsigned int j = 0; j<=deg; j++){
+							double cheb_j = cheb(TMath::Abs(y), 0.5*max_y, 1.0, deg, j);
+							out.emplace_back( cheb_j );
+						      }
+						    }
+						    else{
+						      double cheb_last = cheb(TMath::Abs(y), 0.5*max_y, 1.0, deg, deg);
+						      double nu_last   = nu_chebs(deg, deg);
+						      for(unsigned int j = 0; j<=deg; j++){
+							double cheb_j = cheb(TMath::Abs(y), 0.5*max_y, 1.0, deg, j);
+							double nu_j = nu_chebs(deg, j);
+							out.emplace_back(j<deg ? cheb_j - cheb_last*nu_j/nu_last : cheb_last/nu_last/(2*max_y));
+						      }
+						    }
+						  }
+						  else{
+						    if(!normalize_pdfy){
+						      for(unsigned int j = 0; j<=mid_deg; j++){
+							double cheb_j  = cheb(y, max_y, 0.0, deg, j) + cheb(y, max_y, 0.0, deg, deg-j) ;
+							double alpha_j = j<mid_deg ? 1.0 : (deg%2==0 ? 0.5 : 1.0);
+							out.emplace_back( cheb_j*alpha_j );
+						      }
+						    }
+						    else{
+						      double cheb_last = cheb(y, max_y, 0.0, deg, 0) + cheb(y, max_y, 0.0, deg, deg);
+						      double nu_last   = nu_chebs(deg, 0);
+						      double alpha_last = 0<mid_deg ? 1.0 : (deg%2==0 ? 0.5 : 1.0);
+						      for(unsigned int j = 0; j<=mid_deg; j++){
+							double cheb_j  = cheb(y, max_y, 0.0, deg, j) + cheb(y, max_y, 0.0, deg, deg-j) ;
+							double alpha_j = j<mid_deg ? 1.0 : (deg%2==0 ? 0.5 : 1.0);
+							double nu_j = nu_chebs(deg, j);
+							out.emplace_back( j==0 ? 
+									  0.5*cheb_last/nu_last/alpha_last/(2*max_y) : 
+									  (alpha_j/alpha_last)*(cheb_j - cheb_last*nu_j/nu_last));
+						      } 
+						    }
+						  }
+						  ////////
+						  /*
 						  if( !normalize_pdfy ){
-						    for(unsigned int j = 0; j<=deg; j++){
+  						    for(unsigned int j = 0; j<=(do_absy ? deg : deg/2); j++){
 						      double cheb_j = do_absy ? cheb(TMath::Abs(y), 0.5*max_y, 1.0, deg, j) : cheb(y, max_y, 0.0, deg, j) ;
 						      out.emplace_back( cheb_j );
 						    }
@@ -429,9 +468,10 @@ int main(int argc, char* argv[])
 							  double nu_j = nu_chebs(deg, j);
 							  out.emplace_back((alpha_j/alpha_last)*(cheb_j - cheb_last*nu_j/nu_last));
 							}
-						      }
+						      } 
 						    }
 						  }
+						  */
 						  return out;
 						}, {"y"} ));
 
@@ -447,10 +487,10 @@ int main(int argc, char* argv[])
 						      }
 						    }
 						    else{
-						      unsigned int mid_deg = degs(pdf_type::corr_y)/2;
 						      unsigned int deg = degs(pdf_type::corr_y);
+						      unsigned int mid_deg = deg/2;
 						      for(unsigned int l = 0; l<=mid_deg; l++){
-							double cheb_l = (cheb(y, max_y, 0.0, deg, l) + cheb(y, max_y, 0.0, deg, deg-l)) ;
+							double cheb_l = cheb(y, max_y, 0.0, deg, l) + cheb(y, max_y, 0.0, deg, deg-l) ;
 							double alpha_l = l<mid_deg ? 1.0 : (deg%2==0 ? 0.5 : 1.0);
 							out.emplace_back( corrx*(cheb_l*alpha_l) );
 						      }
@@ -471,8 +511,8 @@ int main(int argc, char* argv[])
 							}
 						      }
 						      else{
-							unsigned int mid_deg = degs(get_pdf_type(hel+"_y"))/2;
 							unsigned int deg = degs(get_pdf_type(hel+"_y"));
+							unsigned int mid_deg = deg/2;
 							for(unsigned int l = 0; l<=mid_deg; l++){
 							  double cheb_l = (cheb(y, max_y, 0.0, deg, l) + cheb(y, max_y, 0.0, deg, deg-l)) ;
 							  double alpha_l = l<mid_deg ? 1.0 : (deg%2==0 ? 0.5 : 1.0);
@@ -541,32 +581,19 @@ int main(int argc, char* argv[])
 	pdfy_in.emplace_back( (normalize_pdfy && j==degs(pdf_type::pdf_y)) ? 1.0 : pdf_y[j] );
     }
     else{
-      if(!normalize_pdfy){
-	for(int j = 0; j<=degs(pdf_type::pdf_y); j++) pdfy_in.emplace_back( pdf_y[j] );
-      }
-      else{
-	unsigned int mid_deg = degs(pdf_type::pdf_y)/2;
- 	for(int j = 0; j<=mid_deg; j++) pdfy_in.emplace_back( j==0 ? 1.0 : pdf_y[j] );
-      }
+      unsigned int mid_deg = degs(pdf_type::pdf_y)/2;
+      for(int j = 0; j<=mid_deg; j++) pdfy_in.emplace_back( (normalize_pdfy && j==0) ? 1.0 : pdf_y[j] );
     }
 
     RVecD corrxy_in;
     for(int k = 0; k<=degs(pdf_type::corr_x); k++){
-      if(do_absy){
-	for(int l = 0; l<=degs(pdf_type::corr_y); l++){      
-	  int idx = (degs(pdf_type::corr_y)+1)*k + l; 
-	  corrxy_in.emplace_back( corr_xy[idx] );
-	}
-      }
-      else{
-	unsigned int mid_deg = degs(pdf_type::corr_y)/2;
-	for(int l = 0; l<=mid_deg; l++){      
-	  int idx = (degs(pdf_type::corr_y)+1)*k + l; 
-	  corrxy_in.emplace_back( corr_xy[idx] );
-	}
+      for(int l = 0; l<=(do_absy ? degs(pdf_type::corr_y) : degs(pdf_type::corr_y)/2); l++){      
+	// index to input corr_xy[]
+	int idx = (degs(pdf_type::corr_y) + 1)*k + l; 
+	corrxy_in.emplace_back( corr_xy[idx] );
       }
     }
-
+    
     RVecD A0xy_in;
     for(int k = 0; k<=degs(pdf_type::A0_x); k++){
       if(do_absy){
@@ -667,7 +694,8 @@ int main(int argc, char* argv[])
 						    unsigned int njacs_pdfx = (degs(pdf_type::pdf_x) - int(normalize_pdfx)); // +1 -1
 						    for(unsigned int i = 0; i<njacs_pdfx; i++){
 						      RVecD pdfx_in_copy( pdfx_in.size(), 0.0 );
-						      pdfx_in_copy[i+1] = 1.0; //+1 accounts for pdfx[0] constrained to 0.0
+						      //+1 offet accounts for pdfx[0] constrained to 0.0
+						      pdfx_in_copy[i+1] = 1.0;
 						      out.emplace_back( wUL*
 									ROOT::VecOps::Dot(pdfx_vec,pdfx_in_copy)*
 									B*C*D*
@@ -675,38 +703,39 @@ int main(int argc, char* argv[])
 						    }
 
 						    // Jacobian pdfy
-						    if(do_absy){
-						      unsigned int njacs_pdfy = (degs(pdf_type::pdf_y) + 1 - int(normalize_pdfy));
-						      for(unsigned int j = 0; j<njacs_pdfy; j++){
-							RVecD pdfy_in_copy( pdfy_in.size(), 0.0 );
-							pdfy_in_copy[j] = 1.0;
-							out.emplace_back( wUL*
-									  A*
-									  ROOT::VecOps::Dot(pdfy_vec,pdfy_in_copy)*
-									  C*D*
-									  weightsM.at(0) );
-						      }
-						    }
-						    else{
-						      unsigned int njacs_pdfy = degs(pdf_type::pdf_y)/2 + 1 - int(normalize_pdfy);
-						      for(int j = 0; j<njacs_pdfy; j++){
-							RVecD pdfy_in_copy( pdfy_in.size(), 0.0 );
-							pdfy_in_copy[(normalize_pdfy ? j+1 : j)] = 1.0;
-							out.emplace_back( wUL*
-									  A*
-									  ROOT::VecOps::Dot(pdfy_vec,pdfy_in_copy)*
-									  C*D*
-									  weightsM.at(0) );
-
-						      }						      
+						    unsigned int njacs_pdfy = (do_absy ? degs(pdf_type::pdf_y) : degs(pdf_type::pdf_y)/2) + 1 - int(normalize_pdfy);
+						    for(unsigned int j = 0; j<njacs_pdfy; j++){
+						      RVecD pdfy_in_copy( pdfy_in.size(), 0.0 );
+						      pdfy_in_copy[(!do_absy && normalize_pdfy ? j+1 : j)] = 1.0;
+						      out.emplace_back( wUL*
+									A*
+									ROOT::VecOps::Dot(pdfy_vec,pdfy_in_copy)*
+									C*D*
+									weightsM.at(0) );
 						    }
 						    
 						    // Jacobian corrxy
-						    unsigned int njacs_corrxy = degs(pdf_type::corr_x)*(do_absy ? degs(pdf_type::corr_y)/2+1 : degs(pdf_type::corr_y)+1);
-						    for(unsigned int k = 0; k<njacs_corrxy; k++){
-						      RVecD corrxy_in_copy( corrxy_in.size(), 0.0 );
-						      /* ..FIX.. */
+						    // +1 offset accounts for corr[0,y]==1
+						    //unsigned int njacs_corrxy = degs(pdf_type::corr_x)*(do_absy ? degs(pdf_type::corr_y)/2+1 : degs(pdf_type::corr_y)+1);
+						    for(int k = 1; k<=degs(pdf_type::corr_x); k++){
+							for(int l = 0; l<=(do_absy ? degs(pdf_type::corr_y) : degs(pdf_type::corr_y)/2); l++){      
+							  int idx = ( (do_absy ? degs(pdf_type::corr_y) : degs(pdf_type::corr_y)/2) +1)*k + l;  
+							  RVecD corrxy_in_copy( corrxy_in.size(), 0.0 );
+							  corrxy_in_copy[idx] = 1.0;
+							  out.emplace_back( wUL*
+									    A*B*
+									    ROOT::VecOps::Dot(corrxy_vec,corrxy_in_copy)*
+									    D*
+									    weightsM.at(0) );
+
+							}						      						     
 						    }
+						    
+						    /*
+						    for(unsigned int k = 0; k<njacs_corrxy; k++){
+						    RVecD corrxy_in_copy( corrxy_in.size(), 0.0 );						    
+						    }
+						    */
 
 						    return out;
 
@@ -738,8 +767,10 @@ int main(int argc, char* argv[])
       std::string hname = "";
       if(i>=first_jac_pdfx && i<first_jac_pdfy) 
 	hname = std::string(Form("jac_%d: d(pdf) / d(pdfx_in[%d])", i, i-first_jac_pdfx+1));
-      else if(i>=first_jac_pdfy)
+      else if(i>=first_jac_pdfy && i<first_jac_corrxy)
 	hname = std::string(Form("jac_%d: d(pdf) / d(pdfy_in[%d])", i, i-first_jac_pdfy + 1*(!do_absy && normalize_pdfy) ));
+      else if(i>=first_jac_corrxy) // FIX
+	hname = std::string(Form("jac_%d: d(pdf) / d(corrxy_in[%d])", i, -1));
       histosJac.emplace_back(dlast->Histo2D({ Form("jac_%d",i), hname.c_str(), nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", Form("jac_%d",i)));
     }
     
