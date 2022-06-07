@@ -12,6 +12,9 @@
 #include <iostream>
 #include <boost/program_options.hpp>
 
+//#include <Eigen/Core>
+//using Eigen::MatrixXd;
+
 using namespace std;
 using namespace ROOT;
 typedef ROOT::VecOps::RVec<double> RVecD;
@@ -293,7 +296,8 @@ int main(int argc, char* argv[])
       int idx = (degs(pdf_type::A0_y)+1)*m + n; 
       tree->Branch(Form("A0_xy_%d_%d", m,n), &(A0_xy[idx]), Form("A0_xy_%d_%d/D", m,n));
       double x = (TMath::Cos((degs(pdf_type::A0_x)-m)*TMath::Pi()/degs(pdf_type::A0_x))+1.0)*0.5*max_x;
-      double y = do_absy ? (TMath::Cos((degs(pdf_type::A0_y)-n)*TMath::Pi()/degs(pdf_type::A0_y))+1.0)*0.5*max_y : TMath::Cos((degs(pdf_type::A0_y)-n)*TMath::Pi()/degs(pdf_type::A0_y))*max_y;
+      double y = do_absy ? (TMath::Cos((degs(pdf_type::A0_y)-n)*TMath::Pi()/degs(pdf_type::A0_y))+1.0)*0.5*max_y : 
+	TMath::Cos((degs(pdf_type::A0_y)-n)*TMath::Pi()/degs(pdf_type::A0_y))*max_y;
       A0_xy[idx] = toy_A0->Eval(TMath::Abs(y),x);      
     }
   }
@@ -432,46 +436,6 @@ int main(int argc, char* argv[])
 						      } 
 						    }
 						  }
-						  ////////
-						  /*
-						  if( !normalize_pdfy ){
-  						    for(unsigned int j = 0; j<=(do_absy ? deg : deg/2); j++){
-						      double cheb_j = do_absy ? cheb(TMath::Abs(y), 0.5*max_y, 1.0, deg, j) : cheb(y, max_y, 0.0, deg, j) ;
-						      out.emplace_back( cheb_j );
-						    }
-						  }
-						  else{
-						    // abs y
-						    if(do_absy){
-						      double cheb_last = cheb(TMath::Abs(y), 0.5*max_y, 1.0, deg, deg);
-						      double nu_last   = nu_chebs(deg, deg);
-						      for(unsigned int j = 0; j<=deg; j++){
-							double cheb_j = cheb(TMath::Abs(y), 0.5*max_y, 1.0, deg, j);
-							if(j<deg){
-							  double nu_j = nu_chebs(deg, j);
-							  out.emplace_back(cheb_j - cheb_last*nu_j/nu_last);
-							}
-							else out.emplace_back( cheb_last/nu_last/(2*max_y) );
-						      }
-						    }
-						    // y with sign
-						    else{
-						      unsigned int mid_deg = deg/2;
-						      double cheb_last = cheb(y, max_y, 0.0, deg, 0) + cheb(y, max_y, 0.0, deg, deg);
-						      double nu_last   = nu_chebs(deg, 0);
-						      double alpha_last = 0<mid_deg ? 1.0 : (deg%2==0 ? 0.5 : 1.0);
-						      for(unsigned int j = 0; j<=mid_deg; j++){
-							if(j==0) out.emplace_back( 0.5*cheb_last/nu_last/alpha_last/(2*max_y) );
-							else{
-							  double cheb_j  = cheb(y, max_y, 0.0, deg, j) + cheb(y, max_y, 0.0, deg, deg-j) ;
-							  double alpha_j = j<mid_deg ? 1.0 : (deg%2==0 ? 0.5 : 1.0);
-							  double nu_j = nu_chebs(deg, j);
-							  out.emplace_back((alpha_j/alpha_last)*(cheb_j - cheb_last*nu_j/nu_last));
-							}
-						      } 
-						    }
-						  }
-						  */
 						  return out;
 						}, {"y"} ));
 
@@ -519,14 +483,6 @@ int main(int argc, char* argv[])
 							  out.emplace_back( Ax*(cheb_l*alpha_l) );
 							}
 						      }
-						      /*
-						      for(unsigned int l = 0; l<=degs(get_pdf_type(hel+"_y")); l++){
-							double Ay = do_absy ? 
-							  cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(get_pdf_type(hel+"_y")), l) : 
-							  cheb(y, max_y, 0.0, degs(get_pdf_type(hel+"_y")), l);
-							out.emplace_back( Ax*Ay );
-						      }
-						      */						      
 						  }
 						    return out;
 						  }, {"x","y"} ));
@@ -540,6 +496,11 @@ int main(int argc, char* argv[])
   std::vector<ROOT::RDF::RResultPtr<TH2D> > histos2D;
   std::vector<ROOT::RDF::RResultPtr<TH2D> > histosJac;
 
+  double poi_val[NMAX];
+  unsigned int poi_cat[NMAX];
+  unsigned int poi_idx[NMAX];
+  unsigned int poi_counter = 0;
+  
   if(run.find("closure")!=string::npos){
 
     TFile* fin = TFile::Open(("root/input_"+tag+".root").c_str(), "READ");
@@ -570,19 +531,38 @@ int main(int argc, char* argv[])
     }
     tree->GetEntry(0);    
     fin->Close();
-    
+     
     RVecD pdfx_in;
-    for(int i = 0; i<=degs(pdf_type::pdf_x); i++) 
+    for(int i = 0; i<=degs(pdf_type::pdf_x); i++){
       pdfx_in.emplace_back( (normalize_pdfx && i==degs(pdf_type::pdf_x)) ? 1.0 : pdf_x[i] );
+      if(i==0 || (normalize_pdfx && i==degs(pdf_type::pdf_x)) ) continue;
+      poi_val[poi_counter] = pdf_x[i];
+      poi_cat[poi_counter] = 0;
+      poi_idx[poi_counter] = i;
+      poi_counter++;
+    }
 
     RVecD pdfy_in;
     if(do_absy){
-      for(int j = 0; j<=degs(pdf_type::pdf_y); j++) 
+      for(int j = 0; j<=degs(pdf_type::pdf_y); j++){ 
 	pdfy_in.emplace_back( (normalize_pdfy && j==degs(pdf_type::pdf_y)) ? 1.0 : pdf_y[j] );
+	if(normalize_pdfy && j==degs(pdf_type::pdf_y) ) continue;
+	poi_val[poi_counter] = pdf_y[j];
+	poi_cat[poi_counter] = 1;
+	poi_idx[poi_counter] = j;	
+	poi_counter++;
+      }
     }
     else{
       unsigned int mid_deg = degs(pdf_type::pdf_y)/2;
-      for(int j = 0; j<=mid_deg; j++) pdfy_in.emplace_back( (normalize_pdfy && j==0) ? 1.0 : pdf_y[j] );
+      for(int j = 0; j<=mid_deg; j++){
+	pdfy_in.emplace_back( (normalize_pdfy && j==0) ? 1.0 : pdf_y[j] );
+	if( normalize_pdfy && j==0 ) continue;
+	poi_val[poi_counter] = pdf_y[j];
+	poi_cat[poi_counter] = 1;
+	poi_idx[poi_counter] = j;	
+	poi_counter++;
+      }
     }
 
     RVecD corrxy_in;
@@ -591,9 +571,15 @@ int main(int argc, char* argv[])
 	// index to input corr_xy[]
 	int idx = (degs(pdf_type::corr_y) + 1)*k + l; 
 	corrxy_in.emplace_back( corr_xy[idx] );
+	if(k==0) continue;
+	poi_val[poi_counter] = corr_xy[idx];
+	poi_cat[poi_counter] = 2;
+	poi_idx[poi_counter] = idx;	
+	poi_counter++;
       }
     }
-    
+
+    // FIX
     RVecD A0xy_in;
     for(int k = 0; k<=degs(pdf_type::A0_x); k++){
       if(do_absy){
@@ -609,12 +595,6 @@ int main(int argc, char* argv[])
 	  A0xy_in.emplace_back( A0_xy[idx] );
 	}
       }
-      /*
-      for(int l = 0; l<=degs(pdf_type::A0_y); l++){      
-	int idx = (degs(pdf_type::A0_y)+1)*k + l; 
-	A0xy_in.emplace_back( A0_xy[idx] );
-      }
-      */
     }
 		
     dlast = std::make_unique<RNode>(dlast->Define("harmonics", [&](double x, double y, double cos, double phi) -> RVecD{
@@ -769,11 +749,14 @@ int main(int argc, char* argv[])
 	hname = std::string(Form("jac_%d: d(pdf) / d(pdfx_in[%d])", i, i-first_jac_pdfx+1));
       else if(i>=first_jac_pdfy && i<first_jac_corrxy)
 	hname = std::string(Form("jac_%d: d(pdf) / d(pdfy_in[%d])", i, i-first_jac_pdfy + 1*(!do_absy && normalize_pdfy) ));
-      else if(i>=first_jac_corrxy) // FIX
-	hname = std::string(Form("jac_%d: d(pdf) / d(corrxy_in[%d])", i, -1));
+      else if(i>=first_jac_corrxy){
+	unsigned int idx_x = (i-first_jac_corrxy) / ((do_absy ? degs(pdf_type::corr_y) : degs(pdf_type::corr_y)/2) +1) + 1;
+	unsigned int idx_y = (i-first_jac_corrxy) % ((do_absy ? degs(pdf_type::corr_y) : degs(pdf_type::corr_y)/2) +1);
+	hname = std::string(Form("jac_%d: d(pdf) / d(corrxy_in[%d][%d])", i, idx_x, idx_y));	
+      }
       histosJac.emplace_back(dlast->Histo2D({ Form("jac_%d",i), hname.c_str(), nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", Form("jac_%d",i)));
     }
-    
+
     /*
     histos1D.emplace_back(dlast->Histo1D({"w_pdfx",    "", 20, 0.0, max_x}, "x", "w"));      
     histos1D.emplace_back(dlast->Histo1D({"w_pdfy",    "", 20, 0.0, max_y}, "y", "w"));      
@@ -823,6 +806,13 @@ int main(int argc, char* argv[])
   outtree->Branch("n_pdfy", &n_pdfy, "n_pdfy/I");
   outtree->Branch("norms_pdfy", &norms_pdfy, "norms_pdfy[n_pdfy]/D");
   outtree->Branch("points_y", &points_y, "points_y[n_pdfy]/D");
+
+  outtree->Branch("poi_counter", &poi_counter, "poi_counter/i");
+  outtree->Branch("poi_val", &poi_val, "poi_val[poi_counter]/D");
+  outtree->Branch("poi_cat", &poi_cat, "poi_cat[poi_counter]/i");
+  outtree->Branch("poi_idx", &poi_idx, "poi_idx[poi_counter]/i");
+
+  outtree->Branch("nevents", &nevents, "nevents/L");
 
   for(int i = 0; i<=degs(pdf_type::pdf_x); i++){
     //norms_pdfx[i] = *(sums[i])/total;
