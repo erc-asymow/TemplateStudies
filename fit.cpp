@@ -9,6 +9,7 @@
 #include <boost/program_options.hpp>
 
 #include <Eigen/Core>
+#include <Eigen/Dense>
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -84,58 +85,86 @@ int main(int argc, char* argv[])
     return 0;
   }
 
-  long n;
+  Long64_t N;
   double poi_val[NMAX];
   unsigned int poi_cat[NMAX];
   unsigned int poi_idx[NMAX];
   unsigned int poi_counter;
   TTree* outtree = fout->Get<TTree>("outtree");
-  outtree->SetBranchAddress("events", &n);
+  outtree->SetBranchAddress("nevents", &N);
   outtree->SetBranchAddress("poi_counter", &poi_counter);
   outtree->SetBranchAddress("poi_val", &poi_val);
   outtree->SetBranchAddress("poi_cat", &poi_cat);
   outtree->SetBranchAddress("poi_idx", &poi_idx);
   outtree->GetEntry(0);    
 
+  poi_counter = 18;
+
   TH2D* hw = fout->Get<TH2D>("w");
   TH2D* hwMC = fout->Get<TH2D>("wMC");
+  
+  double lumi_fact = nevents>0 ? nevents/hwMC->Integral() : 1.0; 
+  cout << "Scaling input histos by " << lumi_fact << endl;
+  N *= lumi_fact;
+  hw->Scale(lumi_fact);
+  hwMC->Scale(lumi_fact);
+
   int nx = hw->GetXaxis()->GetNbins(); 
   int ny = hw->GetYaxis()->GetNbins(); 
+  int nbins = nx*ny;
 
-  MatrixXd jac((nx*ny), poi_counter+1);
+  MatrixXd jac(nbins, poi_counter+1);
+  VectorXd y(nbins);
+  MatrixXd inv_sqrtV(nbins, nbins);
+  MatrixXd inv_V(nbins, nbins);
+  inv_sqrtV *= 0.;
+  inv_V *= 0.;
 
-  // FIX jacobian wrt N
-
-  unsigned int counter = 0;
+  unsigned int bin_counter = 0;
   for(unsigned int ix = 1; ix<=nx; ix++ ){
     for(unsigned int iy = 1; iy<=ny; iy++ ){
-      jac(counter,0) = (hw->GetBinContent(ix,iy) - hwMC->GetBinContent(ix,iy)); 
-      counter++;
+      jac(bin_counter,0) = hw->GetBinContent(ix,iy);
+      y(bin_counter) = hw->GetBinContent(ix,iy)-hwMC->GetBinContent(ix,iy);
+      inv_sqrtV(bin_counter,bin_counter) = 1./TMath::Sqrt(hwMC->GetBinContent(ix,iy));
+      inv_V(bin_counter,bin_counter) = 1./hwMC->GetBinContent(ix,iy);
+      bin_counter++;
     }
   }
     
   for(unsigned int j = 0; j<poi_counter; j++){
     TH2D* hjac = fout->Get<TH2D>(Form("jac_%d", j));
-    //VectorXd jac_v(nx*ny);
-    unsigned int counter = 0;
+    bin_counter = 0;
     for(unsigned int ix = 1; ix<=nx; ix++ ){
       for(unsigned int iy = 1; iy<=ny; iy++ ){
-	jac(counter,j+1) = n*hjac->GetBinContent(ix,iy); 
-	counter++;
+	jac(bin_counter,j+1) = N*hjac->GetBinContent(ix,iy); 
+	bin_counter++;
       }
     }
-    cout << jac << endl;
+    //cout << jac << endl;
   }
-
 
   fout->Close();
-  /*
-  for(unsigned int p = 0 ; p<poi_counter; p++){
-    cout << "poi_val[" << p << "]" << " = " << poi_val[p] << endl; 
+  
+  MatrixXd A = inv_sqrtV*jac;
+  MatrixXd b = inv_sqrtV*y;
+  //cout << b << endl;
+  VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
+  MatrixXd C = (jac.transpose()*inv_V*jac).inverse();
+  MatrixXd rho( C.rows(), C.rows() ) ;
+  for(unsigned int ir = 0; ir<C.rows(); ir++){
+    for(unsigned int ic = 0; ic<C.rows(); ic++){
+      rho(ir,ic) = C(ir,ic)/TMath::Sqrt(C(ir,ir)*C(ic,ic));
+    }
   }
-  */
-  
-  
+
+  cout << rho << endl;
+
+  VectorXd pulls(x.size());
+  for(unsigned int ip = 0; ip<pulls.size(); ip++){
+    pulls(ip) = x(ip) / TMath::Sqrt(C(ip,ip));
+  }
+  cout << pulls << endl;
+
   sw.Stop();
   std::cout << "Real time: " << sw.RealTime() << " seconds " << "(CPU time:  " << sw.CpuTime() << " seconds)" << std::endl;
   return 1;
