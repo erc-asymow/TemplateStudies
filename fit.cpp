@@ -6,6 +6,8 @@
 #include "TF2.h"
 #include <TStopwatch.h>
 #include <iostream>
+#include <algorithm>
+#include <vector>
 #include <boost/program_options.hpp>
 
 #include <Eigen/Core>
@@ -38,6 +40,9 @@ int main(int argc, char* argv[])
 	("degs_corr_y", value<int>()->default_value(2), "max degree in y of corrxy")
 	("degs_A0_x",   value<int>()->default_value(2), "max degree in x for A0")
 	("degs_A0_y",   value<int>()->default_value(2), "max degree in y for A0")
+	("j0",    bool_switch()->default_value(false), "")
+	("j1",    bool_switch()->default_value(false), "")
+	("j2",    bool_switch()->default_value(false), "")
 	("tag", value<std::string>()->default_value(""), "tag name")
 	("run", value<std::string>()->default_value("closure"), "run type");
 
@@ -71,6 +76,9 @@ int main(int argc, char* argv[])
   int degs_corr_y = vm["degs_corr_y"].as<int>();
   int degs_A0_x   = vm["degs_A0_x"].as<int>();
   int degs_A0_y   = vm["degs_A0_y"].as<int>();
+  int j0   = vm["j0"].as<bool>();
+  int j1   = vm["j1"].as<bool>();
+  int j2   = vm["j2"].as<bool>();
 
   if(vm.count("degs_pdf_x"))  tag += std::string(Form("_%d", degs_pdf_x));
   if(vm.count("degs_pdf_y"))  tag += std::string(Form("_%d", degs_pdf_y));
@@ -97,8 +105,17 @@ int main(int argc, char* argv[])
   outtree->SetBranchAddress("poi_cat", &poi_cat);
   outtree->SetBranchAddress("poi_idx", &poi_idx);
   outtree->GetEntry(0);    
-
-  poi_counter = 18;
+  
+  std::vector<unsigned int> active_pois = {};
+  for(unsigned int p = 0; p < poi_counter; p++){
+    if(poi_cat[p]==0 && j0) active_pois.emplace_back(p);
+    if(poi_cat[p]==1 && j1) active_pois.emplace_back(p);
+    if(poi_cat[p]==2 && j2){
+      active_pois.emplace_back(p);
+    }
+  }
+  poi_counter = active_pois.size();
+  for(auto p : active_pois) cout << p << ", " << endl;
 
   TH2D* hw = fout->Get<TH2D>("w");
   TH2D* hwMC = fout->Get<TH2D>("wMC");
@@ -113,7 +130,8 @@ int main(int argc, char* argv[])
   int ny = hw->GetYaxis()->GetNbins(); 
   int nbins = nx*ny;
 
-  MatrixXd jac(nbins, poi_counter+1);
+  //MatrixXd jac(nbins, poi_counter+1);
+  MatrixXd jac(nbins, poi_counter);
   VectorXd y(nbins);
   MatrixXd inv_sqrtV(nbins, nbins);
   MatrixXd inv_V(nbins, nbins);
@@ -123,20 +141,23 @@ int main(int argc, char* argv[])
   unsigned int bin_counter = 0;
   for(unsigned int ix = 1; ix<=nx; ix++ ){
     for(unsigned int iy = 1; iy<=ny; iy++ ){
-      jac(bin_counter,0) = hw->GetBinContent(ix,iy);
+      //jac(bin_counter,0) = hw->GetBinContent(ix,iy);
       y(bin_counter) = hw->GetBinContent(ix,iy)-hwMC->GetBinContent(ix,iy);
       inv_sqrtV(bin_counter,bin_counter) = 1./TMath::Sqrt(hwMC->GetBinContent(ix,iy));
       inv_V(bin_counter,bin_counter) = 1./hwMC->GetBinContent(ix,iy);
       bin_counter++;
     }
   }
-    
+
   for(unsigned int j = 0; j<poi_counter; j++){
-    TH2D* hjac = fout->Get<TH2D>(Form("jac_%d", j));
+    //if( std::find(active_pois.begin(), active_pois.end(), j) == active_pois.end() ) continue;    
+    unsigned int idx = active_pois[j];
+    TH2D* hjac = fout->Get<TH2D>(Form("jac_%d", idx));
     bin_counter = 0;
     for(unsigned int ix = 1; ix<=nx; ix++ ){
       for(unsigned int iy = 1; iy<=ny; iy++ ){
-	jac(bin_counter,j+1) = N*hjac->GetBinContent(ix,iy); 
+	//jac(bin_counter,j+1) = N*hjac->GetBinContent(ix,iy); 
+	jac(bin_counter,j) = N*hjac->GetBinContent(ix,iy); 
 	bin_counter++;
       }
     }
@@ -164,6 +185,11 @@ int main(int argc, char* argv[])
     pulls(ip) = x(ip) / TMath::Sqrt(C(ip,ip));
   }
   cout << pulls << endl;
+
+  for(unsigned int j = 0; j<poi_counter; j++){
+    unsigned int idx = active_pois[j];
+    cout << "poi " << idx << ": " << poi_val[idx] << " +/- " << TMath::Sqrt(C(j,j)) << endl;
+  }
 
   sw.Stop();
   std::cout << "Real time: " << sw.RealTime() << " seconds " << "(CPU time:  " << sw.CpuTime() << " seconds)" << std::endl;
