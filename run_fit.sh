@@ -17,7 +17,7 @@ do
 			echo 'Now doing ', $X, $Y, $CORRX, $CORRY
 			./fit --nevents=-1 --tag=$GRID --run=closure --degs_pdf_x=$X --degs_pdf_y=$Y --degs_corr_x=$CORRX --degs_corr_y=$CORRY\
 		        --degs_A0_x=$A0X --degs_A0_y=$A0Y\
-                        --j0 --j2
+                        --j0 --j1 --j2
 			#--j1 --j2
                         #--j0
                         #--j0

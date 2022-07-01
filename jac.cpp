@@ -178,7 +178,7 @@ int main(int argc, char* argv[])
   const double yHigh = 55.;
   */
   const int nbinsX   = 13; 
-  const double xLow  = -max_y;
+  const double xLow  = 0;
   const double xHigh = +max_y;
   const int nbinsY   = 15; 
   const double yLow  = 0.;
@@ -219,7 +219,7 @@ int main(int argc, char* argv[])
   unsigned int first_jac_pdfy = njacs;
   njacs += (do_absy ? degs(pdf_type::pdf_y) : degs(pdf_type::pdf_y)/2 ) + 1 - int(normalize_pdfy);
   unsigned int first_jac_corrxy = njacs;  
-  njacs += (degs(pdf_type::corr_x) + 1 - 1)*( (do_absy ? degs(pdf_type::corr_y) : degs(pdf_type::corr_y)/2) + 1 ) + 1;
+  njacs += (degs(pdf_type::corr_x) + 1 - 1)*( (do_absy ? degs(pdf_type::corr_y) : degs(pdf_type::corr_y)/2) + 1 );
 
   //njacs += (degs(pdf_type::pdf_y) - int(normalize_pdfy) );
   //njacs += (degs(pdf_type::corr_x) - 1)*degs(pdf_type::corr_y);
@@ -458,6 +458,7 @@ int main(int argc, char* argv[])
 						  RVecD out;
 						  
 						  double corrx_0 = cheb(x, 0.5*max_x, 1.0, degs(pdf_type::corr_x), 0);
+						  /*
 						  if(do_absy){
 						    double corry = 0.;
 						    for(unsigned int l = 0; l<=degs(pdf_type::corr_y); l++){
@@ -478,7 +479,8 @@ int main(int argc, char* argv[])
 						    //corrx_0 = 1.0;
 						    out.emplace_back( corrx_0*corry );
 						  }
-
+						  */
+						  out.emplace_back( corrx_0 );
 
 						  for(unsigned int k = 1; k<=degs(pdf_type::corr_x); k++){
 						    double corrx = cheb(x, 0.5*max_x, 1.0, degs(pdf_type::corr_x), k);
@@ -752,10 +754,10 @@ int main(int argc, char* argv[])
 						    }
 						    */
 
-						    unsigned int njacs_corrxy = degs(pdf_type::corr_x)*( (do_absy ? degs(pdf_type::corr_y) : degs(pdf_type::corr_y)/2) + 1 ) + 1;
+						    unsigned int njacs_corrxy = degs(pdf_type::corr_x)*( (do_absy ? degs(pdf_type::corr_y) : degs(pdf_type::corr_y)/2) + 1 );
 						    for(unsigned int i = 0; i<njacs_corrxy; i++){
 						      RVecD corrxy_in_copy( corrxy_in.size(), 0.0 );
-						      corrxy_in_copy[i] = 1.0;
+						      corrxy_in_copy[1+i] = 1.0;
 						      out.emplace_back( wUL*
 									A*
 									B*
@@ -816,12 +818,9 @@ int main(int argc, char* argv[])
 	unsigned int idx_y = (i-first_jac_corrxy) % ((do_absy ? degs(pdf_type::corr_y) : degs(pdf_type::corr_y)/2) +1);
 	hname = std::string(Form("jac_%d: d(pdf) / d(corrxy_in[%d][%d])", i, idx_x, idx_y));	
 	*/
-	unsigned int idx_x = (i-1-first_jac_corrxy) / ((do_absy ? degs(pdf_type::corr_y) : degs(pdf_type::corr_y)/2) +1) + 1;
-	unsigned int idx_y = (i-1-first_jac_corrxy) % ((do_absy ? degs(pdf_type::corr_y) : degs(pdf_type::corr_y)/2) +1);
-	if(i==first_jac_corrxy) 
-	  hname = std::string(Form("jac_%d: d(pdf) / d(corrxy_in[0][...])", i));	
-	else 
-	  hname = std::string(Form("jac_%d: d(pdf) / d(corrxy_in[%d][%d])", i, idx_x, idx_y));	
+	unsigned int idx_x = (i-first_jac_corrxy) / ((do_absy ? degs(pdf_type::corr_y) : degs(pdf_type::corr_y)/2) +1) + 1;
+	unsigned int idx_y = (i-first_jac_corrxy) % ((do_absy ? degs(pdf_type::corr_y) : degs(pdf_type::corr_y)/2) +1);
+	hname = std::string(Form("jac_%d: d(pdf) / d(corrxy_in[%d][%d])", i, idx_x, idx_y));	
       }
       //histosJac.emplace_back(dlast->Histo2D({ Form("jac_%d",i), hname.c_str(), nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", Form("jac_%d",i)));
       histosJac.emplace_back(dlast->Histo2D({ Form("jac_%d",i), hname.c_str(), nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "y", "x", Form("jac_%d",i)));

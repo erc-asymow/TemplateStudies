@@ -1,7 +1,7 @@
 
 {
 
-  TString name = "jacA0";
+  TString name = "fix";
 
   int axis = 1;
   
@@ -17,7 +17,7 @@
   for(auto X : ROOT::TSeqI(16) ){
     if(X!=12) continue;
     for(auto Y : ROOT::TSeqI(13) ){
-      if(Y!=6) continue;
+      if(Y!=4) continue;
       for(auto CORRX : ROOT::TSeqI(13) ){
 	if(CORRX>5) continue;
 	for(auto CORRY : ROOT::TSeqI(13) ){
@@ -83,8 +83,8 @@
   i = 0;
   for(auto h : histos){
     if(i==0){
-      h->SetMinimum(0.998);
-      h->SetMaximum(1.002);
+      h->SetMinimum(0.99);
+      h->SetMaximum(1.01);
       h->Draw("HIST");
     }
     else h->Draw("HISTSAME");

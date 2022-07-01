@@ -80,8 +80,8 @@ int main(int argc, char* argv[])
   int j1   = vm["j1"].as<bool>();
   int j2   = vm["j2"].as<bool>();
 
-  if(vm.count("degs_pdf_x"))  tag += std::string(Form("_%d", degs_pdf_x));
-  if(vm.count("degs_pdf_y"))  tag += std::string(Form("_%d", degs_pdf_y));
+  //if(vm.count("degs_pdf_x"))  tag += std::string(Form("_%d", degs_pdf_x));
+  //if(vm.count("degs_pdf_y"))  tag += std::string(Form("_%d", degs_pdf_y));
   if(vm.count("degs_corr_x")) tag += std::string(Form("_%d", degs_corr_x));
   if(vm.count("degs_corr_y")) tag += std::string(Form("_%d", degs_corr_y));
   if(vm.count("degs_A0_x"))   tag += std::string(Form("_%d", degs_A0_x));
@@ -108,14 +108,16 @@ int main(int argc, char* argv[])
   
   std::vector<unsigned int> active_pois = {};
   for(unsigned int p = 0; p < poi_counter; p++){
+    cout << p << ", " << poi_cat[p] << endl;
     if(poi_cat[p]==0 && j0) active_pois.emplace_back(p);
     if(poi_cat[p]==1 && j1) active_pois.emplace_back(p);
     if(poi_cat[p]==2 && j2){
-      active_pois.emplace_back(p);
+      active_pois.emplace_back(p);      
     }
   }
   poi_counter = active_pois.size();
-  for(auto p : active_pois) cout << p << ", " << endl;
+  for(auto p : active_pois) cout << p << ", ";
+  cout << endl;
 
   TH2D* hw = fout->Get<TH2D>("w");
   TH2D* hwMC = fout->Get<TH2D>("wMC");
@@ -141,7 +143,6 @@ int main(int argc, char* argv[])
   unsigned int bin_counter = 0;
   for(unsigned int ix = 1; ix<=nx; ix++ ){
     for(unsigned int iy = 1; iy<=ny; iy++ ){
-      //jac(bin_counter,0) = hw->GetBinContent(ix,iy);
       y(bin_counter) = hw->GetBinContent(ix,iy)-hwMC->GetBinContent(ix,iy);
       inv_sqrtV(bin_counter,bin_counter) = 1./TMath::Sqrt(hwMC->GetBinContent(ix,iy));
       inv_V(bin_counter,bin_counter) = 1./hwMC->GetBinContent(ix,iy);
@@ -150,25 +151,21 @@ int main(int argc, char* argv[])
   }
 
   for(unsigned int j = 0; j<poi_counter; j++){
-    //if( std::find(active_pois.begin(), active_pois.end(), j) == active_pois.end() ) continue;    
     unsigned int idx = active_pois[j];
     TH2D* hjac = fout->Get<TH2D>(Form("jac_%d", idx));
     bin_counter = 0;
     for(unsigned int ix = 1; ix<=nx; ix++ ){
       for(unsigned int iy = 1; iy<=ny; iy++ ){
-	//jac(bin_counter,j+1) = N*hjac->GetBinContent(ix,iy); 
 	jac(bin_counter,j) = N*hjac->GetBinContent(ix,iy); 
 	bin_counter++;
       }
     }
-    //cout << jac << endl;
   }
 
   fout->Close();
   
   MatrixXd A = inv_sqrtV*jac;
   MatrixXd b = inv_sqrtV*y;
-  //cout << b << endl;
   VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
   MatrixXd C = (jac.transpose()*inv_V*jac).inverse();
   MatrixXd rho( C.rows(), C.rows() ) ;
@@ -178,7 +175,14 @@ int main(int argc, char* argv[])
     }
   }
 
-  cout << rho << endl;
+  //cout << rho << endl;
+
+  MatrixXd chi2old = b.transpose()*b;
+  MatrixXd chi2 = ((b - A*x).transpose())*(b-A*x);
+  int ndof = nbins-poi_counter;
+  double chi2norm = chi2(0,0)/ndof;
+  cout << "chi2(start) = " << chi2old(0,0) << endl;
+  cout << "chi2 = " << chi2 << ", ndof = " << ndof << " => chi2/ndof = " << chi2norm << endl; 
 
   VectorXd pulls(x.size());
   for(unsigned int ip = 0; ip<pulls.size(); ip++){
