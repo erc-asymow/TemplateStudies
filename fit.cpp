@@ -40,9 +40,20 @@ int main(int argc, char* argv[])
 	("degs_corr_y", value<int>()->default_value(2), "max degree in y of corrxy")
 	("degs_A0_x",   value<int>()->default_value(2), "max degree in x for A0")
 	("degs_A0_y",   value<int>()->default_value(2), "max degree in y for A0")
+	("degs_A1_x",   value<int>()->default_value(2), "max degree in x for A1")
+	("degs_A1_y",   value<int>()->default_value(2), "max degree in y for A1")
+	("degs_A2_x",   value<int>()->default_value(2), "max degree in x for A2")
+	("degs_A2_y",   value<int>()->default_value(2), "max degree in y for A2")
+	("degs_A3_x",   value<int>()->default_value(2), "max degree in x for A3")
+	("degs_A3_y",   value<int>()->default_value(2), "max degree in y for A3")
+	("degs_A4_x",   value<int>()->default_value(2), "max degree in x for A4")
+	("degs_A4_y",   value<int>()->default_value(2), "max degree in y for A4")
+	("jUL",   bool_switch()->default_value(false), "")
 	("j0",    bool_switch()->default_value(false), "")
 	("j1",    bool_switch()->default_value(false), "")
 	("j2",    bool_switch()->default_value(false), "")
+	("j3",    bool_switch()->default_value(false), "")
+	("j4",    bool_switch()->default_value(false), "")
 	("tag", value<std::string>()->default_value(""), "tag name")
 	("run", value<std::string>()->default_value("closure"), "run type");
 
@@ -76,16 +87,35 @@ int main(int argc, char* argv[])
   int degs_corr_y = vm["degs_corr_y"].as<int>();
   int degs_A0_x   = vm["degs_A0_x"].as<int>();
   int degs_A0_y   = vm["degs_A0_y"].as<int>();
+  int degs_A1_x   = vm["degs_A1_x"].as<int>();
+  int degs_A1_y   = vm["degs_A1_y"].as<int>();
+  int degs_A2_x   = vm["degs_A2_x"].as<int>();
+  int degs_A2_y   = vm["degs_A2_y"].as<int>();
+  int degs_A3_x   = vm["degs_A3_x"].as<int>();
+  int degs_A3_y   = vm["degs_A3_y"].as<int>();
+  int degs_A4_x   = vm["degs_A4_x"].as<int>();
+  int degs_A4_y   = vm["degs_A4_y"].as<int>();
+  int jUL  = vm["jUL"].as<bool>();
   int j0   = vm["j0"].as<bool>();
   int j1   = vm["j1"].as<bool>();
   int j2   = vm["j2"].as<bool>();
+  int j3   = vm["j3"].as<bool>();
+  int j4   = vm["j4"].as<bool>();
 
   //if(vm.count("degs_pdf_x"))  tag += std::string(Form("_%d", degs_pdf_x));
   //if(vm.count("degs_pdf_y"))  tag += std::string(Form("_%d", degs_pdf_y));
-  if(vm.count("degs_corr_x")) tag += std::string(Form("_%d", degs_corr_x));
+  if(vm.count("degs_corr_x")) tag += std::string(Form("_UL_%d", degs_corr_x));
   if(vm.count("degs_corr_y")) tag += std::string(Form("_%d", degs_corr_y));
-  if(vm.count("degs_A0_x"))   tag += std::string(Form("_%d", degs_A0_x));
+  if(vm.count("degs_A0_x"))   tag += std::string(Form("_A0_%d", degs_A0_x));
   if(vm.count("degs_A0_y"))   tag += std::string(Form("_%d", degs_A0_y));
+  if(vm.count("degs_A1_x"))   tag += std::string(Form("_A1_%d", degs_A1_x));
+  if(vm.count("degs_A1_y"))   tag += std::string(Form("_%d", degs_A1_y));
+  if(vm.count("degs_A2_x"))   tag += std::string(Form("_A2_%d", degs_A2_x));
+  if(vm.count("degs_A2_y"))   tag += std::string(Form("_%d", degs_A2_y));
+  if(vm.count("degs_A3_x"))   tag += std::string(Form("_A3_%d", degs_A3_x));
+  if(vm.count("degs_A3_y"))   tag += std::string(Form("_%d", degs_A3_y));
+  if(vm.count("degs_A4_x"))   tag += std::string(Form("_A4_%d", degs_A4_x));
+  if(vm.count("degs_A4_y"))   tag += std::string(Form("_%d", degs_A4_y));
 
   TFile* fout = TFile::Open(("root/histos_"+tag+"_"+run+".root").c_str(), "READ");
   if(fout==0 || fout==nullptr || fout->IsZombie()){
@@ -108,12 +138,13 @@ int main(int argc, char* argv[])
   
   std::vector<unsigned int> active_pois = {};
   for(unsigned int p = 0; p < poi_counter; p++){
-    cout << p << ", " << poi_cat[p] << endl;
-    if(poi_cat[p]==0 && j0) active_pois.emplace_back(p);
-    if(poi_cat[p]==1 && j1) active_pois.emplace_back(p);
-    if(poi_cat[p]==2 && j2){
-      active_pois.emplace_back(p);      
-    }
+    //cout << p << ", " << poi_cat[p] << endl;
+    if(poi_cat[p]==-1 && jUL) active_pois.emplace_back(p);
+    if(poi_cat[p]==0  && j0) active_pois.emplace_back(p);
+    if(poi_cat[p]==1  && j1) active_pois.emplace_back(p);
+    if(poi_cat[p]==2  && j2) active_pois.emplace_back(p);      
+    if(poi_cat[p]==3  && j3) active_pois.emplace_back(p);      
+    if(poi_cat[p]==4  && j4) active_pois.emplace_back(p);      
   }
   poi_counter = active_pois.size();
   for(auto p : active_pois) cout << p << ", ";
@@ -175,25 +206,27 @@ int main(int argc, char* argv[])
     }
   }
 
-  //cout << rho << endl;
+  cout << rho << endl;
 
   MatrixXd chi2old = b.transpose()*b;
   MatrixXd chi2 = ((b - A*x).transpose())*(b-A*x);
   int ndof = nbins-poi_counter;
   double chi2norm = chi2(0,0)/ndof;
-  cout << "chi2(start) = " << chi2old(0,0) << endl;
-  cout << "chi2 = " << chi2 << ", ndof = " << ndof << " => chi2/ndof = " << chi2norm << endl; 
 
   VectorXd pulls(x.size());
   for(unsigned int ip = 0; ip<pulls.size(); ip++){
     pulls(ip) = x(ip) / TMath::Sqrt(C(ip,ip));
   }
-  cout << pulls << endl;
+  //cout << pulls << endl;
 
   for(unsigned int j = 0; j<poi_counter; j++){
     unsigned int idx = active_pois[j];
-    cout << "poi " << idx << ": " << poi_val[idx] << " +/- " << TMath::Sqrt(C(j,j)) << endl;
+    cout << "poi " << idx << ": " << poi_val[idx] << " +/- " << TMath::Sqrt(C(j,j)) 
+	 << ". Pull = " << pulls(j) << endl;
   }
+
+  cout << "chi2(start) = " << chi2old(0,0) << endl;
+  cout << "chi2 = " << chi2 << ", ndof = " << ndof << " => chi2/ndof = " << chi2norm << endl; 
 
   sw.Stop();
   std::cout << "Real time: " << sw.RealTime() << " seconds " << "(CPU time:  " << sw.CpuTime() << " seconds)" << std::endl;

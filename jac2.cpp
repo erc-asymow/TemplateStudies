@@ -14,6 +14,7 @@
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
+
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
@@ -32,7 +33,7 @@ constexpr double MW = 80.;
 constexpr double GW = 2.0;
 constexpr int NMAX  = 100;
 
-enum pdf_type { pdf_x=0, pdf_y, corr_x, corr_y, A0_x, A0_y, A1_x, A1_y, A4_x, A4_y, unknown};
+enum pdf_type { pdf_x=0, pdf_y, corr_x, corr_y, A0_x, A0_y, A1_x, A1_y, A2_x, A2_y, A3_x, A3_y, A4_x, A4_y, unknown};
 
 auto get_pdf_type = [](const std::string& name) {
   if     (name=="A0_x") return pdf_type::A0_x; 
@@ -112,8 +113,10 @@ int main(int argc, char* argv[])
       if (vm.count("run"))        std::cout << "Run: " << vm["run"].as<std::string>() << '\n';
       if (vm.count("degs_corr_y")) std::cout << "Degree in x of corrxy: " << vm["degs_corr_x"].as<int>() << '\n';
       if (vm.count("degs_corr_y")) std::cout << "Degree in y of corrxy: " << vm["degs_corr_y"].as<int>() << '\n';
-      //if (vm.count("degs_A0_x")) std::cout << "Degree in x of A0: " << vm["degs_A0_x"].as<int>() << '\n';
-      //if (vm.count("degs_A0_y")) std::cout << "Degree in y of A0: " << vm["degs_A0_y"].as<int>() << '\n';
+      for(auto hel : helicities){
+	if (vm.count("degs_"+hel+"_x")) std::cout << "Degree in x of "+hel+": " << vm["degs_"+hel+"_x"].as<int>() << '\n';
+	if (vm.count("degs_"+hel+"_y")) std::cout << "Degree in y of "+hel+": " << vm["degs_"+hel+"_y"].as<int>() << '\n';
+      }
       if (vm.count("do_absy"))     std::cout << "Do abs(Y): " << vm["do_absy"].as<bool>() << '\n';
     }
   catch (const error &ex)
@@ -142,17 +145,17 @@ int main(int argc, char* argv[])
   bool toyTF2_corr= vm["toyTF2_corr"].as<bool>();
   bool fit_qt_y = vm["fit_qt_y"].as<bool>();
 
-  if(vm.count("degs_corr_x")) tag += std::string(Form("_%d", degs_corr_x));
+  if(vm.count("degs_corr_x")) tag += std::string(Form("_UL_%d", degs_corr_x));
   if(vm.count("degs_corr_y")) tag += std::string(Form("_%d", degs_corr_y));
-  if(vm.count("degs_A0_x"))   tag += std::string(Form("_%d", degs_A0_x));
+  if(vm.count("degs_A0_x"))   tag += std::string(Form("_A0_%d", degs_A0_x));
   if(vm.count("degs_A0_y"))   tag += std::string(Form("_%d", degs_A0_y));
-  if(vm.count("degs_A1_x"))   tag += std::string(Form("_%d", degs_A1_x));
+  if(vm.count("degs_A1_x"))   tag += std::string(Form("_A1_%d", degs_A1_x));
   if(vm.count("degs_A1_y"))   tag += std::string(Form("_%d", degs_A1_y));
-  if(vm.count("degs_A2_x"))   tag += std::string(Form("_%d", degs_A2_x));
+  if(vm.count("degs_A2_x"))   tag += std::string(Form("_A2_%d", degs_A2_x));
   if(vm.count("degs_A2_y"))   tag += std::string(Form("_%d", degs_A2_y));
-  if(vm.count("degs_A3_x"))   tag += std::string(Form("_%d", degs_A3_x));
+  if(vm.count("degs_A3_x"))   tag += std::string(Form("_A3_%d", degs_A3_x));
   if(vm.count("degs_A3_y"))   tag += std::string(Form("_%d", degs_A3_y));
-  if(vm.count("degs_A4_x"))   tag += std::string(Form("_%d", degs_A4_x));
+  if(vm.count("degs_A4_x"))   tag += std::string(Form("_A4_%d", degs_A4_x));
   if(vm.count("degs_A4_y"))   tag += std::string(Form("_%d", degs_A4_y));
 
   const double max_x = 0.4;
@@ -223,14 +226,13 @@ int main(int argc, char* argv[])
   unsigned int first_jac_A0xy = njacs;  
   njacs += (degs(pdf_type::A0_x))*( (do_absy ? degs(pdf_type::A0_y) : degs(pdf_type::A0_y)/2) + 1 );
   unsigned int first_jac_A1xy = njacs;  
-  njacs += (degs(pdf_type::A1_x))*( (do_absy ? degs(pdf_type::A1_y) : degs(pdf_type::A1_y)/2) + 1 );
+  njacs += (degs(pdf_type::A1_x))*( degs(pdf_type::A1_y) );
   unsigned int first_jac_A2xy = njacs;  
   njacs += (degs(pdf_type::A2_x))*( (do_absy ? degs(pdf_type::A2_y) : degs(pdf_type::A2_y)/2) + 1 );
   unsigned int first_jac_A3xy = njacs;  
   njacs += (degs(pdf_type::A3_x))*( (do_absy ? degs(pdf_type::A3_y) : degs(pdf_type::A3_y)/2) + 1 );
   unsigned int first_jac_A4xy = njacs;  
-  njacs += (degs(pdf_type::A4_x)+1)*( (do_absy ? degs(pdf_type::A4_y) : degs(pdf_type::A4_y)/2) + 1 );
-
+  njacs += (degs(pdf_type::A4_x)+1)*( degs(pdf_type::A4_y) );
 
   auto toy_mass = [](double Q, double M, double G){
     return 1./TMath::Pi()/(1 + (Q-M)*(Q-M)/G/G);
@@ -260,10 +262,10 @@ int main(int argc, char* argv[])
   }
 
   TF2* toy_A0 = new TF2("toy_A0", "2*y*y*(1/(1 + 0.02*x*x))", 0., max_y, 0., max_x);
-  TF2* toy_A1 = new TF2("toy_A1", "(0.5*y + 2*y*y)*(1/(1 + 0.02*x*x))", 0., max_y, 0., max_x);
+  TF2* toy_A1 = new TF2("toy_A1", "(0.5*y + 2*y*y)*(x/(1 + x))", 0., max_y, 0., max_x);
   TF2* toy_A2 = new TF2("toy_A2", "2*y*y*(1/(1 + 0.02*x*x))", 0., max_y, 0., max_x);
   TF2* toy_A3 = new TF2("toy_A3", "(y + y*y + y*y*y)*(1/(1 + 0.02*x*x))", 0., max_y, 0., max_x);
-  TF2* toy_A4 = new TF2("toy_A4", "(y+1)*x*x/10", 0., max_y, 0., max_x);
+  TF2* toy_A4 = new TF2("toy_A4", "(y+1)*(0.5*x + x*x)/10", 0., max_y, 0., max_x);
 
   // preprare inputs
   if(true){
@@ -308,8 +310,9 @@ int main(int argc, char* argv[])
       for(int n = 0; n<=degs(pdf_type::A1_y); n++){
 	int idx = (degs(pdf_type::A1_y)+1)*m + n; 
 	tree->Branch(Form("A1_xy_%d_%d", m,n), &(A1_xy[idx]), Form("A1_xy_%d_%d/D", m,n));
-	double y = do_absy ? (TMath::Cos((degs(pdf_type::A1_y)-n)*TMath::Pi()/degs(pdf_type::A1_y))+1.0)*0.5*max_y : 
-	  TMath::Cos((degs(pdf_type::A1_y)-n)*TMath::Pi()/degs(pdf_type::A1_y))*max_y;
+	//double y = do_absy ? (TMath::Cos((degs(pdf_type::A1_y)-n)*TMath::Pi()/degs(pdf_type::A1_y))+1.0)*0.5*max_y : 
+	//TMath::Cos((degs(pdf_type::A1_y)-n)*TMath::Pi()/degs(pdf_type::A1_y))*max_y;
+	double y = (TMath::Cos((degs(pdf_type::A1_y)-n)*TMath::Pi()/degs(pdf_type::A1_y))+1.0)*0.5*max_y; 
 	A1_xy[idx] = toy_A1->Eval(TMath::Abs(y),x);      
       }
     }
@@ -344,15 +347,13 @@ int main(int argc, char* argv[])
       for(int n = 0; n<=degs(pdf_type::A4_y); n++){
 	int idx = (degs(pdf_type::A4_y)+1)*m + n; 
 	tree->Branch(Form("A4_xy_%d_%d", m,n), &(A4_xy[idx]), Form("A4_xy_%d_%d/D", m,n));
-	double y = do_absy ? (TMath::Cos((degs(pdf_type::A4_y)-n)*TMath::Pi()/degs(pdf_type::A4_y))+1.0)*0.5*max_y : 
-	  TMath::Cos((degs(pdf_type::A4_y)-n)*TMath::Pi()/degs(pdf_type::A4_y))*max_y;
+	//double y = do_absy ? (TMath::Cos((degs(pdf_type::A4_y)-n)*TMath::Pi()/degs(pdf_type::A4_y))+1.0)*0.5*max_y : 
+	//TMath::Cos((degs(pdf_type::A4_y)-n)*TMath::Pi()/degs(pdf_type::A4_y))*max_y;
+	double y = (TMath::Cos((degs(pdf_type::A4_y)-n)*TMath::Pi()/degs(pdf_type::A4_y))+1.0)*0.5*max_y;
 	A4_xy[idx] = toy_A4->Eval(TMath::Abs(y),x);      
       }
     }
 
-
-
-    
     tree->Fill();
     tree->Write();
     fout->Close();
@@ -452,8 +453,8 @@ int main(int argc, char* argv[])
 						    RVecD out;
 						    for(unsigned int k = (hel!="A4") ? 1: 0; k<=degs(get_pdf_type(hel+"_x")); k++){
 						      double Ax = cheb(x, 0.5*max_x, 1.0, degs(get_pdf_type(hel+"_x")), k);
-						      if(do_absy){
-							for(unsigned int l = 0; l<=degs(get_pdf_type(hel+"_y")); l++){
+						      if(do_absy || (hel=="A1" || hel=="A4")){
+							for(unsigned int l = (hel=="A1" || hel=="A4") ? 1 : 0; l<=degs(get_pdf_type(hel+"_y")); l++){
 							  double Ay = cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(get_pdf_type(hel+"_y")), l);
 							  out.emplace_back( Ax*Ay );
 							}
@@ -561,7 +562,7 @@ int main(int argc, char* argv[])
     }
     RVecD A1xy_in;
     for(int k = 1; k<=degs(pdf_type::A1_x); k++){
-      for(int l = 0; l<=(do_absy ? degs(pdf_type::A1_y) : degs(pdf_type::A1_y)/2); l++){      
+      for(int l = 1; l<=degs(pdf_type::A1_y); l++){      
 	int idx = (degs(pdf_type::A1_y)+1)*k + l; 
 	A1xy_in.emplace_back( A1_xy[idx] );
 	poi_val[poi_counter] = A1_xy[idx];
@@ -594,7 +595,7 @@ int main(int argc, char* argv[])
     }
     RVecD A4xy_in;
     for(int k = 0; k<=degs(pdf_type::A4_x); k++){
-      for(int l = 0; l<=(do_absy ? degs(pdf_type::A4_y) : degs(pdf_type::A4_y)/2); l++){      
+      for(int l = 1; l<=degs(pdf_type::A4_y); l++){      
 	int idx = (degs(pdf_type::A4_y)+1)*k + l; 
 	A4xy_in.emplace_back( A4_xy[idx] );
 	poi_val[poi_counter] = A4_xy[idx];
@@ -699,13 +700,14 @@ int main(int argc, char* argv[])
 						      corrxy_in_copy[i] = 1.0;
 						      out.emplace_back( wUL*
 									ROOT::VecOps::Dot(corrxy_vec,corrxy_in_copy)*
-									(  harmonics.at(0) + 
+									(  
+									 harmonics.at(0) + 
 									 B*harmonics.at(1) +
 									 C*harmonics.at(2) +
 									 D*harmonics.at(3) +
 									 E*harmonics.at(4) +
-									 F*harmonics.at(5) +
-									 )*
+									 F*harmonics.at(5)
+									   )*
 									weightsM.at(0) );
 						    }						   
 						    
@@ -721,7 +723,7 @@ int main(int argc, char* argv[])
 									weightsM.at(0) );
 						    }						   
 
-						    unsigned int njacs_A1xy = degs(pdf_type::A1_x)*( (do_absy ? degs(pdf_type::A1_y) : degs(pdf_type::A1_y)/2) + 1 );
+						    unsigned int njacs_A1xy = degs(pdf_type::A1_x)*degs(pdf_type::A1_y);
 						    for(unsigned int i = 0; i<njacs_A1xy; i++){
  						      RVecD A1xy_in_copy( A1xy_in.size(), 0.0 );
 						      A1xy_in_copy[i] = 1.0;
@@ -757,7 +759,7 @@ int main(int argc, char* argv[])
 									weightsM.at(0) );
 						    }
 
-						    unsigned int njacs_A4xy = (degs(pdf_type::A4_x)+1)*( (do_absy ? degs(pdf_type::A4_y) : degs(pdf_type::A4_y)/2) + 1 );
+						    unsigned int njacs_A4xy = (degs(pdf_type::A4_x)+1)*degs(pdf_type::A4_y);
 						    for(unsigned int i = 0; i<njacs_A4xy; i++){
  						      RVecD A4xy_in_copy( A4xy_in.size(), 0.0 );
 						      A4xy_in_copy[i] = 1.0;
@@ -818,9 +820,24 @@ int main(int argc, char* argv[])
 	hname = std::string(Form("jac_%d: d(pdf) / d(A0xy_in[%d][%d])", i, idx_x, idx_y));	
       }
       else if(i>=first_jac_A1xy && i<first_jac_A2xy){
-	unsigned int idx_x = (i-first_jac_A1xy) / ((do_absy ? degs(pdf_type::A1_y) : degs(pdf_type::A1_y)/2) +1) + 1;
-	unsigned int idx_y = (i-first_jac_A1xy) % ((do_absy ? degs(pdf_type::A1_y) : degs(pdf_type::A1_y)/2) +1);
+	unsigned int idx_x = (i-first_jac_A1xy) / degs(pdf_type::A1_y) + 1;
+	unsigned int idx_y = (i-first_jac_A1xy) % degs(pdf_type::A1_y) + 1;
 	hname = std::string(Form("jac_%d: d(pdf) / d(A1xy_in[%d][%d])", i, idx_x, idx_y));	
+      }
+      else if(i>=first_jac_A2xy && i<first_jac_A3xy){
+	unsigned int idx_x = (i-first_jac_A2xy) / ((do_absy ? degs(pdf_type::A2_y) : degs(pdf_type::A2_y)/2) +1) + 1;
+	unsigned int idx_y = (i-first_jac_A2xy) % ((do_absy ? degs(pdf_type::A2_y) : degs(pdf_type::A2_y)/2) +1);
+	hname = std::string(Form("jac_%d: d(pdf) / d(A2xy_in[%d][%d])", i, idx_x, idx_y));	
+      }
+      else if(i>=first_jac_A3xy && i<first_jac_A4xy){
+	unsigned int idx_x = (i-first_jac_A3xy) / ((do_absy ? degs(pdf_type::A3_y) : degs(pdf_type::A3_y)/2) +1) + 1;
+	unsigned int idx_y = (i-first_jac_A3xy) % ((do_absy ? degs(pdf_type::A3_y) : degs(pdf_type::A3_y)/2) +1);
+	hname = std::string(Form("jac_%d: d(pdf) / d(A3xy_in[%d][%d])", i, idx_x, idx_y));	
+      }
+      else if(i>=first_jac_A4xy){
+	unsigned int idx_x = (i-first_jac_A4xy) / degs(pdf_type::A4_y);
+	unsigned int idx_y = (i-first_jac_A4xy) % degs(pdf_type::A4_y) + 1;
+	hname = std::string(Form("jac_%d: d(pdf) / d(A4xy_in[%d][%d])", i, idx_x, idx_y));	
       }
 
 

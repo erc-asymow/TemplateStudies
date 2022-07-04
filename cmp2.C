@@ -1,7 +1,7 @@
 
 {
 
-  TString name = "test";
+  TString name = "testall";
 
   int fit_qt_y = 0;
   
@@ -21,15 +21,39 @@
     for(auto CORRY : ROOT::TSeqI(8) ){
       if(CORRY<2) continue;
       for(auto A0X : ROOT::TSeqI(6) ){
-	if(A0X<1) continue;
+	if(A0X!=3) continue;
 	for(auto A0Y : ROOT::TSeqI(6) ){
-	  if(A0Y<1) continue;	      
-	  TString tag(Form("%d_%d_%d_%d",CORRX,CORRY,A0X,A0Y));
-	  cout << "file " << tag << endl;
-	  TFile* f = TFile::Open("root/histos_"+name+"_"+tag+"_closure.root");
-	  if(f==nullptr || f->IsZombie()) continue;
-	  files.emplace_back(f);    
-	  tags.emplace_back(tag);
+	  if(A0Y!=4) continue;	      
+	  for(auto A1X : ROOT::TSeqI(6) ){
+	    if(A1X!=3) continue;
+	    for(auto A1Y : ROOT::TSeqI(6) ){
+	      if(A1Y!=4) continue;	      
+	      for(auto A2X : ROOT::TSeqI(6) ){
+		if(A2X!=3) continue;
+		for(auto A2Y : ROOT::TSeqI(6) ){
+		  if(A2Y!=4) continue;	      
+		  for(auto A3X : ROOT::TSeqI(6) ){
+		    if(A3X!=3) continue;
+		    for(auto A3Y : ROOT::TSeqI(6) ){
+		      if(A3Y!=4) continue;	      
+		      for(auto A4X : ROOT::TSeqI(6) ){
+			if(A4X!=3) continue;
+			for(auto A4Y : ROOT::TSeqI(6) ){
+			  if(A4Y!=4) continue;	      
+			  TString tag(Form("UL_%d_%d_A0_%d_%d_A1_%d_%d_A2_%d_%d_A3_%d_%d_A4_%d_%d",CORRX,CORRY,A0X,A0Y,A1X,A1Y,A2X,A2Y,A3X,A3Y,A4X,A4Y));
+			  cout << "file " << tag << endl;
+			  TFile* f = TFile::Open("root/histos_"+name+"_"+tag+"_closure.root");
+			  if(f==nullptr || f->IsZombie()) continue;
+			  files.emplace_back(f);    
+			  tags.emplace_back(tag);
+			}
+		      }
+		    }
+		  }
+		}
+	      }
+	    }
+	  }
 	}
       }
     }
