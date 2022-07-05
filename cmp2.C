@@ -21,21 +21,21 @@
     for(auto CORRY : ROOT::TSeqI(8) ){
       if(CORRY<2) continue;
       for(auto A0X : ROOT::TSeqI(6) ){
-	if(A0X!=3) continue;
+	if(A0X!=2) continue;
 	for(auto A0Y : ROOT::TSeqI(6) ){
-	  if(A0Y!=4) continue;	      
+	  if(A0Y!=3) continue;	      
 	  for(auto A1X : ROOT::TSeqI(6) ){
-	    if(A1X!=3) continue;
+	    if(A1X!=2) continue;
 	    for(auto A1Y : ROOT::TSeqI(6) ){
-	      if(A1Y!=4) continue;	      
+	      if(A1Y!=3) continue;	      
 	      for(auto A2X : ROOT::TSeqI(6) ){
-		if(A2X!=3) continue;
+		if(A2X!=2) continue;
 		for(auto A2Y : ROOT::TSeqI(6) ){
-		  if(A2Y!=4) continue;	      
+		  if(A2Y!=3) continue;	      
 		  for(auto A3X : ROOT::TSeqI(6) ){
 		    if(A3X!=3) continue;
 		    for(auto A3Y : ROOT::TSeqI(6) ){
-		      if(A3Y!=4) continue;	      
+		      if(A3Y!=3) continue;	      
 		      for(auto A4X : ROOT::TSeqI(6) ){
 			if(A4X!=3) continue;
 			for(auto A4Y : ROOT::TSeqI(6) ){

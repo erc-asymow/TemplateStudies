@@ -159,7 +159,7 @@ int main(int argc, char* argv[])
   if(vm.count("degs_A4_y"))   tag += std::string(Form("_%d", degs_A4_y));
 
   const double max_x = 0.4;
-  const double max_y = 3.0;
+  const double max_y = 2.5;
   
   int nbinsX   = 12; 
   double xLow  = 0.0;

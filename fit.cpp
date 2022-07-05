@@ -154,12 +154,16 @@ int main(int argc, char* argv[])
 
   TH2D* hw = fin->Get<TH2D>("w");
   TH2D* hwMC = fin->Get<TH2D>("wMC");
+  TH2D* hwMC_up = fin->Get<TH2D>("wMC_up");
+  TH2D* hwMC_down = fin->Get<TH2D>("wMC_down");
   
   double lumi_fact = nevents>0 ? nevents/hwMC->Integral() : 1.0; 
   cout << "Scaling input histos by " << lumi_fact << endl;
   N *= lumi_fact;
   hw->Scale(lumi_fact);
   hwMC->Scale(lumi_fact);
+  hwMC_up->Scale(lumi_fact);
+  hwMC_down->Scale(lumi_fact);
 
   int nx = hw->GetXaxis()->GetNbins(); 
   int ny = hw->GetYaxis()->GetNbins(); 
@@ -168,6 +172,8 @@ int main(int argc, char* argv[])
   //MatrixXd jac(nbins, poi_counter+1);
   MatrixXd jac(nbins, poi_counter);
   VectorXd y(nbins);
+  VectorXd y_up(nbins);
+  VectorXd y_down(nbins);
   MatrixXd inv_sqrtV(nbins, nbins);
   MatrixXd inv_V(nbins, nbins);
   inv_sqrtV *= 0.;
@@ -177,6 +183,8 @@ int main(int argc, char* argv[])
   for(unsigned int ix = 1; ix<=nx; ix++ ){
     for(unsigned int iy = 1; iy<=ny; iy++ ){
       y(bin_counter) = hw->GetBinContent(ix,iy)-hwMC->GetBinContent(ix,iy);
+      y_up(bin_counter) = hw->GetBinContent(ix,iy)-hwMC_up->GetBinContent(ix,iy);
+      y_down(bin_counter) = hw->GetBinContent(ix,iy)-hwMC_down->GetBinContent(ix,iy);
       inv_sqrtV(bin_counter,bin_counter) = 1./TMath::Sqrt(hwMC->GetBinContent(ix,iy));
       inv_V(bin_counter,bin_counter) = 1./hwMC->GetBinContent(ix,iy);
       bin_counter++;
@@ -199,7 +207,11 @@ int main(int argc, char* argv[])
   
   MatrixXd A = inv_sqrtV*jac;
   MatrixXd b = inv_sqrtV*y;
+  MatrixXd b_up = inv_sqrtV*y_up;
+  MatrixXd b_down = inv_sqrtV*y_down;
   VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
+  VectorXd x_up   = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b_up);
+  VectorXd x_down = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b_down);
   MatrixXd C = (jac.transpose()*inv_V*jac).inverse();
   MatrixXd rho( C.rows(), C.rows() ) ;
   for(unsigned int ir = 0; ir<C.rows(); ir++){
@@ -211,7 +223,11 @@ int main(int argc, char* argv[])
   cout << rho << endl;
 
   MatrixXd chi2old = b.transpose()*b;
+  MatrixXd chi2old_up = b_up.transpose()*b_up;
+  MatrixXd chi2old_down = b_down.transpose()*b_down;
   MatrixXd chi2 = ((b - A*x).transpose())*(b-A*x);
+  MatrixXd chi2_up = ((b_up - A*x_up).transpose())*(b_up-A*x_up);
+  MatrixXd chi2_down = ((b_down - A*x_down).transpose())*(b_down-A*x_down);
   int ndof = nbins-poi_counter;
   double chi2norm = chi2(0,0)/ndof;
 
@@ -227,38 +243,44 @@ int main(int argc, char* argv[])
 	 << ". Pull = " << pulls(j) << endl;
   }
 
-  cout << "chi2(start) = " << chi2old(0,0) << endl;
-  cout << "chi2 = " << chi2 << ", ndof = " << ndof << " => chi2/ndof = " << chi2norm << endl; 
+  cout << "chi2     : " << chi2old(0,0) << " --> " << chi2 << "; ndof = " << ndof << " => chi2/ndof = " << chi2norm << endl; 
+  cout << "chi2_up  : " << chi2old_up(0,0) << " --> " << chi2_up << endl;
+  cout << "chi2_down: " << chi2old_down(0,0) << " --> " << chi2_down << endl;
 
   // plotting
   vector<string> fit_tags = {"UL", "0", "1", "2", "3", "4" };
   string fit_tag = "";
   for(auto t : fit_tags){
-    if(vm.count("j"+t)) fit_tag += "_j"+t;
+    if(vm["j"+t].as<bool>()) fit_tag += "_j"+t;
   }
   TFile* fout = TFile::Open(("root/fit_"+tag+"_"+run+fit_tag+".root").c_str(), "RECREATE");
-
-  vector< std::pair<unsigned int, unsigned int> > active_corrxy;
-  for(unsigned int i = 0; i < active_pois.size(); i++){
-    if(poi_cat[ active_pois[i] ]==-1){
-      active_corrxy.emplace_back( std::make_pair(i,active_pois[i]) );
+  
+  
+  std::vector<int> helicities = {-1, 0, 1, 2, 3, 4};
+  for(auto hel : helicities) {
+    vector< std::pair<unsigned int, unsigned int> > active;
+    for(unsigned int i = 0; i < active_pois.size(); i++){
+      if(poi_cat[ active_pois[i] ]==hel){
+	active.emplace_back( std::make_pair(i,active_pois[i]) );
+      }
+    }  
+    unsigned int n = active.size();
+    double xx[n], yy[n], yyMC[n], exx[n], eyy[n];
+    for(unsigned int i = 0; i < active.size(); i++){
+      auto p = active[i];
+      xx[i]  = p.second;
+      yy[i]  = poi_val[p.second] + x(p.first);
+      yyMC[i]= poi_val[p.second];
+      exx[i] = 0.0;
+      eyy[i] = TMath::Sqrt(C(p.first,p.first));
     }
-  }  
-  unsigned int n_corrxy = active_corrxy.size();
-  double xx[n_corrxy], yy[n_corrxy], yyMC[n_corrxy], exx[n_corrxy], eyy[n_corrxy];
-  for(unsigned int i = 0; i < active_corrxy.size(); i++){
-    auto p = active_corrxy[i];
-    xx[i]  = p.second;
-    yy[i]  = poi_val[p.second] + x(p.first);
-    yyMC[i]= poi_val[p.second];
-    exx[i] = 0.0;
-    eyy[i] = TMath::Sqrt(C(p.first,p.first));
+    fout->cd();
+    TGraphErrors* fit   = new TGraphErrors(n,xx,yy,exx,eyy);
+    TGraphErrors* fitMC = new TGraphErrors(n,xx,yyMC,exx,exx);
+    string name = hel==-1 ? "corrxy" : std::string(Form("A%d", hel));
+    fit->Write(("fit_"+name).c_str());
+    fitMC->Write(("fitMC_"+name).c_str());
   }
-  fout->cd();
-  TGraphErrors* fit_corrxy   = new TGraphErrors(n_corrxy,xx,yy,exx,eyy);
-  TGraphErrors* fit_corrxyMC = new TGraphErrors(n_corrxy,xx,yyMC,exx,exx);
-  fit_corrxy->Write("fit_corrxy");
-  fit_corrxyMC->Write("fit_corrxyMC");
   fout->Close();
 
   sw.Stop();
