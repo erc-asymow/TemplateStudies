@@ -6,23 +6,23 @@ for CORRX in 10
 do
     for CORRY in 4 
     do
-	for A0X in 2
+	for A0X in 3
 	do		    
-	    for A0Y in 3
+	    for A0Y in 4
 	    do		    
-		for A1X in 2
+		for A1X in 3
 		do		    
-		    for A1Y in 3
+		    for A1Y in 4
 		    do		    
-			for A2X in 2
+			for A2X in 3
  			do		    
-			    for A2Y in 3
+			    for A2Y in 4
 			    do		    
-				for A3X in 3
+				for A3X in 2
 				do		    
-				    for A3Y in 3
+				    for A3Y in 4
 				    do	
-					for A4X in 3
+					for A4X in 2
 					do		    
 					    for A4Y in 4
 					    do		    

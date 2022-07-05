@@ -34,8 +34,8 @@ do
                                  		--degs_A2_x=$A2X --degs_A2_y=$A2Y\
                                  		--degs_A3_x=$A3X --degs_A3_y=$A3Y\
                                  		--degs_A4_x=$A4X --degs_A4_y=$A4Y\
-                                                --jUL\
-						--j0 --j1 --j2 --j3 --j4
+                                                --jUL --j0 --j1 --j2 --j3 --j4
+						# --j0 --j1 --j2 --j3 --j4
 					    done
 					done
 				    done
