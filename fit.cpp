@@ -5,9 +5,11 @@
 #include "TF1.h"
 #include "TF2.h"
 #include <TStopwatch.h>
+#include <TGraphErrors.h>
 #include <iostream>
 #include <algorithm>
 #include <vector>
+#include <utility>
 #include <boost/program_options.hpp>
 
 #include <Eigen/Core>
@@ -117,8 +119,8 @@ int main(int argc, char* argv[])
   if(vm.count("degs_A4_x"))   tag += std::string(Form("_A4_%d", degs_A4_x));
   if(vm.count("degs_A4_y"))   tag += std::string(Form("_%d", degs_A4_y));
 
-  TFile* fout = TFile::Open(("root/histos_"+tag+"_"+run+".root").c_str(), "READ");
-  if(fout==0 || fout==nullptr || fout->IsZombie()){
+  TFile* fin = TFile::Open(("root/histos_"+tag+"_"+run+".root").c_str(), "READ");
+  if(fin==0 || fin==nullptr || fin->IsZombie()){
     cout << "File NOT found" << endl;
     return 0;
   }
@@ -128,7 +130,7 @@ int main(int argc, char* argv[])
   unsigned int poi_cat[NMAX];
   unsigned int poi_idx[NMAX];
   unsigned int poi_counter;
-  TTree* outtree = fout->Get<TTree>("outtree");
+  TTree* outtree = fin->Get<TTree>("outtree");
   outtree->SetBranchAddress("nevents", &N);
   outtree->SetBranchAddress("poi_counter", &poi_counter);
   outtree->SetBranchAddress("poi_val", &poi_val);
@@ -139,7 +141,7 @@ int main(int argc, char* argv[])
   std::vector<unsigned int> active_pois = {};
   for(unsigned int p = 0; p < poi_counter; p++){
     //cout << p << ", " << poi_cat[p] << endl;
-    if(poi_cat[p]==-1 && jUL) active_pois.emplace_back(p);
+    if(poi_cat[p]==-1 && jUL)active_pois.emplace_back(p);
     if(poi_cat[p]==0  && j0) active_pois.emplace_back(p);
     if(poi_cat[p]==1  && j1) active_pois.emplace_back(p);
     if(poi_cat[p]==2  && j2) active_pois.emplace_back(p);      
@@ -150,8 +152,8 @@ int main(int argc, char* argv[])
   for(auto p : active_pois) cout << p << ", ";
   cout << endl;
 
-  TH2D* hw = fout->Get<TH2D>("w");
-  TH2D* hwMC = fout->Get<TH2D>("wMC");
+  TH2D* hw = fin->Get<TH2D>("w");
+  TH2D* hwMC = fin->Get<TH2D>("wMC");
   
   double lumi_fact = nevents>0 ? nevents/hwMC->Integral() : 1.0; 
   cout << "Scaling input histos by " << lumi_fact << endl;
@@ -183,7 +185,7 @@ int main(int argc, char* argv[])
 
   for(unsigned int j = 0; j<poi_counter; j++){
     unsigned int idx = active_pois[j];
-    TH2D* hjac = fout->Get<TH2D>(Form("jac_%d", idx));
+    TH2D* hjac = fin->Get<TH2D>(Form("jac_%d", idx));
     bin_counter = 0;
     for(unsigned int ix = 1; ix<=nx; ix++ ){
       for(unsigned int iy = 1; iy<=ny; iy++ ){
@@ -193,7 +195,7 @@ int main(int argc, char* argv[])
     }
   }
 
-  fout->Close();
+  fin->Close();
   
   MatrixXd A = inv_sqrtV*jac;
   MatrixXd b = inv_sqrtV*y;
@@ -227,6 +229,37 @@ int main(int argc, char* argv[])
 
   cout << "chi2(start) = " << chi2old(0,0) << endl;
   cout << "chi2 = " << chi2 << ", ndof = " << ndof << " => chi2/ndof = " << chi2norm << endl; 
+
+  // plotting
+  vector<string> fit_tags = {"UL", "0", "1", "2", "3", "4" };
+  string fit_tag = "";
+  for(auto t : fit_tags){
+    if(vm.count("j"+t)) fit_tag += "_j"+t;
+  }
+  TFile* fout = TFile::Open(("root/fit_"+tag+"_"+run+fit_tag+".root").c_str(), "RECREATE");
+
+  vector< std::pair<unsigned int, unsigned int> > active_corrxy;
+  for(unsigned int i = 0; i < active_pois.size(); i++){
+    if(poi_cat[ active_pois[i] ]==-1){
+      active_corrxy.emplace_back( std::make_pair(i,active_pois[i]) );
+    }
+  }  
+  unsigned int n_corrxy = active_corrxy.size();
+  double xx[n_corrxy], yy[n_corrxy], yyMC[n_corrxy], exx[n_corrxy], eyy[n_corrxy];
+  for(unsigned int i = 0; i < active_corrxy.size(); i++){
+    auto p = active_corrxy[i];
+    xx[i]  = p.second;
+    yy[i]  = poi_val[p.second] + x(p.first);
+    yyMC[i]= poi_val[p.second];
+    exx[i] = 0.0;
+    eyy[i] = TMath::Sqrt(C(p.first,p.first));
+  }
+  fout->cd();
+  TGraphErrors* fit_corrxy   = new TGraphErrors(n_corrxy,xx,yy,exx,eyy);
+  TGraphErrors* fit_corrxyMC = new TGraphErrors(n_corrxy,xx,yyMC,exx,exx);
+  fit_corrxy->Write("fit_corrxy");
+  fit_corrxyMC->Write("fit_corrxyMC");
+  fout->Close();
 
   sw.Stop();
   std::cout << "Real time: " << sw.RealTime() << " seconds " << "(CPU time:  " << sw.CpuTime() << " seconds)" << std::endl;
