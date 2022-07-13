@@ -50,6 +50,8 @@ int main(int argc, char* argv[])
 	("degs_A3_y",   value<int>()->default_value(2), "max degree in y for A3")
 	("degs_A4_x",   value<int>()->default_value(2), "max degree in x for A4")
 	("degs_A4_y",   value<int>()->default_value(2), "max degree in y for A4")
+	("rebinX",   value<int>()->default_value(-1), "rebin X axis")
+	("rebinY",   value<int>()->default_value(-1), "rebin Y axis")
 	("jUL",   bool_switch()->default_value(false), "")
 	("j0",    bool_switch()->default_value(false), "")
 	("j1",    bool_switch()->default_value(false), "")
@@ -97,6 +99,8 @@ int main(int argc, char* argv[])
   int degs_A3_y   = vm["degs_A3_y"].as<int>();
   int degs_A4_x   = vm["degs_A4_x"].as<int>();
   int degs_A4_y   = vm["degs_A4_y"].as<int>();
+  int rebinX      = vm["rebinX"].as<int>();
+  int rebinY      = vm["rebinY"].as<int>();
   int jUL  = vm["jUL"].as<bool>();
   int j0   = vm["j0"].as<bool>();
   int j1   = vm["j1"].as<bool>();
@@ -141,29 +145,32 @@ int main(int argc, char* argv[])
   std::vector<unsigned int> active_pois = {};
   for(unsigned int p = 0; p < poi_counter; p++){
     //cout << p << ", " << poi_cat[p] << endl;
-    if(poi_cat[p]==-1 && jUL)active_pois.emplace_back(p);
-    if(poi_cat[p]==0  && j0) active_pois.emplace_back(p);
-    if(poi_cat[p]==1  && j1) active_pois.emplace_back(p);
-    if(poi_cat[p]==2  && j2) active_pois.emplace_back(p);      
-    if(poi_cat[p]==3  && j3) active_pois.emplace_back(p);      
-    if(poi_cat[p]==4  && j4) active_pois.emplace_back(p);      
+    if(poi_cat[p]==-1 && jUL) active_pois.emplace_back(p);
+    if(poi_cat[p]==0  && j0)  active_pois.emplace_back(p);
+    if(poi_cat[p]==1  && j1)  active_pois.emplace_back(p);
+    if(poi_cat[p]==2  && j2)  active_pois.emplace_back(p);      
+    if(poi_cat[p]==3  && j3)  active_pois.emplace_back(p);      
+    if(poi_cat[p]==4  && j4)  active_pois.emplace_back(p);      
   }
   poi_counter = active_pois.size();
   for(auto p : active_pois) cout << p << ", ";
   cout << endl;
 
-  TH2D* hw = fin->Get<TH2D>("w");
+  TH2D* hw   = fin->Get<TH2D>("w");
   TH2D* hwMC = fin->Get<TH2D>("wMC");
   TH2D* hwMC_up = fin->Get<TH2D>("wMC_up");
   TH2D* hwMC_down = fin->Get<TH2D>("wMC_down");
   
+  vector<TH2D*> all_histos = {hw, hwMC, hwMC_up, hwMC_down};
+  if(rebinX>0 || rebinY>0){
+    for(auto h : all_histos) h->Rebin2D(rebinX,rebinY);
+  }
+
   double lumi_fact = nevents>0 ? nevents/hwMC->Integral() : 1.0; 
   cout << "Scaling input histos by " << lumi_fact << endl;
+
   N *= lumi_fact;
-  hw->Scale(lumi_fact);
-  hwMC->Scale(lumi_fact);
-  hwMC_up->Scale(lumi_fact);
-  hwMC_down->Scale(lumi_fact);
+  for(auto h : all_histos) h->Scale(lumi_fact);
 
   int nx = hw->GetXaxis()->GetNbins(); 
   int ny = hw->GetYaxis()->GetNbins(); 
@@ -220,7 +227,34 @@ int main(int argc, char* argv[])
     }
   }
 
-  cout << rho << endl;
+  //cout << rho << endl;
+
+  VectorXd norms_cheb4(5);
+  norms_cheb4 << 0.0332073, 0.266696, 0.400194, 0.266696, 0.0332073;
+  int degs_xy = degs_corr_x*( degs_corr_y/2 + 1);
+  MatrixXd C_xy = C.block(0,0,degs_xy,degs_xy);
+  //cout << C_xy << endl;
+  VectorXd x_xy = x(Eigen::seqN(0,degs_xy));
+  VectorXd xMC_xy(degs_xy);
+  for(unsigned int i=0; i<degs_xy; i++ ) xMC_xy(i) = poi_val[ active_pois[i] ];
+  MatrixXd D(degs_corr_x, degs_xy);
+  for(unsigned int i = 0 ; i<D.rows(); i++){
+    unsigned int j_first = i*( degs_corr_y/2 + 1); 
+    unsigned int j_last  = (i+1)*( degs_corr_y/2 + 1); 
+    for(unsigned int j = 0 ; j < D.cols() ; j++){
+      if(j>=j_first && j<j_last) 
+	D(i,j) = norms_cheb4(j-j_first)*( j==(j_last-1) ? 1.0 : 2.0) ;
+      else 
+	D(i,j) = 0.0;
+    }
+  }
+  VectorXd x_int   = D*x_xy;
+  VectorXd xMC_int = D*xMC_xy;
+  MatrixXd Cx_int  = D*C_xy*D.transpose();
+
+  cout << D << endl;
+  cout << xMC_int << endl;
+  cout << Cx_int << endl;
 
   MatrixXd chi2old = b.transpose()*b;
   MatrixXd chi2old_up = b_up.transpose()*b_up;
@@ -254,8 +288,7 @@ int main(int argc, char* argv[])
     if(vm["j"+t].as<bool>()) fit_tag += "_j"+t;
   }
   TFile* fout = TFile::Open(("root/fit_"+tag+"_"+run+fit_tag+".root").c_str(), "RECREATE");
-  
-  
+    
   std::vector<int> helicities = {-1, 0, 1, 2, 3, 4};
   for(auto hel : helicities) {
     vector< std::pair<unsigned int, unsigned int> > active;
@@ -280,6 +313,24 @@ int main(int argc, char* argv[])
     string name = hel==-1 ? "corrxy" : std::string(Form("A%d", hel));
     fit->Write(("fit_"+name).c_str());
     fitMC->Write(("fitMC_"+name).c_str());
+    
+    if(hel==-1){
+      n = degs_corr_x;
+      double xx[n], yy[n], yyMC[n], exx[n], eyy[n];
+      for(unsigned int i = 0; i < degs_corr_x; i++){
+	xx[i]  = i;
+	yy[i]  = xMC_int(i)+x_int(i); 
+	yyMC[i]= xMC_int(i);
+	exx[i] = 0.0;
+	eyy[i] = TMath::Sqrt( Cx_int(i,i) );
+      }
+      TGraphErrors* fit   = new TGraphErrors(n,xx,yy,exx,eyy);
+      TGraphErrors* fitMC = new TGraphErrors(n,xx,yyMC,exx,exx);
+      string name = "x_inty";
+      fit->Write(("fit_"+name).c_str());
+      fitMC->Write(("fitMC_"+name).c_str());      
+    }
+
   }
   fout->Close();
 

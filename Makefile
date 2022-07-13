@@ -24,10 +24,10 @@ main.o: main.cpp
 jac.o: jac.cpp
 	$(GCC) $(CXXFLAGS) -o $(BINDIR)/jac jac.cpp  
 
-jac2.o: jac2.cpp
+jac2: jac2.cpp
 	$(GCC) $(CXXFLAGS) -o $(BINDIR)/jac2 jac2.cpp  
 
-fit.o: fit.cpp
+fit: fit.cpp
 	$(GCC) $(CXXFLAGS) -o $(BINDIR)/fit fit.cpp  
 
 debug.o: debug.cpp

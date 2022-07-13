@@ -25,8 +25,6 @@ using ROOT::RDF::RNode;
 
 using namespace boost::program_options;
 
-//std::vector<std::string> helicities = {"UL", "A0", "A1", "A4"};
-
 std::vector<std::string> helicities = {"A0", "A1", "A2", "A3", "A4"};
 
 constexpr double MW = 80.;
@@ -161,10 +159,10 @@ int main(int argc, char* argv[])
   const double max_x = 0.4;
   const double max_y = 2.5;
   
-  int nbinsX   = 12; 
+  int nbinsX   = 25; 
   double xLow  = 0.0;
   double xHigh = +2.5;
-  int nbinsY   = 15; 
+  int nbinsY   = 30; 
   double yLow  = 25.;
   double yHigh = 55.;
 
@@ -261,11 +259,19 @@ int main(int argc, char* argv[])
     th2_corrxy = fWJets->Get<TH2F>("h2");
   }
 
+  /*
   TF2* toy_A0 = new TF2("toy_A0", "2*y*y*(1/(1 + 0.02*x*x))", 0., max_y, 0., max_x);
   TF2* toy_A1 = new TF2("toy_A1", "(0.5*y + 2*y*y)*(x/(1 + x))", 0., max_y, 0., max_x);
   TF2* toy_A2 = new TF2("toy_A2", "2*y*y*(1/(1 + 0.02*x*x))", 0., max_y, 0., max_x);
   TF2* toy_A3 = new TF2("toy_A3", "(y + y*y + y*y*y)*(1/(1 + 0.02*x*x))", 0., max_y, 0., max_x);
   TF2* toy_A4 = new TF2("toy_A4", "(y+1)*(0.5*x + x*x)/10", 0., max_y, 0., max_x);
+  */
+
+  TF2* toy_A0 = new TF2("toy_A0", "2*y*y*(1 - 0.01*x*x)", 0., max_y, 0., max_x);
+  TF2* toy_A1 = new TF2("toy_A1", "(0.5*y + 2*y*y)*( 0.05*x + 0.01*x*x)", 0., max_y, 0., max_x);
+  TF2* toy_A2 = new TF2("toy_A2", "2*y*y*(1 - 0.01*x*x)", 0., max_y, 0., max_x);
+  TF2* toy_A3 = new TF2("toy_A3", "(y + y*y + y*y*y)*(1 - 0.01*x*x)", 0., max_y, 0., max_x);
+  TF2* toy_A4 = new TF2("toy_A4", "(y+1)*(0.5*x + x*x)/6.0", 0., max_y, 0., max_x);
 
   // preprare inputs
   if(true){
@@ -406,20 +412,18 @@ int main(int argc, char* argv[])
 						  double XT = TMath::Sqrt(qT2 + Q*Q);
 						  double Q0 = XT*TMath::CosH(y);
 						  double Q3 = XT*TMath::SinH(y);
-						  double cosS = y>0 ? cos : -cos;
-						  double phiS = y>0 ? phi : -phi;
-						  double sinS = TMath::Sqrt(1-cosS*cosS);
+						  double sin = TMath::Sqrt(1-cos*cos);
 						  Eigen::Matrix4d A;
-						  A <<      Q0/Q, -qT/Q,  0.0,       -Q3/Q, 
+						  A <<      Q0/Q, -qT/Q,   0.0,       -Q3/Q, 
 						      -qT*Q0/Q/XT,  XT/Q,  0.0,  qT*Q3/Q/XT, 
 						              0.0,   0.0,  1.0,         0.0,
 						           -Q3/XT,   0.0,  0.0,       Q0/XT;
 						  Eigen::Vector4d p4_CS;
-						  p4_CS << Q/2, Q/2*sinS*TMath::Cos(phi), Q/2*sinS*TMath::Sin(phi), Q/2*cos ;
+						  p4_CS << Q/2, Q/2*sin*TMath::Cos(phi), Q/2*sin*TMath::Sin(phi), Q/2*cos ;
 						  Eigen::Vector4d p4_lab = A.inverse()*p4_CS;
 						  double pt  = TMath::Sqrt(p4_lab(1)*p4_lab(1) + p4_lab(2)*p4_lab(2));
-						  int sign   = TMath::Abs(p4_lab(3))>0. ? TMath::Abs(p4_lab(3))/p4_lab(3) : 1;
-						  double eta = TMath::ACosH(p4_lab(0)/pt)*sign;
+						  int sign = y>0. ? +1 : -1;
+						  double eta = TMath::ASinH(p4_lab(3)/pt);//*sign;
 						  RVecD p4lab{pt,eta};
 						  return p4lab;
 						}, {"Q", "cos", "phi", "x", "y"}));
@@ -474,7 +478,11 @@ int main(int argc, char* argv[])
   }
   
   dlast = std::make_unique<RNode>(dlast->Define("pt",  [](RVecD p4lab){ return p4lab[0];}, {"p4lab"}));
-  dlast = std::make_unique<RNode>(dlast->Define("eta", [](RVecD p4lab){ return TMath::Abs(p4lab[1]);}, {"p4lab"}));
+  if(xLow>=0.)
+    dlast = std::make_unique<RNode>(dlast->Define("eta", [](RVecD p4lab){ return TMath::Abs(p4lab[1]);}, {"p4lab"}));
+  else
+    dlast = std::make_unique<RNode>(dlast->Define("eta", [](RVecD p4lab){ return p4lab[1];}, {"p4lab"}));
+
   std::vector<ROOT::RDF::RResultPtr<TH1D> > histos1D;
   
   std::vector<ROOT::RDF::RResultPtr<TH2D> > histos2D;
@@ -485,7 +493,7 @@ int main(int argc, char* argv[])
   unsigned int poi_idx[NMAX];
   unsigned int poi_counter = 0;
   
-  if(run.find("closure")!=string::npos){
+  if(true){
 
     TFile* fin = TFile::Open(("root/input_"+tag+".root").c_str(), "READ");
     if(fin==nullptr) return 0;
@@ -616,7 +624,7 @@ int main(int argc, char* argv[])
 	  out.emplace_back( 0.5*sinS*sinS*TMath::Cos(2*phiS) );
 	  out.emplace_back( sinS*TMath::Cos(phiS) );
 	  out.emplace_back( cosS );
-	  /* ... */
+	  //out = {1.0, 0., 0., 0., 0., 0., 0.};
 	  return out;
 	} , {"x", "y", "cos", "phi"} ));
 
@@ -880,6 +888,32 @@ int main(int argc, char* argv[])
   std::cout << "Total slots: " << dlast->GetNSlots() << std::endl;
 
   TTree* outtree = new TTree("outtree", "tree");
+
+  int n_pdfx = degs(pdf_type::pdf_x);
+  double points_x[ n_pdfx ];
+  outtree->Branch("n_pdfx",   &n_pdfx, "n_pdfx/I");
+  outtree->Branch("points_x", &points_x, "points_x[n_pdfx]/D");
+
+  int n_pdfy = (do_absy ? degs(pdf_type::pdf_y) : degs(pdf_type::pdf_y)/2 ) + 1;
+  double points_y[ n_pdfy ];
+  outtree->Branch("n_pdfy",   &n_pdfy, "n_pdfy/I");
+  outtree->Branch("points_y", &points_y, "points_y[n_pdfy]/D");
+
+  outtree->Branch("poi_counter", &poi_counter, "poi_counter/i");
+  outtree->Branch("poi_val", &poi_val, "poi_val[poi_counter]/D");
+  outtree->Branch("poi_cat", &poi_cat, "poi_cat[poi_counter]/i");
+  outtree->Branch("poi_idx", &poi_idx, "poi_idx[poi_counter]/i");
+
+  outtree->Branch("nevents", &nevents, "nevents/L");
+
+  for(int i = 0; i< degs(pdf_type::pdf_x); i++){
+    points_x[i]   = (TMath::Cos((degs(pdf_type::pdf_x)-(i+1))*TMath::Pi()/degs(pdf_type::pdf_x))+1.0)*0.5*max_x;
+  }
+  for(int j = 0; j<=(do_absy ? degs(pdf_type::pdf_y) : degs(pdf_type::pdf_y)/2 ) + 1; j++){
+    points_y[j]   = do_absy ? 
+      (TMath::Cos((degs(pdf_type::pdf_y)-j)*TMath::Pi()/degs(pdf_type::pdf_y))+1.0)*0.5*max_x : 
+      TMath::Cos((degs(pdf_type::pdf_y)-j)*TMath::Pi()/degs(pdf_type::pdf_y))*max_x;
+  }
 
   outtree->Branch("poi_counter", &poi_counter, "poi_counter/i");
   outtree->Branch("poi_val", &poi_val, "poi_val[poi_counter]/D");
