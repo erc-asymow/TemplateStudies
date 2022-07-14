@@ -164,6 +164,7 @@ int main(int argc, char* argv[])
   TH2D* hwMC_down = fin->Get<TH2D>("wMC_down");
   
   vector<TH2D*> all_histos = {hw, hwMC, hwMC_up, hwMC_down};
+
   if(rebinX>0 || rebinY>0){
     for(auto h : all_histos) h->Rebin2D(rebinX,rebinY);
   }
@@ -178,6 +179,9 @@ int main(int argc, char* argv[])
   int ny = hw->GetYaxis()->GetNbins(); 
   int nbins = nx*ny;
 
+  cout << "Number of data points: " << nx << "*" << ny << " = " << nbins << endl;
+  cout << "Data integral: " << hwMC->Integral() << endl;
+
   //MatrixXd jac(nbins, poi_counter+1);
   MatrixXd jac(nbins, poi_counter);
   VectorXd y(nbins);
@@ -185,8 +189,13 @@ int main(int argc, char* argv[])
   VectorXd y_down(nbins);
   MatrixXd inv_sqrtV(nbins, nbins);
   MatrixXd inv_V(nbins, nbins);
-  inv_sqrtV *= 0.;
-  inv_V *= 0.;
+
+  for(unsigned int ix = 0; ix<nbins; ix++ ){
+    for(unsigned int iy = 0; iy<nbins; iy++ ){
+      inv_sqrtV(ix,iy) = 0.;
+      inv_V(ix,iy) = 0.;
+    }
+  }
 
   unsigned int bin_counter = 0;
   for(unsigned int ix = 1; ix<=nx; ix++ ){
@@ -196,13 +205,20 @@ int main(int argc, char* argv[])
       y_down(bin_counter) = hw->GetBinContent(ix,iy)-hwMC_down->GetBinContent(ix,iy);
       inv_sqrtV(bin_counter,bin_counter) = 1./TMath::Sqrt(hwMC->GetBinContent(ix,iy));
       inv_V(bin_counter,bin_counter) = 1./hwMC->GetBinContent(ix,iy);
+      //cout << inv_V(bin_counter,bin_counter) << endl;
+      //cout << y(bin_counter) << endl;
       bin_counter++;
     }
   }
 
+  //cout << inv_V << endl;
+
   for(unsigned int j = 0; j<poi_counter; j++){
     unsigned int idx = active_pois[j];
     TH2D* hjac = fin->Get<TH2D>(Form("jac_%d", idx));
+    if(rebinX>0 || rebinY>0){
+      hjac->Rebin2D(rebinX,rebinY);
+    }
     bin_counter = 0;
     for(unsigned int ix = 1; ix<=nx; ix++ ){
       for(unsigned int iy = 1; iy<=ny; iy++ ){
