@@ -1,7 +1,7 @@
 
 {
 
-  TString name = "polAifix";
+  TString name = "dev0";
 
   int fit_qt_y = 0;
   

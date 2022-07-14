@@ -59,6 +59,7 @@ int main(int argc, char* argv[])
 	("j3",    bool_switch()->default_value(false), "")
 	("j4",    bool_switch()->default_value(false), "")
 	("tag", value<std::string>()->default_value(""), "tag name")
+	("post_tag", value<std::string>()->default_value(""), "post tag name")
 	("run", value<std::string>()->default_value("closure"), "run type");
 
       store(parse_command_line(argc, argv, desc), vm);
@@ -67,15 +68,6 @@ int main(int argc, char* argv[])
 	std::cout << desc << '\n';
 	return 0;
       }
-      if (vm.count("nevents"))    std::cout << "Number of events: " << vm["nevents"].as<long>() << '\n';
-      if (vm.count("tag"))        std::cout << "Tag: " << vm["tag"].as<std::string>() << '\n';
-      if (vm.count("run"))        std::cout << "Run: " << vm["run"].as<std::string>() << '\n';
-      if (vm.count("degs_pdf_x")) std::cout << "Degree of pdf_x: " << vm["degs_pdf_x"].as<int>() << '\n';
-      if (vm.count("degs_pdf_y")) std::cout << "Degree of pdf_y: " << vm["degs_pdf_y"].as<int>() << '\n';
-      if (vm.count("degs_corr_y")) std::cout << "Degree in x of corrxy: " << vm["degs_corr_x"].as<int>() << '\n';
-      if (vm.count("degs_corr_y")) std::cout << "Degree in y of corrxy: " << vm["degs_corr_y"].as<int>() << '\n';
-      if (vm.count("degs_A0_x")) std::cout << "Degree in x of A0: " << vm["degs_A0_x"].as<int>() << '\n';
-      if (vm.count("degs_A0_y")) std::cout << "Degree in y of A0: " << vm["degs_A0_y"].as<int>() << '\n';
     }
   catch (const error &ex)
     {
@@ -84,6 +76,7 @@ int main(int argc, char* argv[])
 
   long nevents    = vm["nevents"].as<long>();
   std::string tag = vm["tag"].as<std::string>();
+  std::string post_tag = vm["post_tag"].as<std::string>();
   std::string run = vm["run"].as<std::string>();
   int degs_pdf_x  = vm["degs_pdf_x"].as<int>();
   int degs_pdf_y  = vm["degs_pdf_y"].as<int>();
@@ -134,12 +127,21 @@ int main(int argc, char* argv[])
   unsigned int poi_cat[NMAX];
   unsigned int poi_idx[NMAX];
   unsigned int poi_counter;
+  unsigned int n_pdfx;
+  unsigned int n_pdfy;
+  double points_x[ NMAX ];
+  double points_y[ NMAX ];
+
   TTree* outtree = fin->Get<TTree>("outtree");
   outtree->SetBranchAddress("nevents", &N);
   outtree->SetBranchAddress("poi_counter", &poi_counter);
   outtree->SetBranchAddress("poi_val", &poi_val);
   outtree->SetBranchAddress("poi_cat", &poi_cat);
   outtree->SetBranchAddress("poi_idx", &poi_idx);
+  outtree->SetBranchAddress("n_pdfx",   &n_pdfx);
+  outtree->SetBranchAddress("n_pdfy",   &n_pdfy);
+  outtree->SetBranchAddress("points_x", &points_x);
+  outtree->SetBranchAddress("points_y", &points_y);
   outtree->GetEntry(0);    
   
   std::vector<unsigned int> active_pois = {};
@@ -231,16 +233,16 @@ int main(int argc, char* argv[])
 
   VectorXd norms_cheb4(5);
   norms_cheb4 << 0.0332073, 0.266696, 0.400194, 0.266696, 0.0332073;
-  int degs_xy = degs_corr_x*( degs_corr_y/2 + 1);
+  int degs_xy = n_pdfx*n_pdfy;
   MatrixXd C_xy = C.block(0,0,degs_xy,degs_xy);
   //cout << C_xy << endl;
   VectorXd x_xy = x(Eigen::seqN(0,degs_xy));
   VectorXd xMC_xy(degs_xy);
   for(unsigned int i=0; i<degs_xy; i++ ) xMC_xy(i) = poi_val[ active_pois[i] ];
-  MatrixXd D(degs_corr_x, degs_xy);
+  MatrixXd D(n_pdfx, degs_xy);
   for(unsigned int i = 0 ; i<D.rows(); i++){
-    unsigned int j_first = i*( degs_corr_y/2 + 1); 
-    unsigned int j_last  = (i+1)*( degs_corr_y/2 + 1); 
+    unsigned int j_first = i*n_pdfy; 
+    unsigned int j_last  = (i+1)*n_pdfy; 
     for(unsigned int j = 0 ; j < D.cols() ; j++){
       if(j>=j_first && j<j_last) 
 	D(i,j) = norms_cheb4(j-j_first)*( j==(j_last-1) ? 1.0 : 2.0) ;
@@ -252,9 +254,9 @@ int main(int argc, char* argv[])
   VectorXd xMC_int = D*xMC_xy;
   MatrixXd Cx_int  = D*C_xy*D.transpose();
 
-  cout << D << endl;
-  cout << xMC_int << endl;
-  cout << Cx_int << endl;
+  //cout << D << endl;
+  //cout << xMC_int << endl;
+  //cout << Cx_int << endl;
 
   MatrixXd chi2old = b.transpose()*b;
   MatrixXd chi2old_up = b_up.transpose()*b_up;
@@ -287,7 +289,7 @@ int main(int argc, char* argv[])
   for(auto t : fit_tags){
     if(vm["j"+t].as<bool>()) fit_tag += "_j"+t;
   }
-  TFile* fout = TFile::Open(("root/fit_"+tag+"_"+run+fit_tag+".root").c_str(), "RECREATE");
+  TFile* fout = TFile::Open(("root/fit_"+tag+"_"+run+fit_tag+"_"+post_tag+".root").c_str(), "RECREATE");
     
   std::vector<int> helicities = {-1, 0, 1, 2, 3, 4};
   for(auto hel : helicities) {
@@ -315,10 +317,10 @@ int main(int argc, char* argv[])
     fitMC->Write(("fitMC_"+name).c_str());
     
     if(hel==-1){
-      n = degs_corr_x;
+      n = n_pdfx;
       double xx[n], yy[n], yyMC[n], exx[n], eyy[n];
-      for(unsigned int i = 0; i < degs_corr_x; i++){
-	xx[i]  = i;
+      for(unsigned int i = 0; i < n_pdfx; i++){
+	xx[i]  = points_x[i];
 	yy[i]  = xMC_int(i)+x_int(i); 
 	yyMC[i]= xMC_int(i);
 	exx[i] = 0.0;

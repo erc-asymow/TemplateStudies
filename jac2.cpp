@@ -29,7 +29,7 @@ std::vector<std::string> helicities = {"A0", "A1", "A2", "A3", "A4"};
 
 constexpr double MW = 80.;
 constexpr double GW = 2.0;
-constexpr int NMAX  = 100;
+constexpr int NMAX  = 200;
 
 enum pdf_type { pdf_x=0, pdf_y, corr_x, corr_y, A0_x, A0_y, A1_x, A1_y, A2_x, A2_y, A3_x, A3_y, A4_x, A4_y, unknown};
 
@@ -159,10 +159,10 @@ int main(int argc, char* argv[])
   const double max_x = 0.4;
   const double max_y = 2.5;
   
-  int nbinsX   = 25; 
+  int nbinsX   = 36; 
   double xLow  = 0.0;
   double xHigh = +2.5;
-  int nbinsY   = 30; 
+  int nbinsY   = 240; 
   double yLow  = 25.;
   double yHigh = 55.;
 
@@ -422,8 +422,7 @@ int main(int argc, char* argv[])
 						  p4_CS << Q/2, Q/2*sin*TMath::Cos(phi), Q/2*sin*TMath::Sin(phi), Q/2*cos ;
 						  Eigen::Vector4d p4_lab = A.inverse()*p4_CS;
 						  double pt  = TMath::Sqrt(p4_lab(1)*p4_lab(1) + p4_lab(2)*p4_lab(2));
-						  int sign = y>0. ? +1 : -1;
-						  double eta = TMath::ASinH(p4_lab(3)/pt);//*sign;
+						  double eta = TMath::ASinH(p4_lab(3)/pt);
 						  RVecD p4lab{pt,eta};
 						  return p4lab;
 						}, {"Q", "cos", "phi", "x", "y"}));
@@ -489,9 +488,22 @@ int main(int argc, char* argv[])
   std::vector<ROOT::RDF::RResultPtr<TH2D> > histosJac;
 
   double poi_val[NMAX];
-  unsigned int poi_cat[NMAX];
+  int poi_cat[NMAX];
   unsigned int poi_idx[NMAX];
   unsigned int poi_counter = 0;
+  unsigned int n_pdfx = degs(pdf_type::corr_x);
+  unsigned int n_pdfy = (do_absy ? degs(pdf_type::corr_y) : degs(pdf_type::corr_y)/2 ) + 1;
+  double points_x[ NMAX ];
+  double points_y[ NMAX ];
+
+  for(unsigned int i = 0; i<n_pdfx; i++){
+    points_x[i] = (TMath::Cos((degs(pdf_type::corr_x)-(i+1))*TMath::Pi()/degs(pdf_type::corr_x))+1.0)*0.5*max_x;
+  }
+  for(unsigned int j = 0; j<n_pdfy; j++){
+    points_y[j]   = do_absy ? 
+      (TMath::Cos((degs(pdf_type::corr_y)-j)*TMath::Pi()/degs(pdf_type::corr_y))+1.0)*0.5*max_y : 
+      TMath::Cos((degs(pdf_type::corr_y)-j)*TMath::Pi()/degs(pdf_type::corr_y))*max_y;
+  }
   
   if(true){
 
@@ -889,35 +901,13 @@ int main(int argc, char* argv[])
 
   TTree* outtree = new TTree("outtree", "tree");
 
-  int n_pdfx = degs(pdf_type::pdf_x);
-  double points_x[ n_pdfx ];
-  outtree->Branch("n_pdfx",   &n_pdfx, "n_pdfx/I");
+  outtree->Branch("n_pdfx",   &n_pdfx, "n_pdfx/i");
+  outtree->Branch("n_pdfy",   &n_pdfy, "n_pdfy/i");
   outtree->Branch("points_x", &points_x, "points_x[n_pdfx]/D");
-
-  int n_pdfy = (do_absy ? degs(pdf_type::pdf_y) : degs(pdf_type::pdf_y)/2 ) + 1;
-  double points_y[ n_pdfy ];
-  outtree->Branch("n_pdfy",   &n_pdfy, "n_pdfy/I");
   outtree->Branch("points_y", &points_y, "points_y[n_pdfy]/D");
-
   outtree->Branch("poi_counter", &poi_counter, "poi_counter/i");
   outtree->Branch("poi_val", &poi_val, "poi_val[poi_counter]/D");
-  outtree->Branch("poi_cat", &poi_cat, "poi_cat[poi_counter]/i");
-  outtree->Branch("poi_idx", &poi_idx, "poi_idx[poi_counter]/i");
-
-  outtree->Branch("nevents", &nevents, "nevents/L");
-
-  for(int i = 0; i< degs(pdf_type::pdf_x); i++){
-    points_x[i]   = (TMath::Cos((degs(pdf_type::pdf_x)-(i+1))*TMath::Pi()/degs(pdf_type::pdf_x))+1.0)*0.5*max_x;
-  }
-  for(int j = 0; j<=(do_absy ? degs(pdf_type::pdf_y) : degs(pdf_type::pdf_y)/2 ) + 1; j++){
-    points_y[j]   = do_absy ? 
-      (TMath::Cos((degs(pdf_type::pdf_y)-j)*TMath::Pi()/degs(pdf_type::pdf_y))+1.0)*0.5*max_x : 
-      TMath::Cos((degs(pdf_type::pdf_y)-j)*TMath::Pi()/degs(pdf_type::pdf_y))*max_x;
-  }
-
-  outtree->Branch("poi_counter", &poi_counter, "poi_counter/i");
-  outtree->Branch("poi_val", &poi_val, "poi_val[poi_counter]/D");
-  outtree->Branch("poi_cat", &poi_cat, "poi_cat[poi_counter]/i");
+  outtree->Branch("poi_cat", &poi_cat, "poi_cat[poi_counter]/I");
   outtree->Branch("poi_idx", &poi_idx, "poi_idx[poi_counter]/i");
   outtree->Branch("nevents", &nevents, "nevents/L");
 
