@@ -17,7 +17,7 @@
   std::vector<TH1D*> histos_mass{};
 
   for(auto CORRX : ROOT::TSeqI(13) ){
-    if(CORRX!=10) continue;
+    if( !(CORRX==12 || CORRX==10) ) continue;
     for(auto CORRY : ROOT::TSeqI(8) ){
       if(CORRY!=4) continue;
       for(auto A0X : ROOT::TSeqI(6) ){
@@ -33,11 +33,11 @@
 		for(auto A2Y : ROOT::TSeqI(6) ){
 		  if(A2Y!=3) continue;	      
 		  for(auto A3X : ROOT::TSeqI(6) ){
-		    if(A3X!=3) continue;
+		    if( !(A3X==3 || A3X==-1) ) continue;
 		    for(auto A3Y : ROOT::TSeqI(6) ){
 		      if(A3Y!=3) continue;	      
 		      for(auto A4X : ROOT::TSeqI(6) ){
-			if(A4X!=3) continue;
+			if( !(A4X==3 || A4X==-1) ) continue;
 			for(auto A4Y : ROOT::TSeqI(6) ){
 			  if(A4Y!=3) continue;	      
 			  TString tag(Form("UL_%d_%d_A0_%d_%d_A1_%d_%d_A2_%d_%d_A3_%d_%d_A4_%d_%d",CORRX,CORRY,A0X,A0Y,A1X,A1Y,A2X,A2Y,A3X,A3Y,A4X,A4Y));
@@ -60,7 +60,11 @@
   }
 
   TCanvas* c = new TCanvas();
-  TLegend* leg = new TLegend(0.1,0.7,0.4,0.9);
+  TLegend* leg = new TLegend(0.1,0.7,0.6,0.9);
+  leg->SetFillStyle(0);
+  leg->SetBorderSize(0);
+  leg->SetTextSize(0.03);
+  leg->SetFillColor(10);
   c->cd();
 
   int i = 0;
@@ -111,6 +115,8 @@
 	h->SetMinimum(0.998);
 	h->SetMaximum(1.002);
       }
+      h->SetTitle("");
+      h->SetStats(0);
       h->Draw("HIST");
     }
     else h->Draw("HISTSAME");
@@ -126,5 +132,5 @@
     i++;
   }
   leg->Draw();
-  gPad->SaveAs("plot_cmp.png");
+  gPad->SaveAs("plot_cmp_"+name+".png");
 }

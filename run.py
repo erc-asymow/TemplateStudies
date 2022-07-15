@@ -15,6 +15,7 @@ parser.add_argument('--rebinY', dest = 'rebinY'  , type = int,  default=-1, help
 
 args = parser.parse_args()
 
+'''
 pol_default = {
     'corr'   : [10,4],
     'A0'     : [3,3],
@@ -22,6 +23,15 @@ pol_default = {
     'A2'     : [3,3],
     'A3'     : [3,3],
     'A4'     : [3,3]
+}
+'''
+pol_default = {
+    'corr'   : [10,4],
+    'A0'     : [3,3],
+    'A1'     : [3,3],
+    'A2'     : [3,3],
+    'A3'     : [3,3],
+    'A4'     : [4,3]
 }
 
 pol_systs = []
@@ -50,7 +60,7 @@ elif args.algo=='jac2_systs':
             command += ' --degs_'+k+'_x='+str(syst[k][0])+' --degs_'+k+'_y='+str(syst[k][1])
         command += ' --toyTF2_corr'
         print command
-        #os.system(command)   
+        os.system(command)   
 
 elif args.algo=='fit':
     command  = './fit --nevents='+str(args.nevents) +' --tag='+args.tag+' --run=closure --post_tag='+args.post_tag

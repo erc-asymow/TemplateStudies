@@ -162,7 +162,7 @@ int main(int argc, char* argv[])
   int nbinsX   = 36; 
   double xLow  = 0.0;
   double xHigh = +2.5;
-  int nbinsY   = 240; 
+  int nbinsY   = 120; 
   double yLow  = 25.;
   double yHigh = 55.;
 
