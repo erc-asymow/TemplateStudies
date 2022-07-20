@@ -36,14 +36,17 @@ pol_default = {
 
 pol_systs = []
 pol_syst0 = copy.deepcopy(pol_default)
-pol_syst0['corr'] = [12,4]
-pol_systs.append( pol_syst0 )
+pol_syst0['corr'] = [8,4]
+#pol_systs.append( pol_syst0 )
 pol_syst1 = copy.deepcopy(pol_default)
-pol_syst1['A3'] = [4,3]
+pol_syst1['corr'] = [10,6]
 pol_systs.append( pol_syst1 )
 pol_syst2 = copy.deepcopy(pol_default)
-pol_syst2['A4'] = [4,3]
-pol_systs.append( pol_syst2 )
+pol_syst2['A3'] = [3,4]
+#pol_systs.append( pol_syst2 )
+pol_syst3 = copy.deepcopy(pol_default)
+pol_syst3['A4'] = [3,4]
+#pol_systs.append( pol_syst3 )
 
 if args.algo=='jac2':
     command  = './jac2 --nevents='+str(args.nevents) +' --tag='+args.tag+' --run=closure'
@@ -89,6 +92,26 @@ elif args.algo=='fit':
         new_command = command+i
         print new_command
         os.system(new_command) 
+
+elif args.algo=='fit_systs':
+    for syst in pol_systs:
+        command  = './fit --nevents='+str(args.nevents) +' --tag='+args.tag+' --run=closure --post_tag='+args.post_tag
+        for k in syst.keys():
+            command += ' --degs_'+k+'_x='+str(syst[k][0])+' --degs_'+k+'_y='+str(syst[k][1])
+        if (args.rebinX>0 or args.rebinY>0):
+            command += ' --rebinX='+str(args.rebinX)+' --rebinY='+str(args.rebinY)
+        fit_opts = [' --jUL', 
+                    ' --jUL --j0', 
+                    ' --jUL --j0 --j1', 
+                    ' --jUL --j0 --j1 --j2',
+                    ' --jUL --j0 --j1 --j2 --j3',
+                    ' --jUL --j0 --j1 --j2 --j4',
+                    ' --jUL --j0 --j1 --j2 --j3 --j4',
+                ]
+        for i in fit_opts:
+            new_command = command+i
+            print new_command
+            os.system(new_command) 
         
 elif args.algo=='fit_fast':
     command  = './fit --nevents='+str(args.nevents) +' --tag='+args.tag+' --run=closure --post_tag='+args.post_tag

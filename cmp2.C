@@ -17,7 +17,7 @@
   std::vector<TH1D*> histos_mass{};
 
   for(auto CORRX : ROOT::TSeqI(13) ){
-    if( !(CORRX==12 || CORRX==10) ) continue;
+    if( !(CORRX==12 || CORRX==10 || CORRX==8) ) continue;
     for(auto CORRY : ROOT::TSeqI(8) ){
       if(CORRY!=4) continue;
       for(auto A0X : ROOT::TSeqI(6) ){
@@ -37,7 +37,7 @@
 		    for(auto A3Y : ROOT::TSeqI(6) ){
 		      if(A3Y!=3) continue;	      
 		      for(auto A4X : ROOT::TSeqI(6) ){
-			if( !(A4X==3 || A4X==-1) ) continue;
+			if( !(A4X==3 || A4X==-1 || A4X==4) ) continue;
 			for(auto A4Y : ROOT::TSeqI(6) ){
 			  if(A4Y!=3) continue;	      
 			  TString tag(Form("UL_%d_%d_A0_%d_%d_A1_%d_%d_A2_%d_%d_A3_%d_%d_A4_%d_%d",CORRX,CORRY,A0X,A0Y,A1X,A1Y,A2X,A2Y,A3X,A3Y,A4X,A4Y));
@@ -112,8 +112,8 @@
 	h->SetMaximum(1.01);
       }
       else{
-	h->SetMinimum(0.998);
-	h->SetMaximum(1.002);
+	h->SetMinimum(0.997);
+	h->SetMaximum(1.003);
       }
       h->SetTitle("");
       h->SetStats(0);

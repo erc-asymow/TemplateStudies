@@ -249,6 +249,11 @@ int main(int argc, char* argv[])
 
   VectorXd norms_cheb4(5);
   norms_cheb4 << 0.0332073, 0.266696, 0.400194, 0.266696, 0.0332073;
+  VectorXd norms_cheb6(7);
+  norms_cheb6 << 0.0141919, 0.126953, 0.228635, 0.26044, 0.228635, 0.126953, 0.0141919; 
+
+  assert(degs_corr_y==4 || degs_corr_y==6);
+
   int degs_xy = n_pdfx*n_pdfy;
   MatrixXd C_xy = C.block(0,0,degs_xy,degs_xy);
   //cout << C_xy << endl;
@@ -261,7 +266,7 @@ int main(int argc, char* argv[])
     unsigned int j_last  = (i+1)*n_pdfy; 
     for(unsigned int j = 0 ; j < D.cols() ; j++){
       if(j>=j_first && j<j_last) 
-	D(i,j) = norms_cheb4(j-j_first)*( j==(j_last-1) ? 1.0 : 2.0) ;
+	D(i,j) = degs_corr_y==4 ? norms_cheb4(j-j_first)*( j==(j_last-1) ? 1.0 : 2.0) : norms_cheb6(j-j_first)*( j==(j_last-1) ? 1.0 : 2.0);
       else 
 	D(i,j) = 0.0;
     }

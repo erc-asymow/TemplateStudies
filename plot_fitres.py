@@ -60,14 +60,18 @@ def plot_fitopt(var='corrxy', tag='testall_UL_10_4_A0_3_4_A1_3_4_A2_3_4_A3_3_4_A
 
 tags      = [#'dev0_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
              #'dev0_UL_12_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
-             'dev0_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_4_3_A4_3_3_closure',
-             'dev0_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_4_3_closure',
+             #'dev0_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_4_3_A4_3_3_closure',
+             #'dev0_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_4_3_closure',
+    #'dev0_UL_8_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_4_3_closure',
+    'dev0_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_4_3_closure',
+    #'dev0_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_4_A4_4_3_closure',
+    #'dev0_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_4_closure',
          ]
-post_tags = ['rebin11', 'rebin12', 'rebin13', 'rebin14', 'rebin16', 'rebin21', 'rebin31' ]
-#post_tags = ['rebin12' ]
-#legends   = ['100M events, 36/60']
+#post_tags = ['rebin11', 'rebin12', 'rebin13', 'rebin14', 'rebin16', 'rebin21', 'rebin31' ]
+post_tags = ['rebin12' ]
+legends   = ['100M events, 36/60']
 #legends   = ['100M events, 36/240', '100M events, 36/120', '100M events, 36/80', '100M events, 36/60', '100M events, 36/40', '100M events, 18/240', '100M events, 12/240' ]
-legends   = ['100M events, 36/120', '100M events, 36/60', '100M events, 36/40', '100M events, 36/30', '100M events, 36/20', '100M events, 18/120', '100M events, 12/120' ]
+#legends   = ['100M events, 36/120', '100M events, 36/60', '100M events, 36/40', '100M events, 36/30', '100M events, 36/20', '100M events, 18/120', '100M events, 12/120' ]
 
 for t in tags:
     for i,pt in enumerate(post_tags):        
