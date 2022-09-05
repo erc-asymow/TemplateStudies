@@ -30,6 +30,7 @@ std::vector<std::string> helicities = {"A0", "A1", "A2", "A3", "A4"};
 constexpr double MW = 80.;
 constexpr double GW = 2.0;
 constexpr int NMAX  = 200;
+constexpr int NMASS = 50;
 
 enum pdf_type { pdf_x=0, pdf_y, corr_x, corr_y, A0_x, A0_y, A1_x, A1_y, A2_x, A2_y, A3_x, A3_y, A4_x, A4_y, unknown};
 
@@ -162,7 +163,7 @@ int main(int argc, char* argv[])
   int nbinsX   = 36; 
   double xLow  = 0.0;
   double xHigh = +2.5;
-  int nbinsY   = 120; 
+  int nbinsY   = 60; 
   double yLow  = 25.;
   double yHigh = 55.;
 
@@ -400,11 +401,13 @@ int main(int argc, char* argv[])
 						  out.emplace_back( toy_mass(Q,MW,GW)/gen );
 						  out.emplace_back( toy_mass(Q,MW+0.010,GW)/gen );
 						  out.emplace_back( toy_mass(Q,MW-0.010,GW)/gen );
+						  for(unsigned int i=0; i<NMASS; i++)
+						    out.emplace_back( toy_mass(Q, MW - 0.050 + 0.100/NMASS*i,GW)/gen );
 						  return out; 
 						}, {"Q"}));
-  dlast = std::make_unique<RNode>(dlast->Define("wM",     [](RVecD weights){ return weights.at(0);}, {"weightsM"} ));
-  dlast = std::make_unique<RNode>(dlast->Define("wM_up",  [](RVecD weights){ return weights.at(1);}, {"weightsM"} ));
-  dlast = std::make_unique<RNode>(dlast->Define("wM_down",[](RVecD weights){ return weights.at(2);}, {"weightsM"} ));
+  //dlast = std::make_unique<RNode>(dlast->Define("wM",     [](RVecD weights){ return weights.at(0);}, {"weightsM"} ));
+  //dlast = std::make_unique<RNode>(dlast->Define("wM_up",  [](RVecD weights){ return weights.at(1);}, {"weightsM"} ));
+  //dlast = std::make_unique<RNode>(dlast->Define("wM_down",[](RVecD weights){ return weights.at(2);}, {"weightsM"} ));
   dlast = std::make_unique<RNode>(dlast->Define("p4lab",
 						[&](double Q, double cos, double phi, double x, double y)->RVecD {
 						  double qT2 = x*x*Q*Q;
@@ -663,6 +666,7 @@ int main(int argc, char* argv[])
 	  out.emplace_back( wMC*weightsM.at(0) );
 	  out.emplace_back( wMC*weightsM.at(1) );
 	  out.emplace_back( wMC*weightsM.at(2) );
+	  for(unsigned int i=0; i<NMASS; i++) out.emplace_back( wMC*weightsM.at(3+i) );
 	  return out;
 	}, {"x", "y", "harmonics", "weightsM"} ));
     
@@ -806,6 +810,9 @@ int main(int argc, char* argv[])
     dlast = std::make_unique<RNode>(dlast->Define("wMC",      [](RVecD weights){ return weights.at(0);}, {"weightsMC"} ));
     dlast = std::make_unique<RNode>(dlast->Define("wMC_up",   [](RVecD weights){ return weights.at(1);}, {"weightsMC"} ));
     dlast = std::make_unique<RNode>(dlast->Define("wMC_down", [](RVecD weights){ return weights.at(2);}, {"weightsMC"} ));
+    for(unsigned int i=0; i<NMASS; i++){
+      dlast = std::make_unique<RNode>(dlast->Define(Form("wMC_mass%d", i), [i](RVecD weights){ return weights.at(3+i);}, {"weightsMC"} ));
+    }
 
     for(unsigned int i = 0; i < njacs; i++){
       dlast = std::make_unique<RNode>(dlast->Define(Form("jac_%d", i), [i](RVecD weights){ return weights.at(i);}, {"weights_jac"} ));
@@ -815,16 +822,19 @@ int main(int argc, char* argv[])
     sums.emplace_back( dlast->Sum<double>("wMC") );
 
     if(!fit_qt_y){
-      histos2D.emplace_back(dlast->Histo2D({"w",       "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "w"));      
-      histos2D.emplace_back(dlast->Histo2D({"wMC",     "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "wMC"));      
-      histos2D.emplace_back(dlast->Histo2D({"wMC_up",  "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "wMC_up"));      
-      histos2D.emplace_back(dlast->Histo2D({"wMC_down","", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "wMC_down"));
+      histos2D.emplace_back(dlast->Histo2D({"h",       "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "w"));      
+      histos2D.emplace_back(dlast->Histo2D({"hMC",     "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "wMC"));      
+      histos2D.emplace_back(dlast->Histo2D({"hMC_up",  "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "wMC_up"));      
+      histos2D.emplace_back(dlast->Histo2D({"hMC_down","", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "wMC_down"));
+      for(unsigned int i=0; i<NMASS; i++){
+	histos2D.emplace_back(dlast->Histo2D({Form("hMC_mass%d", i),"", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", Form("wMC_mass%d",i)));
+      }
     }
     else{
-      histos2D.emplace_back(dlast->Histo2D({"w",       "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "y", "x", "w"));      
-      histos2D.emplace_back(dlast->Histo2D({"wMC",     "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "y", "x", "wMC"));      
-      histos2D.emplace_back(dlast->Histo2D({"wMC_up",  "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "y", "x", "wMC_up"));      
-      histos2D.emplace_back(dlast->Histo2D({"wMC_down","", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "y", "x", "wMC_down"));
+      histos2D.emplace_back(dlast->Histo2D({"h",       "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "y", "x", "w"));      
+      histos2D.emplace_back(dlast->Histo2D({"hMC",     "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "y", "x", "wMC"));      
+      histos2D.emplace_back(dlast->Histo2D({"hMC_up",  "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "y", "x", "wMC_up"));      
+      histos2D.emplace_back(dlast->Histo2D({"hMC_down","", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "y", "x", "wMC_down"));
     }
 
     for(unsigned int i = 0; i < njacs; i++){
