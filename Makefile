@@ -1,6 +1,7 @@
 GCC=g++
 #GCC=/cvmfs/sft.cern.ch/lcg/releases/gcc/9.2.0/x86_64-centos7/bin/g++
-CXXFLAGS=`root-config --libs --cflags` -O3 -I/usr/include/boost/ -L/usr/lib64/ -lboost_program_options -I/home/users/bianchini/Eigen/eigen-3.4.0
+#CXXFLAGS=`root-config --libs --cflags` -O3 -I/usr/include/boost/ -L/usr/lib64/ -lboost_program_options -I/home/users/bianchini/Eigen/eigen-3.4.0
+CXXFLAGS=`root-config --libs --cflags` -O3 -I/usr/include/boost/ -L/usr/lib64/ -lboost_program_options -I/scratchnvme/wmass/eigen-3.3.7
 
 SRCDIR=.
 BINDIR=.

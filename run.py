@@ -31,7 +31,7 @@ pol_default = {
     'A1'     : [3,3],
     'A2'     : [3,3],
     'A3'     : [3,3],
-    'A4'     : [4,3]
+    'A4'     : [3,3]
 }
 
 pol_systs = []
@@ -53,7 +53,7 @@ if args.algo=='jac2':
     for k in pol_default.keys():
         command += ' --degs_'+k+'_x='+str(pol_default[k][0])+' --degs_'+k+'_y='+str(pol_default[k][1])
     command += ' --toyTF2_corr'
-    print command
+    print(command)
     os.system(command)   
 
 elif args.algo=='jac2_systs':
@@ -62,7 +62,7 @@ elif args.algo=='jac2_systs':
         for k in syst.keys():
             command += ' --degs_'+k+'_x='+str(syst[k][0])+' --degs_'+k+'_y='+str(syst[k][1])
         command += ' --toyTF2_corr'
-        print command
+        print(command)
         os.system(command)   
 
 elif args.algo=='fit':
@@ -90,7 +90,7 @@ elif args.algo=='fit':
             ]
     for i in fit_opts:
         new_command = command+i
-        print new_command
+        print(new_command)
         os.system(new_command) 
 
 elif args.algo=='fit_systs':
@@ -110,7 +110,7 @@ elif args.algo=='fit_systs':
                 ]
         for i in fit_opts:
             new_command = command+i
-            print new_command
+            print(new_command)
             os.system(new_command) 
         
 elif args.algo=='fit_fast':
@@ -123,6 +123,6 @@ elif args.algo=='fit_fast':
     #fit_opts = ['jUL', 'j0', 'j1']
     for i in range(len(fit_opts)):
         command += (' --'+fit_opts[i])
-    print command
+    print(command)
     os.system(command) 
     
