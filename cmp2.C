@@ -1,7 +1,7 @@
 
 {
 
-  TString name = "dev0";
+  TString name = "addmass3";
 
   int fit_qt_y = 0;
   
@@ -69,22 +69,22 @@
 
   int i = 0;
   for(auto tag : tags){
-    TH2D* h_truth = files[i]->Get<TH2D>("wMC");
+    TH2D* h_truth = files[i]->Get<TH2D>("hMC");
     TH1D* hT = axis==0?h_truth->ProjectionX("hT_py"):h_truth->ProjectionY("hT_py");
-    TH2D* h_cheb = files[i]->Get<TH2D>("w");
+    TH2D* h_cheb = files[i]->Get<TH2D>("h");
     TH1D* hC = axis==0?h_cheb->ProjectionX("hC_py"):h_cheb->ProjectionY("hC_py");
 
     if(i==0){
       files[i]->cd();
-      if(files[i]->FindObjectAny("wMC_up")){
-	TH2D* h_up = files[i]->Get<TH2D>("wMC_up");
+      if(files[i]->FindObjectAny("hMC_up")){
+	TH2D* h_up = files[i]->Get<TH2D>("hMC_up");
 	TH1D* hMup =  axis==0?h_up->ProjectionX("hMup_py"):h_up->ProjectionY("hMup_py");
 	hMup->Divide(hT);
 	histos_mass.emplace_back((TH1D*)hMup->Clone("hMUp"));
 	cout << tag << " pushed back" << endl;
       }
-      if(files[i]->FindObjectAny("wMC_down")){
-	TH2D* h_down = files[i]->Get<TH2D>("wMC_down");
+      if(files[i]->FindObjectAny("hMC_down")){
+	TH2D* h_down = files[i]->Get<TH2D>("hMC_down");
 	TH1D* hMdown =  axis==0?h_down->ProjectionX("hMdown_py"):h_down->ProjectionY("hMdown_py");
 	hMdown->Divide(hT);
 	histos_mass.emplace_back((TH1D*)hMdown->Clone("hMDown"));
@@ -96,6 +96,8 @@
       hC->Scale(1./hC->Integral());
       hT->Scale(1./hT->Integral());
     }
+    hT->Sumw2();
+    hC->Sumw2();
     hC->Divide(hT);
     hC->SetLineColor(i+1);
     histos.emplace_back((TH1D*)hC->Clone(tag));    
@@ -117,7 +119,7 @@
       }
       h->SetTitle("");
       h->SetStats(0);
-      h->Draw("HIST");
+      h->Draw("HISTE");
     }
     else h->Draw("HISTSAME");
     leg->AddEntry(h, tags[i], "L");
@@ -132,5 +134,5 @@
     i++;
   }
   leg->Draw();
-  gPad->SaveAs("plot_cmp_"+name+".png");
+  //gPad->SaveAs("plot_cmp_"+name+".png");
 }

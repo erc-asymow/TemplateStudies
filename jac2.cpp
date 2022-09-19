@@ -402,12 +402,9 @@ int main(int argc, char* argv[])
 						  out.emplace_back( toy_mass(Q,MW+0.010,GW)/gen );
 						  out.emplace_back( toy_mass(Q,MW-0.010,GW)/gen );
 						  for(unsigned int i=0; i<NMASS; i++)
-						    out.emplace_back( toy_mass(Q, MW - 0.050 + 0.100/NMASS*i,GW)/gen );
+						    out.emplace_back( toy_mass(Q, MW - 0.100 + 0.200/NMASS*i,GW)/gen );
 						  return out; 
 						}, {"Q"}));
-  //dlast = std::make_unique<RNode>(dlast->Define("wM",     [](RVecD weights){ return weights.at(0);}, {"weightsM"} ));
-  //dlast = std::make_unique<RNode>(dlast->Define("wM_up",  [](RVecD weights){ return weights.at(1);}, {"weightsM"} ));
-  //dlast = std::make_unique<RNode>(dlast->Define("wM_down",[](RVecD weights){ return weights.at(2);}, {"weightsM"} ));
   dlast = std::make_unique<RNode>(dlast->Define("p4lab",
 						[&](double Q, double cos, double phi, double x, double y)->RVecD {
 						  double qT2 = x*x*Q*Q;
@@ -869,12 +866,13 @@ int main(int argc, char* argv[])
 	unsigned int idx_y = (i-first_jac_A4xy) % degs(pdf_type::A4_y) + 1;
 	hname = std::string(Form("jac_%d: d(pdf) / d(A4xy_in[%d][%d])", i, idx_x, idx_y));	
       }
-
-
-      if(!fit_qt_y)
+      
+      if(!fit_qt_y){
 	histosJac.emplace_back(dlast->Histo2D({ Form("jac_%d",i), hname.c_str(), nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", Form("jac_%d",i)));
-      else
+      }
+      else{
 	histosJac.emplace_back(dlast->Histo2D({ Form("jac_%d",i), hname.c_str(), nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "y", "x", Form("jac_%d",i)));
+      }
     }
 
     /*
@@ -901,6 +899,7 @@ int main(int argc, char* argv[])
   for(auto h : histos1D) h->Write();
   for(auto h : histos2D) h->Write();
   for(auto h : histosJac){
+    //continue;
     h->Scale(1./total);
     h->Write();
   }

@@ -3,7 +3,7 @@ import ROOT
 import os.path
 from sys import argv
 argv.append( '-b-' )
-ROOT.gROOT.SetBatch(True)
+#ROOT.gROOT.SetBatch(True)
 argv.remove( '-b-' )
 import math
 
@@ -143,7 +143,7 @@ legends   = ['100M events, 36/60']
 #legends   = ['100M events, 36/120', '100M events, 36/60', '100M events, 36/40', '100M events, 36/30', '100M events, 36/20', '100M events, 18/120', '100M events, 12/120' ]
 
 for t in tags:
-    #continue
+    continue
     for i,pt in enumerate(post_tags):        
         plot_fitopt(var='x_inty', tag=t, post_tag=pt, legend=legends[i], offset=0.003, xmin= 0.0, xmax=1.2, view_err=False)
         plot_fitopt(var='x_inty', tag=t, post_tag=pt, legend=legends[i], offset=0.003, xmin=-0.2, xmax=0.2, view_err=True)
@@ -156,10 +156,10 @@ for t in tags:
 #plot_fitopt(var='A0', tag='dev0_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure', post_tag='rebin11', legend='100M events, 36/120', offset=0.003, xmin=-0.3, xmax=0.3, view_err=True)
 #plot_fitopt(var='A4', tag='polAifix_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure')
 
-tags      = ['addmass2_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure']
-post_tags = ['rebin22'] 
-legends   = ['100M events, 18/30'] 
+tags      = ['addmass4_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure']
+post_tags = ['rebin11'] 
+legends   = ['100M events, 36/60'] 
 for t in tags:
-    continue
+    #continue
     for i,pt in enumerate(post_tags):        
         plot_chi2(tag=t, post_tag=pt, legend=legends[i], offset=80.0, xmin=0.0, xmax=5)
