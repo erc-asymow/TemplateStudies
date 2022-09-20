@@ -242,7 +242,8 @@ int main(int argc, char* argv[])
   for(int m=-1; m<NMASS; m++){
 
     //cout << "Now doing mass idx " << m << endl;
-    TH2D* hMC = m<0 ? all_histos[1] : fin->Get<TH2D>(Form("hMC_mass%d",m));
+    //TH2D* hMC = m<0 ? all_histos[1] : fin->Get<TH2D>(Form("hMC_mass%d",m));
+    TH2D* hMC = all_histos[m+2];
     if(hMC==0 || hMC==nullptr){
       cout << "Null pointer" << endl;
       continue;
@@ -309,7 +310,7 @@ int main(int argc, char* argv[])
     double chi2norm = chi2(0,0)/ndof;
 
     if(m>=0){
-      xx_mass[m] = MW - 0.050 + 0.100/NMASS*m; 
+      xx_mass[m] = MW - 0.100 + 0.200/NMASS*m; 
       exx_mass[m] = 0.0;
       yy_chi2[m] = chi2(0,0);
       eyy_chi2[m] = 0.0;

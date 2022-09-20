@@ -3,7 +3,7 @@ import ROOT
 import os.path
 from sys import argv
 argv.append( '-b-' )
-#ROOT.gROOT.SetBatch(True)
+ROOT.gROOT.SetBatch(True)
 argv.remove( '-b-' )
 import math
 
@@ -99,6 +99,7 @@ def plot_chi2(tag='testall_UL_10_4_A0_3_4_A1_3_4_A2_3_4_A3_3_4_A4_3_4_closure', 
         h.SetMarkerColor(count+1)
         h.SetMarkerStyle(2)
         h.Fit("pol2", "Q0")
+        #h.Fit("pol2", "Q")
         parabola = h.GetFunction("pol2")
         param0 = parabola.GetParameter(0); 
         param1 = parabola.GetParameter(1); 
@@ -122,7 +123,7 @@ def plot_chi2(tag='testall_UL_10_4_A0_3_4_A1_3_4_A2_3_4_A3_3_4_A4_3_4_closure', 
     line.SetLineWidth(3)
     line.SetLineColor(ROOT.kBlack)
     line.Draw("same")
-    #raw_input()
+    #input()
     c.SaveAs('root/plot_chi2vsmass'+'_'+tag+'_'+post_tag+'.png')
 
 
@@ -156,10 +157,24 @@ for t in tags:
 #plot_fitopt(var='A0', tag='dev0_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure', post_tag='rebin11', legend='100M events, 36/120', offset=0.003, xmin=-0.3, xmax=0.3, view_err=True)
 #plot_fitopt(var='A4', tag='polAifix_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure')
 
-tags      = ['addmass4_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure']
+tags      = ['addmass00_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+             'addmass0_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+             'addmass1_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+             'addmass2_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+             'addmass3_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+             'addmass4_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+             'addmass5_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+             ]
 post_tags = ['rebin11'] 
-legends   = ['100M events, 36/60'] 
-for t in tags:
+legends   = ['1M  --> 100M events, 36/60',
+             '10M --> 100M events, 36/60',
+             '100M--> 100M events, 36/60',
+             '1G  --> 100M events, 36/60',
+             '4G  --> 100M events, 36/60',
+             '10G --> 100M events, 36/60',
+             '20G --> 100M events, 36/60',
+             ] 
+for j,t in enumerate(tags):
     #continue
     for i,pt in enumerate(post_tags):        
-        plot_chi2(tag=t, post_tag=pt, legend=legends[i], offset=80.0, xmin=0.0, xmax=5)
+        plot_chi2(tag=t, post_tag=pt, legend=legends[j], offset=80.0, xmin=0.0, xmax=5)
