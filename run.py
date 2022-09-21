@@ -125,4 +125,13 @@ elif args.algo=='fit_fast':
         command += (' --'+fit_opts[i])
     print(command)
     os.system(command) 
-    
+
+elif args.algo=='jac3':
+    command  = './jac3 --nevents='+str(args.nevents) +' --tag='+args.tag+' --run=grid'
+    for k in pol_default.keys():
+        if 'corr' not in k: continue
+        command += ' --degs_'+k+'_x='+str(pol_default[k][0])+' --degs_'+k+'_y='+str(pol_default[k][1])
+    command += ' --toyTF2_corr'
+    print(command)
+    os.system(command)   
+

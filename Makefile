@@ -28,6 +28,9 @@ jac.o: jac.cpp
 jac2: jac2.cpp
 	$(GCC) $(CXXFLAGS) -o $(BINDIR)/jac2 jac2.cpp  
 
+jac3: jac3.cpp
+	$(GCC) $(CXXFLAGS) -o $(BINDIR)/jac3 jac3.cpp  
+
 fit: fit.cpp
 	$(GCC) $(CXXFLAGS) -o $(BINDIR)/fit fit.cpp  
 
