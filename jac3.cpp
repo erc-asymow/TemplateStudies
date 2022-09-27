@@ -3,6 +3,7 @@
 #include "TRandom3.h"
 #include "TVector.h"
 #include "TVectorT.h"
+
 #include "TMath.h"
 #include "TF1.h"
 #include "TF2.h"
@@ -123,9 +124,7 @@ int main(int argc, char* argv[])
     }
   };
 
-  unsigned int njacs = 0;
-  unsigned int first_jac_corrxy = njacs;  
-  njacs += degs(pdf_type::corr_x) * degs(pdf_type::corr_y) * 6;
+  unsigned int njacs = degs(pdf_type::corr_x) * degs(pdf_type::corr_y) * 6;
 
   auto toy_mass = [](double Q, double M, double G){
     return 1./TMath::Pi()/(1 + (Q-M)*(Q-M)/G/G);
@@ -234,15 +233,23 @@ int main(int argc, char* argv[])
   double points_x[ NMAX ];
   double points_y[ NMAX ];
 
+  RVecD points_x_in;
+  points_x_in.emplace_back(0.0);
   points_x[0] = 0.0;
   for(unsigned int i = 1; i<=n_pdfx; i++){
-    points_x[i] = max_x/n_pdfx*i;
-    cout << points_x[i] << endl;
+    double val = max_x/n_pdfx*i;
+    points_x[i] = val;
+    points_x_in.emplace_back( val );
+    //cout << val << endl;
   }
+  RVecD points_y_in;
+  points_y_in.emplace_back(0.0);
   points_y[0] = 0.0;
   for(unsigned int j = 1; j<=n_pdfy; j++){
-    points_y[j] = max_y/n_pdfy*j;
-    cout << points_y[j] << endl;
+    double val = max_y/n_pdfy*j;
+    points_y[j] = val;
+    points_y_in.emplace_back( val );
+    //cout << val << endl;
   }
  
   // unpol
@@ -350,73 +357,95 @@ int main(int argc, char* argv[])
 	return out;
       }, {"x", "y", "harmonics"} ));
 
-  dlast = std::make_unique<RNode>(dlast->Define("weights_jac", [&,points_x,points_y]
+  dlast = std::make_unique<RNode>(dlast->Define("weights_jac", [&,points_x_in,points_y_in,njacs]
 						(double x, double y, 
 						 RVecD harmonics,
 						 RVecD weightsMC,
 						 RVecD weightsMC_angular)->RVecD {
-						  RVecD out;						
-						  double absy = TMath::Abs(y);
-						  // UL
-						  for(unsigned int i = 0; i<degs(pdf_type::corr_x); i++){
-						    for(unsigned int j = 0; j<degs(pdf_type::corr_y); j++){
-						      bool is_in_bin = 
-							(x>=points_x[i] && x<points_x[i+1]) && 
-							(absy>=points_y[j] && absy<points_y[j+1]);
-						      out.emplace_back( is_in_bin ? weightsMC.at(0)*harmonics.at(0)/weightsMC_angular.at(0) : 0.0);
-						    }
-						  }
-						  // A0
-						  for(unsigned int i = 0; i<degs(pdf_type::corr_x); i++){
-						    for(unsigned int j = 0; j<degs(pdf_type::corr_y); j++){
-						      bool is_in_bin = 
-							(x>=points_x[i] && x<points_x[i+1]) && 
-							(absy>=points_y[j] && absy<points_y[j+1]);
-						      out.emplace_back( is_in_bin ? weightsMC.at(0)*harmonics.at(1)/weightsMC_angular.at(0) : 0.0);
-						    }
-						  }
-						  // A1
-						  for(unsigned int i = 0; i<degs(pdf_type::corr_x); i++){
-						    for(unsigned int j = 0; j<degs(pdf_type::corr_y); j++){
-						      bool is_in_bin = 
-							(x>=points_x[i] && x<points_x[i+1]) && 
-							(absy>=points_y[j] && absy<points_y[j+1]);
-						      out.emplace_back( is_in_bin ? weightsMC.at(0)*harmonics.at(2)/weightsMC_angular.at(0) : 0.0);
-						    }
-						  }
-						  // A2
-						  for(unsigned int i = 0; i<degs(pdf_type::corr_x); i++){
-						    for(unsigned int j = 0; j<degs(pdf_type::corr_y); j++){
-						      bool is_in_bin = 
-							(x>=points_x[i] && x<points_x[i+1]) && 
-							(absy>=points_y[j] && absy<points_y[j+1]);
-						      out.emplace_back( is_in_bin ? weightsMC.at(0)*harmonics.at(3)/weightsMC_angular.at(0) : 0.0);
-						    }
-						  }
-						  // A3
-						  for(unsigned int i = 0; i<degs(pdf_type::corr_x); i++){
-						    for(unsigned int j = 0; j<degs(pdf_type::corr_y); j++){
-						      bool is_in_bin = 
-							(x>=points_x[i] && x<points_x[i+1]) && 
-							(absy>=points_y[j] && absy<points_y[j+1]);
-						      out.emplace_back( is_in_bin ? weightsMC.at(0)*harmonics.at(4)/weightsMC_angular.at(0) : 0.0);
-						    }
-						  }
-						  // A4
-						  for(unsigned int i = 0; i<degs(pdf_type::corr_x); i++){
-						    for(unsigned int j = 0; j<degs(pdf_type::corr_y); j++){
-						      bool is_in_bin = 
-							(x>=points_x[i] && x<points_x[i+1]) && 
-							(absy>=points_y[j] && absy<points_y[j+1]);
-						      out.emplace_back( is_in_bin ? weightsMC.at(0)*harmonics.at(5)/weightsMC_angular.at(0) : 0.0);
-						    }
-						  }
-						  cout << out;
-						  return out;
-						}, {"x", "y",
-						    "harmonics",
-						    "weightsMC", "weightsMC_angular"} ));
+    
+    RVecD out(njacs);						
+    double absy = TMath::Abs(y);
+    unsigned int ijac = -1; 
+    unsigned int counter = 0;
+    for(unsigned int i = 0; i<degs(pdf_type::corr_x); i++){
+      for(unsigned int j = 0; j<degs(pdf_type::corr_y); j++){
+	bool is_in_bin = 
+	  x>=points_x_in.at(i) && x<points_x_in.at(i+1) && absy>=points_y_in.at(j) && absy<points_y_in.at(j+1);
+	if( is_in_bin ) ijac = counter;
+	counter++;
+      }
+    }
+    //cout << ijac << endl;
+    if(ijac<0) return out;
+    for(unsigned int k=0; k<6; k++){
+      double val = weightsMC.at(0)*harmonics.at(k)/weightsMC_angular.at(0);
+      //cout << "out[" << (k+1)*ijac << "]=" << val << endl;
+      out[njacs/6*k + ijac] = val;
+    }
+    return out;
 
+    /*
+    // UL
+    for(unsigned int i = 0; i<degs(pdf_type::corr_x); i++){
+      for(unsigned int j = 0; j<degs(pdf_type::corr_y); j++){
+	bool is_in_bin = 
+	  (x>=points_x[i] && x<points_x[i+1]) && 
+	  (absy>=points_y[j] && absy<points_y[j+1]);
+	out.emplace_back( is_in_bin ? weightsMC.at(0)*harmonics.at(0)/weightsMC_angular.at(0) : 0.0);
+      }
+    }
+    
+    // A0
+    for(unsigned int i = 0; i<degs(pdf_type::corr_x); i++){
+      for(unsigned int j = 0; j<degs(pdf_type::corr_y); j++){
+	bool is_in_bin = 
+	  (x>=points_x[i] && x<points_x[i+1]) && 
+	  (absy>=points_y[j] && absy<points_y[j+1]);
+	out.emplace_back( is_in_bin ? weightsMC.at(0)*harmonics.at(1)/weightsMC_angular.at(0) : 0.0);
+      }
+    }
+    // A1
+    for(unsigned int i = 0; i<degs(pdf_type::corr_x); i++){
+      for(unsigned int j = 0; j<degs(pdf_type::corr_y); j++){
+	bool is_in_bin = 
+	  (x>=points_x[i] && x<points_x[i+1]) && 
+	  (absy>=points_y[j] && absy<points_y[j+1]);
+	out.emplace_back( is_in_bin ? weightsMC.at(0)*harmonics.at(2)/weightsMC_angular.at(0) : 0.0);
+      }
+    }
+    // A2
+    for(unsigned int i = 0; i<degs(pdf_type::corr_x); i++){
+      for(unsigned int j = 0; j<degs(pdf_type::corr_y); j++){
+	bool is_in_bin = 
+	  (x>=points_x[i] && x<points_x[i+1]) && 
+	  (absy>=points_y[j] && absy<points_y[j+1]);
+	out.emplace_back( is_in_bin ? weightsMC.at(0)*harmonics.at(3)/weightsMC_angular.at(0) : 0.0);
+      }
+    }
+    // A3
+    for(unsigned int i = 0; i<degs(pdf_type::corr_x); i++){
+      for(unsigned int j = 0; j<degs(pdf_type::corr_y); j++){
+	bool is_in_bin = 
+	  (x>=points_x[i] && x<points_x[i+1]) && 
+	  (absy>=points_y[j] && absy<points_y[j+1]);
+	out.emplace_back( is_in_bin ? weightsMC.at(0)*harmonics.at(4)/weightsMC_angular.at(0) : 0.0);
+      }
+    }
+    // A4
+    for(unsigned int i = 0; i<degs(pdf_type::corr_x); i++){
+      for(unsigned int j = 0; j<degs(pdf_type::corr_y); j++){
+	bool is_in_bin = 
+	  (x>=points_x[i] && x<points_x[i+1]) && 
+	  (absy>=points_y[j] && absy<points_y[j+1]);
+	out.emplace_back( is_in_bin ? weightsMC.at(0)*harmonics.at(5)/weightsMC_angular.at(0) : 0.0);
+      }
+    }
+    cout << out;
+    return out;
+    */
+    
+  }, {"x", "y","harmonics", "weightsMC", "weightsMC_angular"} ));
+  
     dlast = std::make_unique<RNode>(dlast->Define("wMC",      [](RVecD weights){ return weights.at(0);}, {"weightsMC"} ));
     dlast = std::make_unique<RNode>(dlast->Define("wMC_up",   [](RVecD weights){ return weights.at(1);}, {"weightsMC"} ));
     dlast = std::make_unique<RNode>(dlast->Define("wMC_down", [](RVecD weights){ return weights.at(2);}, {"weightsMC"} ));

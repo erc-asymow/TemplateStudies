@@ -26,7 +26,7 @@ pol_default = {
 }
 '''
 pol_default = {
-    'corr'   : [10,4],
+    'corr'   : [8,6],
     'A0'     : [3,3],
     'A1'     : [3,3],
     'A2'     : [3,3],
@@ -65,21 +65,21 @@ elif args.algo=='jac2_systs':
         print(command)
         os.system(command)   
 
+elif args.algo=='jac3':
+    command  = './jac3 --nevents='+str(args.nevents) +' --tag='+args.tag+' --run=grid'
+    for k in pol_default.keys():
+        if 'corr' not in k: continue
+        command += ' --degs_'+k+'_x='+str(pol_default[k][0])+' --degs_'+k+'_y='+str(pol_default[k][1])
+    command += ' --toyTF2_corr'
+    print(command)
+    os.system(command)   
+
 elif args.algo=='fit':
     command  = './fit --nevents='+str(args.nevents) +' --tag='+args.tag+' --run=closure --post_tag='+args.post_tag
     for k in pol_default.keys():
         command += ' --degs_'+k+'_x='+str(pol_default[k][0])+' --degs_'+k+'_y='+str(pol_default[k][1])
     if (args.rebinX>0 or args.rebinY>0):
         command += ' --rebinX='+str(args.rebinX)+' --rebinY='+str(args.rebinY)
-    '''
-    fit_opts = ['jUL', 'j0', 'j1', 'j2', 'j3', 'j4']
-    for i in range(1, len(fit_opts)+1):
-        new_command = copy.deepcopy(command)
-        for j in range(i): 
-            new_command += (' --'+fit_opts[j])
-        print new_command
-        os.system(new_command) 
-    '''
     fit_opts = [' --jUL', 
                 ' --jUL --j0', 
                 ' --jUL --j0 --j1', 
@@ -126,12 +126,17 @@ elif args.algo=='fit_fast':
     print(command)
     os.system(command) 
 
-elif args.algo=='jac3':
-    command  = './jac3 --nevents='+str(args.nevents) +' --tag='+args.tag+' --run=grid'
+elif args.algo=='fit_grid_fast':
+    command  = './fit_grid --nevents='+str(args.nevents) +' --tag='+args.tag+' --run=grid --post_tag='+args.post_tag
     for k in pol_default.keys():
         if 'corr' not in k: continue
         command += ' --degs_'+k+'_x='+str(pol_default[k][0])+' --degs_'+k+'_y='+str(pol_default[k][1])
-    command += ' --toyTF2_corr'
+    if (args.rebinX>0 or args.rebinY>0):
+        command += ' --rebinX='+str(args.rebinX)+' --rebinY='+str(args.rebinY)
+    fit_opts = ['jUL', 'j0', 'j1', 'j2', 'j3', 'j4']
+    #fit_opts = ['jUL', 'j0', 'j1']
+    for i in range(len(fit_opts)):
+        command += (' --'+fit_opts[i])
     print(command)
-    os.system(command)   
+    os.system(command) 
 
