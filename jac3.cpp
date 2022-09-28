@@ -30,7 +30,7 @@ std::vector<std::string> helicities = {"A0", "A1", "A2", "A3", "A4"};
 
 constexpr double MW = 80.;
 constexpr double GW = 2.0;
-constexpr int NMAX  = 200;
+constexpr int NMAX  = 100;
 constexpr int NMASS = 50;
 
 enum pdf_type { pdf_x=0, pdf_y, corr_x, corr_y, unknown};
@@ -256,7 +256,7 @@ int main(int argc, char* argv[])
   for(int k = 0; k<n_pdfx; k++){
     for(int l = 0; l<n_pdfy; l++){
       poi_cat[poi_counter] = -1;
-      poi_idx[poi_counter] = n_pdfx*k + l;
+      poi_idx[poi_counter] = n_pdfy*k + l;
       poi_counter++;
     }
   }
@@ -264,7 +264,7 @@ int main(int argc, char* argv[])
   for(int k = 0; k<n_pdfx; k++){
     for(int l = 0; l<n_pdfy; l++){
       poi_cat[poi_counter] = 0;
-      poi_idx[poi_counter] = n_pdfx*k + l;
+      poi_idx[poi_counter] = n_pdfy*k + l;
       poi_counter++;
     }
   }
@@ -272,7 +272,7 @@ int main(int argc, char* argv[])
   for(int k = 0; k<n_pdfx; k++){
     for(int l = 0; l<n_pdfy; l++){
       poi_cat[poi_counter] = 1;
-      poi_idx[poi_counter] = n_pdfx*k + l;	
+      poi_idx[poi_counter] = n_pdfy*k + l;	
       poi_counter++;
     }
   }
@@ -280,7 +280,7 @@ int main(int argc, char* argv[])
   for(int k = 0; k<n_pdfx; k++){
     for(int l = 0; l<n_pdfy; l++){
       poi_cat[poi_counter] = 2;
-      poi_idx[poi_counter] = n_pdfx*k + l;
+      poi_idx[poi_counter] = n_pdfy*k + l;
       poi_counter++;
     }
   }
@@ -288,7 +288,7 @@ int main(int argc, char* argv[])
   for(int k = 0; k<n_pdfx; k++){
     for(int l = 0; l<n_pdfy; l++){
       poi_cat[poi_counter] = 3;
-      poi_idx[poi_counter] = n_pdfx*k + l;
+      poi_idx[poi_counter] = n_pdfy*k + l;
       poi_counter++;
     }
   }
@@ -296,7 +296,7 @@ int main(int argc, char* argv[])
   for(int k = 0; k<n_pdfx; k++){
     for(int l = 0; l<n_pdfy; l++){
       poi_cat[poi_counter] = 4;
-      poi_idx[poi_counter] = n_pdfx*k + l;
+      poi_idx[poi_counter] = n_pdfy*k + l;
       poi_counter++;
     }
   }

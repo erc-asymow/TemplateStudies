@@ -26,7 +26,7 @@ pol_default = {
 }
 '''
 pol_default = {
-    'corr'   : [8,6],
+    'corr'   : [8,4],
     'A0'     : [3,3],
     'A1'     : [3,3],
     'A2'     : [3,3],
@@ -140,3 +140,22 @@ elif args.algo=='fit_grid_fast':
     print(command)
     os.system(command) 
 
+elif args.algo=='fit_grid':
+    command  = './fit_grid --nevents='+str(args.nevents) +' --tag='+args.tag+' --run=grid --post_tag='+args.post_tag
+    for k in pol_default.keys():
+        if 'corr' not in k: continue
+        command += ' --degs_'+k+'_x='+str(pol_default[k][0])+' --degs_'+k+'_y='+str(pol_default[k][1])
+    if (args.rebinX>0 or args.rebinY>0):
+        command += ' --rebinX='+str(args.rebinX)+' --rebinY='+str(args.rebinY)
+    fit_opts = [' --jUL', 
+                ' --jUL --j0', 
+                ' --jUL --j0 --j1', 
+                ' --jUL --j0 --j1 --j2',
+                ' --jUL --j0 --j1 --j2 --j3',
+                ' --jUL --j0 --j1 --j2 --j4',
+                ' --jUL --j0 --j1 --j2 --j3 --j4',
+            ]
+    for i in fit_opts:
+        new_command = command+i
+        print(new_command)
+        os.system(new_command) 

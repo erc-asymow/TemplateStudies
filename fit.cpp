@@ -129,7 +129,7 @@ int main(int argc, char* argv[])
 
   Long64_t N;
   double poi_val[NMAX];
-  unsigned int poi_cat[NMAX];
+  int poi_cat[NMAX];
   unsigned int poi_idx[NMAX];
   unsigned int poi_counter;
   unsigned int n_pdfx;
@@ -270,6 +270,15 @@ int main(int argc, char* argv[])
       }
     }
     //cout << rho << endl;
+    TH2D* rho_th2 = 0;
+    if(m<0){
+      rho_th2 = new TH2D("rho_th2", ";POI;POI", rho.rows(), 0, rho.rows(), rho.cols(), 0, rho.cols());
+      for(unsigned int i=0; i<rho.rows(); i++){
+	for(unsigned int j=0; j<rho.rows(); j++){
+	  rho_th2->SetBinContent(i+1,j+1, rho(i,j));
+	}
+      }
+    }
 
     int degs_xy = n_pdfx*n_pdfy;
     MatrixXd C_xy = C.block(0,0,degs_xy,degs_xy);
@@ -298,8 +307,19 @@ int main(int argc, char* argv[])
 	rhox_int(i,j) = Cx_int(i,j)/TMath::Sqrt(Cx_int(i,i)*Cx_int(j,j));
       }
     }
-
     if(m<0 && verbose) cout << rhox_int << endl;
+
+    TH2D* rhox_int_th2 = 0;
+    if(m<0){
+      rhox_int_th2 = new TH2D("rhox_int_th2", ";POI;POI", rhox_int.rows(), 0, rhox_int.rows(), rhox_int.cols(), 0, rhox_int.cols());
+      for(unsigned int i=0; i<rhox_int.rows(); i++){
+	for(unsigned int j=0; j<rhox_int.rows(); j++){
+	  rhox_int_th2->SetBinContent(i+1,j+1, rhox_int(i,j));
+	}
+      }
+    }
+
+
     //cout << D << endl;
     //cout << xMC_int << endl;
     //cout << Cx_int << endl;
@@ -332,6 +352,12 @@ int main(int argc, char* argv[])
 
     if(m<0) cout << "chi2     : " << chi2old(0,0) << " --> " << chi2 << "; ndof = " << ndof << " => chi2/ndof = " << chi2norm << endl; 
 
+    fout->cd();
+    if(m<0){
+      rho_th2->Write();
+      rhox_int_th2->Write();
+    }
+
     std::vector<int> helicities = {-1, 0, 1, 2, 3, 4};
     for(auto hel : helicities) {
       vector< std::pair<unsigned int, unsigned int> > active;
@@ -357,7 +383,7 @@ int main(int argc, char* argv[])
       
       if(m>=0) name += std::string(Form("_mass%d", m));
 
-      fit->Write(("fit_"+name).c_str());
+      if(m<0) fit->Write(("fit_"+name).c_str());
       if(m<0) fitMC->Write(("fitMC_"+name).c_str());
     
       if(hel==-1){
@@ -374,7 +400,7 @@ int main(int argc, char* argv[])
 	TGraphErrors* fitMC = new TGraphErrors(n,xx,yyMC,exx,exx);
 	string name = "x_inty";
 	if(m>=0) name += std::string(Form("_mass%d", m));
-	fit->Write(("fit_"+name).c_str());
+	if(m<0) fit->Write(("fit_"+name).c_str());
 	if(m<0) fitMC->Write(("fitMC_"+name).c_str());      
       }
     }

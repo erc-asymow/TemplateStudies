@@ -157,6 +157,7 @@ for t in tags:
 #plot_fitopt(var='A0', tag='dev0_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure', post_tag='rebin11', legend='100M events, 36/120', offset=0.003, xmin=-0.3, xmax=0.3, view_err=True)
 #plot_fitopt(var='A4', tag='polAifix_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure')
 
+'''
 tags      = ['addmass00_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
              'addmass0_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
              'addmass1_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
@@ -174,7 +175,31 @@ legends   = ['1M  --> 100M events, 36/60',
              '10G --> 100M events, 36/60',
              '20G --> 100M events, 36/60',
              ] 
+'''
+
+tags      = ['addmass0_UL_8_4_grid',
+             'addmass1_UL_8_4_grid',
+             'addmass2_UL_8_4_grid',
+             'addmass3_UL_8_4_grid',
+             'addmass4_UL_8_4_grid',
+             'addmass5_UL_8_4_grid',
+             'addmass6_UL_8_4_grid',
+             'addmass7_UL_8_4_grid',
+             'addmass8_UL_8_4_grid',
+             ]
+post_tags = ['1M', '2M', '4M', '8M', '16M', '32M', '64M', '128M', '256M'] 
+legends   = ['1M  --> 100M events, 36/60',
+             '2M  --> 100M events, 36/60',
+             '4M  --> 100M events, 36/60',
+             '8M  --> 100M events, 36/60',
+             '16M --> 100M events, 36/60',
+             '32M --> 100M events, 36/60',
+             '64M --> 100M events, 36/60',
+             '128M --> 100M events, 36/60',
+             '256M --> 100M events, 36/60',
+             ] 
 for j,t in enumerate(tags):
     #continue
-    for i,pt in enumerate(post_tags):        
-        plot_chi2(tag=t, post_tag=pt, legend=legends[j], offset=80.0, xmin=0.0, xmax=5)
+    #for i,pt in enumerate(post_tags):        
+    pt = post_tags[j]
+    plot_chi2(tag=t, post_tag=pt, legend=legends[j], offset=80.0, xmin=0.0, xmax=5)

@@ -23,7 +23,7 @@ using namespace std;
 using namespace boost::program_options;
 
 constexpr double MW = 80.;
-constexpr int NMAX  = 100;
+constexpr int NMAX  = 1000;
 constexpr int NMASS = 50;
 
 int main(int argc, char* argv[])
@@ -92,7 +92,7 @@ int main(int argc, char* argv[])
   }
 
   Long64_t N;
-  unsigned int poi_cat[NMAX];
+  int poi_cat[NMAX];
   unsigned int poi_idx[NMAX];
   unsigned int poi_counter;
   unsigned int n_pdfx;
@@ -113,7 +113,7 @@ int main(int argc, char* argv[])
   
   std::vector<unsigned int> active_pois = {};
   for(unsigned int p = 0; p < poi_counter; p++){
-    //cout << p << ", " << poi_cat[p] << endl;
+    if(verbose) cout << p << ", " << poi_cat[p] << endl;
     if(poi_cat[p]==-1 && jUL) active_pois.emplace_back(p);
     if(poi_cat[p]==0  && j0)  active_pois.emplace_back(p);
     if(poi_cat[p]==1  && j1)  active_pois.emplace_back(p);
@@ -224,6 +224,16 @@ int main(int argc, char* argv[])
     }
     if(verbose && m<0) cout << rho << endl;
 
+    TH2D* rho_th2 = 0;
+    if(m<0){
+      rho_th2 = new TH2D("rho_th2", ";POI;POI", rho.rows(), 0, rho.rows(), rho.cols(), 0, rho.cols());
+      for(unsigned int i=0; i<rho.rows(); i++){
+	for(unsigned int j=0; j<rho.rows(); j++){
+	  rho_th2->SetBinContent(i+1,j+1, rho(i,j));
+	}
+      }
+    }
+
     MatrixXd chi2old = b.transpose()*b;
     MatrixXd chi2 = ((b - A*x).transpose())*(b-A*x);
     int ndof = nbins-poi_counter;
@@ -244,14 +254,19 @@ int main(int argc, char* argv[])
 
     if(m<0) cout << "chi2     : " << chi2old(0,0) << " --> " << chi2 << "; ndof = " << ndof << " => chi2/ndof = " << chi2norm << endl; 
 
+    fout->cd();
+    if(m<0) rho_th2->Write();
+
     std::vector<int> helicities = {-1, 0, 1, 2, 3, 4};
     for(auto hel : helicities) {
+      if(verbose && m<0) cout << "helicity=" << hel << endl;
       vector< std::pair<unsigned int, unsigned int> > active;
       for(unsigned int i = 0; i < active_pois.size(); i++){
 	if(poi_cat[ active_pois[i] ]==hel){
+	  if(verbose && m<0) cout << "(" << i << "," << active_pois[i] << ")" << endl; 
 	  active.emplace_back( std::make_pair(i,active_pois[i]) );
 	}
-      }  
+      }
       unsigned int n = active.size();
       double xx[n], yy[n], yyMC[n], exx[n], eyy[n];
       for(unsigned int i = 0; i < active.size(); i++){
@@ -269,8 +284,8 @@ int main(int argc, char* argv[])
       
       if(m>=0) name += std::string(Form("_mass%d", m));
 
-      fit->Write(("fit_"+name).c_str());
-      if(m<0) fitMC->Write(("fitMC_"+name).c_str());    
+      if(m<0) fit->Write(("fit_"+name).c_str());
+      if(m<0) fitMC->Write(("fitMC_"+name).c_str());
     }
   }
 
