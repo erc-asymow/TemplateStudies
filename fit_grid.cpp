@@ -49,6 +49,11 @@ int main(int argc, char* argv[])
 	("j2",    bool_switch()->default_value(false), "")
 	("j3",    bool_switch()->default_value(false), "")
 	("j4",    bool_switch()->default_value(false), "")
+	("scale0",bool_switch()->default_value(false), "")
+	("scale1",bool_switch()->default_value(false), "")
+	("scale2",bool_switch()->default_value(false), "")
+	("scale3",bool_switch()->default_value(false), "")
+	("scale4",bool_switch()->default_value(false), "")
 	("verbose", bool_switch()->default_value(false), "")
 	("tag", value<std::string>()->default_value(""), "tag name")
 	("post_tag", value<std::string>()->default_value(""), "post tag name")
@@ -127,6 +132,41 @@ int main(int argc, char* argv[])
     cout << endl;
   }
 
+  std::vector<unsigned int> cleaned_active_pois = {};
+  std::vector<int> helicities = {-1, 0, 1, 2, 3, 4};
+  for(auto hel : helicities){
+    TH2D* hjac_first = 0;
+    for(auto p : active_pois){
+      if(hel<0 && poi_cat[p]==hel){
+	cleaned_active_pois.emplace_back(p);
+	continue;
+      }
+      else if( poi_cat[p]==hel && vm[std::string(Form("scale%d", hel))].as<bool>()  ){
+	if(hjac_first==0){
+	  if(verbose) cout << "Found first jacobian of A" << hel << endl;
+	  hjac_first = fin->Get<TH2D>(Form("jac_%d", p));
+	  cleaned_active_pois.emplace_back(p);
+	}
+	else{
+	  if(verbose) cout << "Found >1 jacobian of A" << hel << ": adding up..." << endl;
+	  hjac_first->Add(fin->Get<TH2D>(Form("jac_%d", p)));
+	}
+      }
+      else if(poi_cat[p]==hel && !vm[std::string(Form("scale%d", hel))].as<bool>()){
+	cleaned_active_pois.emplace_back(p);
+      }
+    }
+  }
+  active_pois.clear();
+  active_pois = cleaned_active_pois;
+  if(verbose){
+    cout << "After cleaning:" << endl;
+    for(auto p : active_pois) cout << p << ", ";
+    cout << endl;
+  }
+  poi_counter = active_pois.size();
+  
+  
   // common
   TH2D* hw   = fin->Get<TH2D>("h");
   TH2D* hwMC = fin->Get<TH2D>("hMC");
@@ -223,7 +263,7 @@ int main(int argc, char* argv[])
       }
     }
     if(verbose && m<0) cout << rho << endl;
-
+    
     TH2D* rho_th2 = 0;
     if(m<0){
       rho_th2 = new TH2D("rho_th2", ";POI;POI", rho.rows(), 0, rho.rows(), rho.cols(), 0, rho.cols());
@@ -234,6 +274,14 @@ int main(int argc, char* argv[])
       }
     }
 
+    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver(C);
+    if (eigensolver.info() != Eigen::Success){
+      cout << "Could not eigendecompose C" << endl;
+      abort();
+    }
+    if(verbose && m<0) std::cout << "The eigenvalues of C are:\n" << eigensolver.eigenvalues() << std::endl;
+    //eigensolver.eigenvectors();
+   
     MatrixXd chi2old = b.transpose()*b;
     MatrixXd chi2 = ((b - A*x).transpose())*(b-A*x);
     int ndof = nbins-poi_counter;
@@ -257,7 +305,7 @@ int main(int argc, char* argv[])
     fout->cd();
     if(m<0) rho_th2->Write();
 
-    std::vector<int> helicities = {-1, 0, 1, 2, 3, 4};
+    //std::vector<int> helicities = {-1, 0, 1, 2, 3, 4};
     for(auto hel : helicities) {
       if(verbose && m<0) cout << "helicity=" << hel << endl;
       vector< std::pair<unsigned int, unsigned int> > active;

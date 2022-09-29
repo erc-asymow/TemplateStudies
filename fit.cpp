@@ -280,6 +280,14 @@ int main(int argc, char* argv[])
       }
     }
 
+    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver(C);
+    if (eigensolver.info() != Eigen::Success){
+      cout << "Could not eigendecompose C" << endl;
+      abort();
+    }
+    if(verbose && m<0) std::cout << "The eigenvalues of C are:\n" << eigensolver.eigenvalues() << std::endl;
+    //eigensolver.eigenvectors();
+
     int degs_xy = n_pdfx*n_pdfy;
     MatrixXd C_xy = C.block(0,0,degs_xy,degs_xy);
     //cout << C_xy << endl;
