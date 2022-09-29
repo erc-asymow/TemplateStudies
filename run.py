@@ -12,6 +12,11 @@ parser.add_argument('--algo', default='all'        , help = 'algo')
 parser.add_argument('--nevents', dest = 'nevents'  , type = int,  default=10000000, help='number of events')
 parser.add_argument('--rebinX', dest = 'rebinX'  , type = int,  default=-1, help='')
 parser.add_argument('--rebinY', dest = 'rebinY'  , type = int,  default=-1, help='')
+parser.add_argument('--scale0', action='store_true'  , help = 'scale A0(x,y)')
+parser.add_argument('--scale1', action='store_true'  , help = 'scale A1(x,y)')
+parser.add_argument('--scale2', action='store_true'  , help = 'scale A2(x,y)')
+parser.add_argument('--scale3', action='store_true'  , help = 'scale A3(x,y)')
+parser.add_argument('--scale4', action='store_true'  , help = 'scale A4(x,y)')
 
 args = parser.parse_args()
 
@@ -26,7 +31,7 @@ pol_default = {
 }
 '''
 pol_default = {
-    'corr'   : [8,4],
+    'corr'   : [10,4],
     'A0'     : [3,3],
     'A1'     : [3,3],
     'A2'     : [3,3],
@@ -80,6 +85,10 @@ elif args.algo=='fit':
         command += ' --degs_'+k+'_x='+str(pol_default[k][0])+' --degs_'+k+'_y='+str(pol_default[k][1])
     if (args.rebinX>0 or args.rebinY>0):
         command += ' --rebinX='+str(args.rebinX)+' --rebinY='+str(args.rebinY)
+    for hel in ['0','1','2','3','4']:
+        if ( hasattr(args,"scale"+hel) and getattr(args,"scale"+hel) ):
+            command += (' --scale'+hel)
+        
     fit_opts = [' --jUL', 
                 ' --jUL --j0', 
                 ' --jUL --j0 --j1', 

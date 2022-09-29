@@ -157,26 +157,30 @@ for t in tags:
 #plot_fitopt(var='A0', tag='dev0_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure', post_tag='rebin11', legend='100M events, 36/120', offset=0.003, xmin=-0.3, xmax=0.3, view_err=True)
 #plot_fitopt(var='A4', tag='polAifix_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure')
 
-'''
-tags      = ['addmass00_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
-             'addmass0_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
-             'addmass1_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+tags      = [#'addmass00_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+             #'addmass0_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+             #'addmass1_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
              'addmass2_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
              'addmass3_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
              'addmass4_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
-             'addmass5_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+             #'addmass5_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
              ]
-post_tags = ['rebin11'] 
-legends   = ['1M  --> 100M events, 36/60',
-             '10M --> 100M events, 36/60',
-             '100M--> 100M events, 36/60',
+post_tags = [#'rebin11'
+    '1G_SCALE_ALL_BUT_A4',
+    '4G_SCALE_ALL_BUT_A4',
+    '10G_SCALE_ALL_BUT_A4'
+             ] 
+legends   = [#'1M  --> 100M events, 36/60',
+             #'10M --> 100M events, 36/60',
+             #'100M--> 100M events, 36/60',
              '1G  --> 100M events, 36/60',
              '4G  --> 100M events, 36/60',
              '10G --> 100M events, 36/60',
-             '20G --> 100M events, 36/60',
+             #'20G --> 100M events, 36/60',
              ] 
-'''
 
+
+'''
 tags      = ['addmass0_UL_8_4_grid',
              'addmass1_UL_8_4_grid',
              'addmass2_UL_8_4_grid',
@@ -187,7 +191,8 @@ tags      = ['addmass0_UL_8_4_grid',
              'addmass7_UL_8_4_grid',
              'addmass8_UL_8_4_grid',
              ]
-post_tags = ['1M', '2M', '4M', '8M', '16M', '32M', '64M', '128M', '256M'] 
+#post_tags = ['1M', '2M', '4M', '8M', '16M', '32M', '64M', '128M', '256M'] 
+post_tags = ['SCALE_ALL_BUT_A4','SCALE_ALL_BUT_A4','SCALE_ALL_BUT_A4','SCALE_ALL_BUT_A4','SCALE_ALL_BUT_A4','SCALE_ALL_BUT_A4','SCALE_ALL_BUT_A4','SCALE_ALL_BUT_A4','SCALE_ALL_BUT_A4',]
 legends   = ['1M  --> 100M events, 36/60',
              '2M  --> 100M events, 36/60',
              '4M  --> 100M events, 36/60',
@@ -198,6 +203,7 @@ legends   = ['1M  --> 100M events, 36/60',
              '128M --> 100M events, 36/60',
              '256M --> 100M events, 36/60',
              ] 
+'''
 for j,t in enumerate(tags):
     #continue
     #for i,pt in enumerate(post_tags):        

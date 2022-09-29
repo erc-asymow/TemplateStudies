@@ -23,7 +23,7 @@ using namespace std;
 using namespace boost::program_options;
 
 constexpr double MW = 80.;
-constexpr int NMAX  = 100;
+constexpr int NMAX  = 200;
 constexpr int NMASS = 50;
 
 int main(int argc, char* argv[])
@@ -61,6 +61,11 @@ int main(int argc, char* argv[])
 	("j2",    bool_switch()->default_value(false), "")
 	("j3",    bool_switch()->default_value(false), "")
 	("j4",    bool_switch()->default_value(false), "")
+	("scale0",bool_switch()->default_value(false), "")
+	("scale1",bool_switch()->default_value(false), "")
+	("scale2",bool_switch()->default_value(false), "")
+	("scale3",bool_switch()->default_value(false), "")
+	("scale4",bool_switch()->default_value(false), "")
 	("verbose", bool_switch()->default_value(false), "")
 	("tag", value<std::string>()->default_value(""), "tag name")
 	("post_tag", value<std::string>()->default_value(""), "post tag name")
@@ -151,7 +156,7 @@ int main(int argc, char* argv[])
   
   std::vector<unsigned int> active_pois = {};
   for(unsigned int p = 0; p < poi_counter; p++){
-    //cout << p << ", " << poi_cat[p] << endl;
+    if(verbose) cout << p << ", " << poi_cat[p] << endl;
     if(poi_cat[p]==-1 && jUL) active_pois.emplace_back(p);
     if(poi_cat[p]==0  && j0)  active_pois.emplace_back(p);
     if(poi_cat[p]==1  && j1)  active_pois.emplace_back(p);
@@ -164,6 +169,40 @@ int main(int argc, char* argv[])
     for(auto p : active_pois) cout << p << ", ";
     cout << endl;
   }
+
+  std::vector<unsigned int> cleaned_active_pois = {};
+  std::vector<int> helicities = {-1, 0, 1, 2, 3, 4};
+  for(auto hel : helicities){
+    TH2D* hjac_first = 0;
+    for(auto p : active_pois){
+      if(hel<0 && poi_cat[p]==hel){
+	cleaned_active_pois.emplace_back(p);
+	continue;
+      }
+      else if( poi_cat[p]==hel && vm[std::string(Form("scale%d", hel))].as<bool>()  ){
+	if(hjac_first==0){
+	  if(verbose) cout << "Found first jacobian of A" << hel << endl;
+	  hjac_first = fin->Get<TH2D>(Form("jac_%d", p));
+	  cleaned_active_pois.emplace_back(p);
+	}
+	else{
+	  if(verbose) cout << "Found >1 jacobian of A" << hel << ": adding up..." << endl;
+	  hjac_first->Add(fin->Get<TH2D>(Form("jac_%d", p)));
+	}
+      }
+      else if(poi_cat[p]==hel && !vm[std::string(Form("scale%d", hel))].as<bool>()){
+	cleaned_active_pois.emplace_back(p);
+      }
+    }
+  }
+  active_pois.clear();
+  active_pois = cleaned_active_pois;
+  if(verbose){
+    cout << "After cleaning:" << endl;
+    for(auto p : active_pois) cout << p << ", ";
+    cout << endl;
+  }
+  poi_counter = active_pois.size();
 
   // common
   TH2D* hw   = fin->Get<TH2D>("h");
