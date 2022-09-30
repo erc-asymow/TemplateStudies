@@ -126,6 +126,60 @@ def plot_chi2(tag='testall_UL_10_4_A0_3_4_A1_3_4_A2_3_4_A3_3_4_A4_3_4_closure', 
     #input()
     c.SaveAs('root/plot_chi2vsmass'+'_'+tag+'_'+post_tag+'.png')
 
+def plot_pulls_1D(tag='testall_UL_10_4_A0_3_4_A1_3_4_A2_3_4_A3_3_4_A4_3_4_closure', post_tag='test', legend='', xmin=0.0, xmax=10):
+    histos = {}
+    fin = ROOT.TFile('root/fit_'+tag+'_'+post_tag+'.root', 'READ')
+    mass_dict = {
+        #'0'  : '79.900',
+        '18' : '79.972',
+        '25' : '80.000',
+        '32' : '80.028',
+        #'49' : '80.100',
+        }
+    for mass_opt in mass_dict.keys():
+        histos[mass_opt] = {
+            'pre' : fin.Get('hw_prefit'+mass_opt).Clone('hw_prefit'+mass_opt),
+            'post' : fin.Get('hw_postfit'+mass_opt).Clone('hw_postfit'+mass_opt),
+        }
+    #print(histos)
+    c = ROOT.TCanvas("c", "canvas", 800, 600)
+    c.cd()
+    leg1 = ROOT.TLegend(0.15, 0.65, 0.55, 0.88, "","brNDC")
+    leg1.SetFillStyle(0)
+    leg1.SetBorderSize(0)
+    leg1.SetTextSize(0.03)
+    leg1.SetFillColor(10)
+    leg1.SetHeader(legend)
+    count = 0    
+    for key in mass_dict.keys():
+        h_pre_1d  = histos[key]['pre'].ProjectionY("h_pre_1d"+key);
+        h_post_1d = histos[key]['post'].ProjectionY("h_post_1d"+key);
+        h_pull = h_pre_1d.Clone("hpull"+key);
+        histos[key]['pull'] = h_pull
+        for ix in range(1, h_pre_1d.GetNbinsX()+1):
+            pull = (h_pre_1d.GetBinContent(ix) - h_post_1d.GetBinContent(ix))/ROOT.TMath.Sqrt( h_pre_1d.GetBinContent(ix) )
+            h_pull.SetBinContent(ix, pull )
+            h_pull.SetBinError(ix, 0.0)
+        h_pull.SetLineColor(count+1)
+        h_pull.SetLineWidth(2)
+        leg1.AddEntry(h_pull, 'm_{W}='+mass_dict[key]+' GeV' , 'LP')
+        count += 1
+    c.cd()
+    count = 0    
+    for key in mass_dict.keys():
+        if count==0:
+            histos[key]['pull'].Draw()
+            histos[key]['pull'].SetStats(0)
+            histos[key]['pull'].GetYaxis().SetRangeUser(xmin,xmax)
+            histos[key]['pull'].GetYaxis().SetTitle('(pre-post)/#sigma_{stat.}')
+            histos[key]['pull'].GetXaxis().SetTitle('p_{T} (GeV)')
+        else:
+            histos[key]['pull'].Draw("SAME")
+        count += 1
+    leg1.Draw()
+    #input()
+    c.SaveAs('root/pull1D'+'_'+tag+'_'+post_tag+'.png')
+
 
 tags      = [#'dev0_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
              #'dev0_UL_12_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
@@ -205,7 +259,10 @@ legends   = ['1M  --> 100M events, 36/60',
              ] 
 '''
 for j,t in enumerate(tags):
-    #continue
+    continue
     #for i,pt in enumerate(post_tags):        
     pt = post_tags[j]
     plot_chi2(tag=t, post_tag=pt, legend=legends[j], offset=80.0, xmin=0.0, xmax=5)
+
+
+plot_pulls_1D(tag='addmass2_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure', post_tag='jUL_j0_j1_j2_j3_j4_DEBUG', legend='Mass', xmin=-1, xmax=1)

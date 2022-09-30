@@ -67,6 +67,7 @@ int main(int argc, char* argv[])
 	("scale3",bool_switch()->default_value(false), "")
 	("scale4",bool_switch()->default_value(false), "")
 	("verbose", bool_switch()->default_value(false), "")
+	("debug", bool_switch()->default_value(false), "")
 	("tag", value<std::string>()->default_value(""), "tag name")
 	("post_tag", value<std::string>()->default_value(""), "post tag name")
 	("run", value<std::string>()->default_value("closure"), "run type");
@@ -110,6 +111,7 @@ int main(int argc, char* argv[])
   int j3   = vm["j3"].as<bool>();
   int j4   = vm["j4"].as<bool>();
   int verbose = vm["verbose"].as<bool>();
+  int debug = vm["debug"].as<bool>();
 
   //if(vm.count("degs_pdf_x"))  tag += std::string(Form("_%d", degs_pdf_x));
   //if(vm.count("degs_pdf_y"))  tag += std::string(Form("_%d", degs_pdf_y));
@@ -204,8 +206,9 @@ int main(int argc, char* argv[])
   }
   poi_counter = active_pois.size();
 
-  // common
+  // hw is the "approximated" template
   TH2D* hw   = fin->Get<TH2D>("h");
+  // hwMC is the MC
   TH2D* hwMC = fin->Get<TH2D>("hMC");
   vector<TH2D*> all_histos = { hw, hwMC };
   for(unsigned int i=0; i<NMASS; i++) all_histos.push_back( fin->Get<TH2D>(Form("hMC_mass%d",i)) );
@@ -288,11 +291,23 @@ int main(int argc, char* argv[])
       continue;
     }
 
+    // account for slight change in V for different mass hypos
+    bin_counter = 0;
+    for(unsigned int ix = 1; ix<=nx; ix++ ){
+      for(unsigned int iy = 1; iy<=ny; iy++ ){
+	double val = hMC->GetBinContent(ix,iy);
+	if(val<=0) continue;
+	inv_sqrtV(bin_counter,bin_counter) = 1./TMath::Sqrt(val);
+	inv_V(bin_counter,bin_counter) = 1./val;
+	bin_counter++;
+      }
+    }
+    
     VectorXd y(nbins);
     bin_counter = 0;
     for(unsigned int ix = 1; ix<=nx; ix++ ){
       for(unsigned int iy = 1; iy<=ny; iy++ ){
-	y(bin_counter) = all_histos[0]->GetBinContent(ix,iy)-hMC->GetBinContent(ix,iy);
+	y(bin_counter) = -all_histos[0]->GetBinContent(ix,iy)+hMC->GetBinContent(ix,iy);
 	bin_counter++;
       }
     }
@@ -301,6 +316,31 @@ int main(int argc, char* argv[])
     MatrixXd A = inv_sqrtV*jac;
     MatrixXd b = inv_sqrtV*y;
     VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
+
+    if(debug && false){
+      double chi2_BDCSVD       = (b-A*A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b)).squaredNorm();
+      double chi2_HouseholderQR = (b-A*A.householderQr().solve(b)).squaredNorm();
+      double chi2_ColPivHouseholderQR = (b-A*A.colPivHouseholderQr().solve(b)).squaredNorm();
+      double chi2_FullPivHouseholderQR = (b-A*A.fullPivHouseholderQr().solve(b)).squaredNorm();
+      double chi2_LLT  = (b-A*((A.transpose()*A).llt().solve(A.transpose()*b))).squaredNorm();
+      double chi2_LDLT = (b-A*((A.transpose()*A).ldlt().solve(A.transpose()*b))).squaredNorm();
+      double chi2_JacobiSVD = (b-A*A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b)).squaredNorm();
+      //double chi2_PartialPivLU = (b-A*A.partialPivLu().solve(b)).squaredNorm();
+      //double chi2_FullPivLU = (b-A*A.fullPivLu().solve(b)).squaredNorm();
+      //double chi2_CompleteOrthogonalDecomposition = (b-A*A.completeOrthogonalDecomposition().solve(b)).squaredNorm();
+      cout << "DEBUG linear system for m_idx = " << m << endl;
+      cout << "\tBDCSVD               = " << chi2_BDCSVD << endl;
+      cout << "\tHouseholderQR        = " << chi2_HouseholderQR << endl;
+      cout << "\tColPivHouseholderQR  = " << chi2_ColPivHouseholderQR << endl;
+      cout << "\tFullPivHouseholderQR = " << chi2_FullPivHouseholderQR << endl;
+      cout << "\tLLT                  = " << chi2_LLT << endl;
+      cout << "\tLDLT                 = " << chi2_LDLT << endl;
+      cout << "\tJacobiSVD            = " << chi2_JacobiSVD << endl;
+      //cout << "\tPartialPivLU = " << chi2_PartialPivLU << endl;
+      //cout << "\tFullPivLU = " << chi2_FullPivLU << endl;
+      //cout << "\tCompleteOrthogonalDecomposition = " << chi2_CompleteOrthogonalDecomposition << endl;
+    }
+
     MatrixXd C = (jac.transpose()*inv_V*jac).inverse();
     MatrixXd rho( C.rows(), C.rows() ) ;
     for(unsigned int ir = 0; ir<C.rows(); ir++){
@@ -405,6 +445,22 @@ int main(int argc, char* argv[])
       rhox_int_th2->Write();
     }
 
+    if(debug && m>=0){
+      TH2D* hw_postfit = (TH2D*)hw->Clone(Form("hw_postfit%d", m));
+      bin_counter = 0;
+      for(unsigned int ix = 1; ix<=nx; ix++ ){
+	for(unsigned int iy = 1; iy<=ny; iy++ ){
+	  double val = hw->GetBinContent(ix,iy);
+	  val += (jac*x)(bin_counter);
+	  hw_postfit->SetBinContent(ix,iy,val);
+	  bin_counter++;
+	}
+      }
+      hMC->Write(Form("hw_prefit%d", m));
+      hw_postfit->Write(Form("hw_postfit%d", m));
+    }
+
+    
     std::vector<int> helicities = {-1, 0, 1, 2, 3, 4};
     for(auto hel : helicities) {
       vector< std::pair<unsigned int, unsigned int> > active;
@@ -453,6 +509,7 @@ int main(int argc, char* argv[])
     }
   }
 
+  //hwMC->Write("hw_nominal");
   TGraphErrors* chi2_fit = new TGraphErrors(NMASS,xx_mass,yy_chi2,exx_mass,eyy_chi2);
   chi2_fit->Write("chi2_vs_mass");
   fout->Close();
@@ -470,6 +527,16 @@ int main(int argc, char* argv[])
        << " -- bias: " << (MW-biasM)*1e+03  << " MeV"
        << ", pull: " << pullM 
        << endl;
+
+  int idx = 0;
+  for(int m=0; m<NMASS; m++){
+    float mass_m = MW - 0.100 + 0.200/NMASS*m;
+    if(mass_m > (biasM - deltaM)){
+      idx = m;
+      break;
+    }
+  }
+  cout << "Intersection at mass index [" << idx-1 << "," << idx << "]" << endl; 
   
   sw.Stop();
   std::cout << "Real time: " << sw.RealTime() << " seconds " << "(CPU time:  " << sw.CpuTime() << " seconds)" << std::endl;
