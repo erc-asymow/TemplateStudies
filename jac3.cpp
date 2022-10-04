@@ -30,7 +30,7 @@ std::vector<std::string> helicities = {"A0", "A1", "A2", "A3", "A4"};
 
 constexpr double MW = 80.;
 constexpr double GW = 2.0;
-constexpr int NMAX  = 100;
+constexpr int NMAX  = 1000;
 constexpr int NMASS = 50;
 
 enum pdf_type { pdf_x=0, pdf_y, corr_x, corr_y, unknown};
@@ -52,6 +52,7 @@ int main(int argc, char* argv[])
 	("nevents",     value<long>()->default_value(1000), "number of events")
 	("degs_corr_x", value<int>()->default_value(2), "max degree in x of corrxy")
 	("degs_corr_y", value<int>()->default_value(2), "max degree in y of corrxy")
+	("fit_angularcoeff", bool_switch()->default_value(false), "jacobians of angular coeff")
 	("tag", value<std::string>()->default_value(""), "tag name")
 	("run", value<std::string>()->default_value("closure"), "run type")
 	("do_absy",    bool_switch()->default_value(false), "polycheb in abs(y)")
@@ -88,6 +89,8 @@ int main(int argc, char* argv[])
   bool inter_extTH2_corr= vm["inter_extTH2_corr"].as<bool>();
   bool toyTF2_corr= vm["toyTF2_corr"].as<bool>();
   bool fit_qt_y = vm["fit_qt_y"].as<bool>();
+  bool fit_angularcoeff = vm["fit_angularcoeff"].as<bool>();
+  
 
   if(vm.count("degs_corr_x")) tag += std::string(Form("_UL_%d", degs_corr_x));
   if(vm.count("degs_corr_y")) tag += std::string(Form("_%d", degs_corr_y));
@@ -379,6 +382,7 @@ int main(int argc, char* argv[])
     if(ijac<0) return out;
     for(unsigned int k=0; k<6; k++){
       double val = weightsMC.at(0)*harmonics.at(k)/weightsMC_angular.at(0);
+      if(fit_angularcoeff && k==0) val = weightsMC.at(0);
       //cout << "out[" << (k+1)*ijac << "]=" << val << endl;
       out[njacs/6*k + ijac] = val;
     }

@@ -130,11 +130,11 @@ def plot_pulls_1D(tag='testall_UL_10_4_A0_3_4_A1_3_4_A2_3_4_A3_3_4_A4_3_4_closur
     histos = {}
     fin = ROOT.TFile('root/fit_'+tag+'_'+post_tag+'.root', 'READ')
     mass_dict = {
-        #'0'  : '79.900',
+        '0'  : '79.900',
         '18' : '79.972',
         '25' : '80.000',
         '32' : '80.028',
-        #'49' : '80.100',
+        '49' : '80.100',
         }
     for mass_opt in mass_dict.keys():
         histos[mass_opt] = {
@@ -152,8 +152,8 @@ def plot_pulls_1D(tag='testall_UL_10_4_A0_3_4_A1_3_4_A2_3_4_A3_3_4_A4_3_4_closur
     leg1.SetHeader(legend)
     count = 0    
     for key in mass_dict.keys():
-        h_pre_1d  = histos[key]['pre'].ProjectionY("h_pre_1d"+key);
-        h_post_1d = histos[key]['post'].ProjectionY("h_post_1d"+key);
+        h_pre_1d  = histos[key]['pre'].ProjectionX("h_pre_1d"+key);
+        h_post_1d = histos[key]['post'].ProjectionX("h_post_1d"+key);
         h_pull = h_pre_1d.Clone("hpull"+key);
         histos[key]['pull'] = h_pull
         for ix in range(1, h_pre_1d.GetNbinsX()+1):
@@ -265,4 +265,6 @@ for j,t in enumerate(tags):
     plot_chi2(tag=t, post_tag=pt, legend=legends[j], offset=80.0, xmin=0.0, xmax=5)
 
 
-plot_pulls_1D(tag='addmass2_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure', post_tag='jUL_j0_j1_j2_j3_j4_DEBUG', legend='Mass', xmin=-1, xmax=1)
+plot_pulls_1D(tag='addmass2_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure', post_tag='jUL_j0_j1_j2_j3_j4_DEBUG', legend='Mass', xmin=-2, xmax=2)
+plot_pulls_1D(tag='addmass3_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure', post_tag='jUL_j0_j1_j2_j3_j4_DEBUG', legend='Mass', xmin=-2, xmax=2)
+plot_pulls_1D(tag='addmass4_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure', post_tag='jUL_j0_j1_j2_j3_j4_DEBUG', legend='Mass', xmin=-2, xmax=2)

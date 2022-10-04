@@ -1,6 +1,8 @@
 #include "TFile.h"
 #include "TTree.h"
 #include "TMath.h"
+#include "TRandom3.h"
+#include "TString.h"
 #include "TH2D.h"
 #include "TF1.h"
 #include "TF2.h"
@@ -39,6 +41,7 @@ int main(int argc, char* argv[])
       desc.add_options()
 	("help,h", "Help screen")
 	("nevents",     value<long>()->default_value(1000), "number of events")
+	("ntoys",       value<int>()->default_value(-1), "number of toys")
 	("degs_pdf_x",  value<int>()->default_value(5), "max degree of pdf_x")
 	("degs_pdf_y" , value<int>()->default_value(5), "max degree of pdf_y")
 	("degs_corr_x", value<int>()->default_value(2), "max degree in x of corrxy")
@@ -85,6 +88,7 @@ int main(int argc, char* argv[])
     }
 
   long nevents    = vm["nevents"].as<long>();
+  int ntoys       = vm["ntoys"].as<int>();
   std::string tag = vm["tag"].as<std::string>();
   std::string post_tag = vm["post_tag"].as<std::string>();
   std::string run = vm["run"].as<std::string>();
@@ -134,6 +138,8 @@ int main(int argc, char* argv[])
     return 0;
   }
 
+  TRandom3* ran = new TRandom3();
+  
   Long64_t N;
   double poi_val[NMAX];
   int poi_cat[NMAX];
@@ -276,268 +282,303 @@ int main(int argc, char* argv[])
     if(vm["j"+t].as<bool>()) fit_tag += "_j"+t;
   }
   TFile* fout = TFile::Open(("root/fit_"+tag+"_"+run+fit_tag+"_"+post_tag+".root").c_str(), "RECREATE");
+  TTree* tree = new TTree("tree", "tree");
+  double best_mass;
+  double best_mass_err;
+  tree->Branch("best_mass",     &best_mass,     "best_mass/D");
+  tree->Branch("best_mass_err", &best_mass_err, "best_mass_err/D");
   //cout << "Commons done. Output file opened." << endl;
 
+  bool do_toys = ntoys>0;
+  if(!do_toys) ntoys = 1;
 
   double xx_mass[NMASS], yy_chi2[NMASS], exx_mass[NMASS], eyy_chi2[NMASS];
-  // mass specific
-  for(int m=-1; m<NMASS; m++){
+  
+  for(unsigned int itoy=0; itoy<ntoys; itoy++ ){
 
-    //cout << "Now doing mass idx " << m << endl;
-    //TH2D* hMC = m<0 ? all_histos[1] : fin->Get<TH2D>(Form("hMC_mass%d",m));
-    TH2D* hMC = all_histos[m+2];
-    if(hMC==0 || hMC==nullptr){
-      cout << "Null pointer" << endl;
-      continue;
-    }
+    TString toy_tag(!do_toys ? "" : Form("_toy%d", itoy));
 
-    // account for slight change in V for different mass hypos
-    bin_counter = 0;
-    for(unsigned int ix = 1; ix<=nx; ix++ ){
-      for(unsigned int iy = 1; iy<=ny; iy++ ){
-	double val = hMC->GetBinContent(ix,iy);
-	if(val<=0) continue;
-	inv_sqrtV(bin_counter,bin_counter) = 1./TMath::Sqrt(val);
-	inv_V(bin_counter,bin_counter) = 1./val;
-	bin_counter++;
-      }
-    }
-    
-    VectorXd y(nbins);
-    bin_counter = 0;
-    for(unsigned int ix = 1; ix<=nx; ix++ ){
-      for(unsigned int iy = 1; iy<=ny; iy++ ){
-	y(bin_counter) = -all_histos[0]->GetBinContent(ix,iy)+hMC->GetBinContent(ix,iy);
-	bin_counter++;
-      }
-    }
-    
-    //cout << inv_V << endl;
-    MatrixXd A = inv_sqrtV*jac;
-    MatrixXd b = inv_sqrtV*y;
-    VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
-
-    if(debug && false){
-      double chi2_BDCSVD       = (b-A*A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b)).squaredNorm();
-      double chi2_HouseholderQR = (b-A*A.householderQr().solve(b)).squaredNorm();
-      double chi2_ColPivHouseholderQR = (b-A*A.colPivHouseholderQr().solve(b)).squaredNorm();
-      double chi2_FullPivHouseholderQR = (b-A*A.fullPivHouseholderQr().solve(b)).squaredNorm();
-      double chi2_LLT  = (b-A*((A.transpose()*A).llt().solve(A.transpose()*b))).squaredNorm();
-      double chi2_LDLT = (b-A*((A.transpose()*A).ldlt().solve(A.transpose()*b))).squaredNorm();
-      double chi2_JacobiSVD = (b-A*A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b)).squaredNorm();
-      //double chi2_PartialPivLU = (b-A*A.partialPivLu().solve(b)).squaredNorm();
-      //double chi2_FullPivLU = (b-A*A.fullPivLu().solve(b)).squaredNorm();
-      //double chi2_CompleteOrthogonalDecomposition = (b-A*A.completeOrthogonalDecomposition().solve(b)).squaredNorm();
-      cout << "DEBUG linear system for m_idx = " << m << endl;
-      cout << "\tBDCSVD               = " << chi2_BDCSVD << endl;
-      cout << "\tHouseholderQR        = " << chi2_HouseholderQR << endl;
-      cout << "\tColPivHouseholderQR  = " << chi2_ColPivHouseholderQR << endl;
-      cout << "\tFullPivHouseholderQR = " << chi2_FullPivHouseholderQR << endl;
-      cout << "\tLLT                  = " << chi2_LLT << endl;
-      cout << "\tLDLT                 = " << chi2_LDLT << endl;
-      cout << "\tJacobiSVD            = " << chi2_JacobiSVD << endl;
-      //cout << "\tPartialPivLU = " << chi2_PartialPivLU << endl;
-      //cout << "\tFullPivLU = " << chi2_FullPivLU << endl;
-      //cout << "\tCompleteOrthogonalDecomposition = " << chi2_CompleteOrthogonalDecomposition << endl;
-    }
-
-    MatrixXd C = (jac.transpose()*inv_V*jac).inverse();
-    MatrixXd rho( C.rows(), C.rows() ) ;
-    for(unsigned int ir = 0; ir<C.rows(); ir++){
-      for(unsigned int ic = 0; ic<C.rows(); ic++){
-	rho(ir,ic) = C(ir,ic)/TMath::Sqrt(C(ir,ir)*C(ic,ic));
-      }
-    }
-    //cout << rho << endl;
-    TH2D* rho_th2 = 0;
-    if(m<0){
-      rho_th2 = new TH2D("rho_th2", ";POI;POI", rho.rows(), 0, rho.rows(), rho.cols(), 0, rho.cols());
-      for(unsigned int i=0; i<rho.rows(); i++){
-	for(unsigned int j=0; j<rho.rows(); j++){
-	  rho_th2->SetBinContent(i+1,j+1, rho(i,j));
-	}
-      }
-    }
-
-    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver(C);
-    if (eigensolver.info() != Eigen::Success){
-      cout << "Could not eigendecompose C" << endl;
-      abort();
-    }
-    if(verbose && m<0) std::cout << "The eigenvalues of C are:\n" << eigensolver.eigenvalues() << std::endl;
-    //eigensolver.eigenvectors();
-
-    int degs_xy = n_pdfx*n_pdfy;
-    MatrixXd C_xy = C.block(0,0,degs_xy,degs_xy);
-    //cout << C_xy << endl;
-    VectorXd x_xy = x(Eigen::seqN(0,degs_xy));
-    VectorXd xMC_xy(degs_xy);
-    for(unsigned int i=0; i<degs_xy; i++ ) xMC_xy(i) = poi_val[ active_pois[i] ];
-    MatrixXd D(n_pdfx, degs_xy);
-    for(unsigned int i = 0 ; i<D.rows(); i++){
-      unsigned int j_first = i*n_pdfy; 
-      unsigned int j_last  = (i+1)*n_pdfy; 
-      for(unsigned int j = 0 ; j < D.cols() ; j++){
-	if(j>=j_first && j<j_last) 
-	  D(i,j) = degs_corr_y==4 ? norms_cheb4(j-j_first)*( j==(j_last-1) ? 1.0 : 2.0) : norms_cheb6(j-j_first)*( j==(j_last-1) ? 1.0 : 2.0);
-	else 
-	  D(i,j) = 0.0;
-      }
-    }
-    VectorXd x_int   = D*x_xy;
-    VectorXd xMC_int = D*xMC_xy;
-    MatrixXd Cx_int  = D*C_xy*D.transpose();
-
-    MatrixXd rhox_int(Cx_int.rows(), Cx_int.cols());
-    for(unsigned int i = 0 ; i<rhox_int.rows(); i++){
-      for(unsigned int j = 0 ; j < rhox_int.cols() ; j++){
-	rhox_int(i,j) = Cx_int(i,j)/TMath::Sqrt(Cx_int(i,i)*Cx_int(j,j));
-      }
-    }
-    if(m<0 && verbose) cout << rhox_int << endl;
-
-    TH2D* rhox_int_th2 = 0;
-    if(m<0){
-      rhox_int_th2 = new TH2D("rhox_int_th2", ";POI;POI", rhox_int.rows(), 0, rhox_int.rows(), rhox_int.cols(), 0, rhox_int.cols());
-      for(unsigned int i=0; i<rhox_int.rows(); i++){
-	for(unsigned int j=0; j<rhox_int.rows(); j++){
-	  rhox_int_th2->SetBinContent(i+1,j+1, rhox_int(i,j));
-	}
-      }
-    }
-
-
-    //cout << D << endl;
-    //cout << xMC_int << endl;
-    //cout << Cx_int << endl;
-
-    MatrixXd chi2old = b.transpose()*b;
-    MatrixXd chi2 = ((b - A*x).transpose())*(b-A*x);
-    int ndof = nbins-poi_counter;
-    double chi2norm = chi2(0,0)/ndof;
-
-    if(m>=0){
-      xx_mass[m] = MW - 0.100 + 0.200/NMASS*m; 
-      exx_mass[m] = 0.0;
-      yy_chi2[m] = chi2(0,0);
-      eyy_chi2[m] = 0.0;
-    }
-
-    VectorXd pulls(x.size());
-    for(unsigned int ip = 0; ip<pulls.size(); ip++){
-      pulls(ip) = x(ip) / TMath::Sqrt(C(ip,ip));
-    }
-    //cout << pulls << endl;
-
-    if(m<0 && verbose){
-      for(unsigned int j = 0; j<poi_counter; j++){
-	unsigned int idx = active_pois[j];
-	cout << "poi " << idx << ": " << poi_val[idx] << " +/- " << TMath::Sqrt(C(j,j)) 
-	     << ". Pull = " << pulls(j) << endl;
-      }
-    }
-
-    if(m<0) cout << "chi2     : " << chi2old(0,0) << " --> " << chi2 << "; ndof = " << ndof << " => chi2/ndof = " << chi2norm << endl; 
-
-    fout->cd();
-    if(m<0){
-      rho_th2->Write();
-      rhox_int_th2->Write();
-    }
-
-    if(debug && m>=0){
-      TH2D* hw_postfit = (TH2D*)hw->Clone(Form("hw_postfit%d", m));
+    VectorXd mu_ran(nbins);
+    // randomize
+    if(do_toys){
+      //cout << "Toy " << itoy << endl; 
       bin_counter = 0;
       for(unsigned int ix = 1; ix<=nx; ix++ ){
 	for(unsigned int iy = 1; iy<=ny; iy++ ){
-	  double val = hw->GetBinContent(ix,iy);
-	  val += (jac*x)(bin_counter);
-	  hw_postfit->SetBinContent(ix,iy,val);
+	  double mu = all_histos[0]->GetBinContent(ix,iy);
+	  mu_ran(bin_counter) = ran->PoissonD(mu);  
+	  bin_counter++;
+	}
+      }	
+    }
+
+    // mass specific
+    for(int m = (!do_toys ? -1 : 0); m<NMASS; m++){
+      
+      //cout << "Now doing mass idx " << m << endl;
+      //TH2D* hMC = m<0 ? all_histos[1] : fin->Get<TH2D>(Form("hMC_mass%d",m));
+      TH2D* hMC = all_histos[m+2];
+      if(hMC==0 || hMC==nullptr){
+	cout << "Null pointer" << endl;
+	continue;
+      }
+      
+      // account for slight change in V for different mass hypos
+      bin_counter = 0;
+      for(unsigned int ix = 1; ix<=nx; ix++ ){
+	for(unsigned int iy = 1; iy<=ny; iy++ ){
+	  double val = hMC->GetBinContent(ix,iy);
+	  if(do_toys) val = mu_ran(bin_counter);
+	  if(val<=0) continue;
+	  inv_sqrtV(bin_counter,bin_counter) = 1./TMath::Sqrt(val);
+	  inv_V(bin_counter,bin_counter) = 1./val;
 	  bin_counter++;
 	}
       }
-      hMC->Write(Form("hw_prefit%d", m));
-      hw_postfit->Write(Form("hw_postfit%d", m));
-    }
-
-    
-    std::vector<int> helicities = {-1, 0, 1, 2, 3, 4};
-    for(auto hel : helicities) {
-      vector< std::pair<unsigned int, unsigned int> > active;
-      for(unsigned int i = 0; i < active_pois.size(); i++){
-	if(poi_cat[ active_pois[i] ]==hel){
-	  active.emplace_back( std::make_pair(i,active_pois[i]) );
-	}
-      }  
-      unsigned int n = active.size();
-      double xx[n], yy[n], yyMC[n], exx[n], eyy[n];
-      for(unsigned int i = 0; i < active.size(); i++){
-	auto p = active[i];
-	xx[i]  = p.second;
-	yy[i]  = poi_val[p.second] + x(p.first);
-	yyMC[i]= poi_val[p.second];
-	exx[i] = 0.0;
-	eyy[i] = TMath::Sqrt(C(p.first,p.first));
-      }
-      fout->cd();
-      TGraphErrors* fit   = new TGraphErrors(n,xx,yy,exx,eyy);
-      TGraphErrors* fitMC = new TGraphErrors(n,xx,yyMC,exx,exx);
-      string name = hel==-1 ? "corrxy" : std::string(Form("A%d", hel));
       
-      if(m>=0) name += std::string(Form("_mass%d", m));
-
-      if(m<0) fit->Write(("fit_"+name).c_str());
-      if(m<0) fitMC->Write(("fitMC_"+name).c_str());
-    
-      if(hel==-1){
-	n = n_pdfx;
-	double xx[n], yy[n], yyMC[n], exx[n], eyy[n];
-	for(unsigned int i = 0; i < n_pdfx; i++){
-	  xx[i]  = points_x[i];
-	  yy[i]  = xMC_int(i)+x_int(i); 
-	  yyMC[i]= xMC_int(i);
-	  exx[i] = 0.0;
-	  eyy[i] = TMath::Sqrt( Cx_int(i,i) );
+      VectorXd y(nbins);
+      bin_counter = 0;
+      for(unsigned int ix = 1; ix<=nx; ix++ ){
+	for(unsigned int iy = 1; iy<=ny; iy++ ){
+	  y(bin_counter) = -all_histos[0]->GetBinContent(ix,iy)+hMC->GetBinContent(ix,iy);
+	  if(do_toys) y(bin_counter) = -mu_ran(bin_counter)+hMC->GetBinContent(ix,iy);
+	  bin_counter++;
 	}
+      }
+
+      //cout << inv_V << endl;
+      MatrixXd A = inv_sqrtV*jac;
+      MatrixXd b = inv_sqrtV*y;
+      VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
+      
+      if(debug && false){
+	double chi2_BDCSVD       = (b-A*A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b)).squaredNorm();
+	double chi2_HouseholderQR = (b-A*A.householderQr().solve(b)).squaredNorm();
+	double chi2_ColPivHouseholderQR = (b-A*A.colPivHouseholderQr().solve(b)).squaredNorm();
+	double chi2_FullPivHouseholderQR = (b-A*A.fullPivHouseholderQr().solve(b)).squaredNorm();
+	double chi2_LLT  = (b-A*((A.transpose()*A).llt().solve(A.transpose()*b))).squaredNorm();
+	double chi2_LDLT = (b-A*((A.transpose()*A).ldlt().solve(A.transpose()*b))).squaredNorm();
+	double chi2_JacobiSVD = (b-A*A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b)).squaredNorm();
+	//double chi2_PartialPivLU = (b-A*A.partialPivLu().solve(b)).squaredNorm();
+	//double chi2_FullPivLU = (b-A*A.fullPivLu().solve(b)).squaredNorm();
+	//double chi2_CompleteOrthogonalDecomposition = (b-A*A.completeOrthogonalDecomposition().solve(b)).squaredNorm();
+	cout << "DEBUG linear system for m_idx = " << m << endl;
+	cout << "\tBDCSVD               = " << chi2_BDCSVD << endl;
+	cout << "\tHouseholderQR        = " << chi2_HouseholderQR << endl;
+	cout << "\tColPivHouseholderQR  = " << chi2_ColPivHouseholderQR << endl;
+	cout << "\tFullPivHouseholderQR = " << chi2_FullPivHouseholderQR << endl;
+	cout << "\tLLT                  = " << chi2_LLT << endl;
+	cout << "\tLDLT                 = " << chi2_LDLT << endl;
+	cout << "\tJacobiSVD            = " << chi2_JacobiSVD << endl;
+	//cout << "\tPartialPivLU = " << chi2_PartialPivLU << endl;
+	//cout << "\tFullPivLU = " << chi2_FullPivLU << endl;
+	//cout << "\tCompleteOrthogonalDecomposition = " << chi2_CompleteOrthogonalDecomposition << endl;
+      }
+      
+      MatrixXd C = (jac.transpose()*inv_V*jac).inverse();
+      MatrixXd rho( C.rows(), C.rows() ) ;
+      for(unsigned int ir = 0; ir<C.rows(); ir++){
+	for(unsigned int ic = 0; ic<C.rows(); ic++){
+	  rho(ir,ic) = C(ir,ic)/TMath::Sqrt(C(ir,ir)*C(ic,ic));
+	}
+      }
+      //cout << rho << endl;
+      TH2D* rho_th2 = 0;
+      if(m<0){	
+	rho_th2 = new TH2D("rho_th2"+toy_tag, ";POI;POI", rho.rows(), 0, rho.rows(), rho.cols(), 0, rho.cols());
+	for(unsigned int i=0; i<rho.rows(); i++){
+	  for(unsigned int j=0; j<rho.rows(); j++){
+	    rho_th2->SetBinContent(i+1,j+1, rho(i,j));
+	  }
+	}
+      }
+      
+      Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver(C);
+      if (eigensolver.info() != Eigen::Success){
+	cout << "Could not eigendecompose C" << endl;
+	abort();
+      }
+      if(verbose && m<0) std::cout << "The eigenvalues of C are:\n" << eigensolver.eigenvalues() << std::endl;
+      //eigensolver.eigenvectors();
+      
+      int degs_xy = n_pdfx*n_pdfy;
+      MatrixXd C_xy = C.block(0,0,degs_xy,degs_xy);
+      //cout << C_xy << endl;
+      VectorXd x_xy = x(Eigen::seqN(0,degs_xy));
+      VectorXd xMC_xy(degs_xy);
+      for(unsigned int i=0; i<degs_xy; i++ ) xMC_xy(i) = poi_val[ active_pois[i] ];
+      MatrixXd D(n_pdfx, degs_xy);
+      for(unsigned int i = 0 ; i<D.rows(); i++){
+	unsigned int j_first = i*n_pdfy; 
+	unsigned int j_last  = (i+1)*n_pdfy; 
+	for(unsigned int j = 0 ; j < D.cols() ; j++){
+	  if(j>=j_first && j<j_last) 
+	    D(i,j) = degs_corr_y==4 ? norms_cheb4(j-j_first)*( j==(j_last-1) ? 1.0 : 2.0) : norms_cheb6(j-j_first)*( j==(j_last-1) ? 1.0 : 2.0);
+	  else 
+	    D(i,j) = 0.0;
+	}
+      }
+      VectorXd x_int   = D*x_xy;
+      VectorXd xMC_int = D*xMC_xy;
+      MatrixXd Cx_int  = D*C_xy*D.transpose();
+
+      MatrixXd rhox_int(Cx_int.rows(), Cx_int.cols());
+      for(unsigned int i = 0 ; i<rhox_int.rows(); i++){
+	for(unsigned int j = 0 ; j < rhox_int.cols() ; j++){
+	  rhox_int(i,j) = Cx_int(i,j)/TMath::Sqrt(Cx_int(i,i)*Cx_int(j,j));
+	}
+      }
+      if(m<0 && verbose) cout << rhox_int << endl;
+      
+      TH2D* rhox_int_th2 = 0;
+      if(m<0){
+	rhox_int_th2 = new TH2D("rhox_int_th2"+toy_tag, ";POI;POI", rhox_int.rows(), 0, rhox_int.rows(), rhox_int.cols(), 0, rhox_int.cols());
+	for(unsigned int i=0; i<rhox_int.rows(); i++){
+	  for(unsigned int j=0; j<rhox_int.rows(); j++){
+	    rhox_int_th2->SetBinContent(i+1,j+1, rhox_int(i,j));
+	  }
+	}
+      }
+      
+
+      //cout << D << endl;
+      //cout << xMC_int << endl;
+      //cout << Cx_int << endl;
+      
+      MatrixXd chi2old = b.transpose()*b;
+      MatrixXd chi2 = ((b - A*x).transpose())*(b-A*x);
+      int ndof = nbins-poi_counter;
+      double chi2norm = chi2(0,0)/ndof;
+      
+      if(m>=0){
+	xx_mass[m] = MW - 0.100 + 0.200/NMASS*m; 
+	exx_mass[m] = 0.0;
+	yy_chi2[m] = chi2(0,0);
+	eyy_chi2[m] = 0.0;
+      }
+      
+      VectorXd pulls(x.size());
+      for(unsigned int ip = 0; ip<pulls.size(); ip++){
+	pulls(ip) = x(ip) / TMath::Sqrt(C(ip,ip));
+      }
+      //cout << pulls << endl;
+      
+      if(m<0 && verbose){
+	for(unsigned int j = 0; j<poi_counter; j++){
+	  unsigned int idx = active_pois[j];
+	  cout << "poi " << idx << ": " << poi_val[idx] << " +/- " << TMath::Sqrt(C(j,j)) 
+	       << ". Pull = " << pulls(j) << endl;
+	}
+      }
+      
+      if(m<0) cout << "chi2     : " << chi2old(0,0) << " --> " << chi2 << "; ndof = " << ndof << " => chi2/ndof = " << chi2norm << endl; 
+      
+      fout->cd();
+      if(m<0){
+	rho_th2->Write();
+	rhox_int_th2->Write();
+      }
+      
+      if(debug && m>=0){
+	TH2D* hw_postfit = (TH2D*)hw->Clone(TString(Form("hw_postfit%d", m))+toy_tag);
+	bin_counter = 0;
+	for(unsigned int ix = 1; ix<=nx; ix++ ){
+	  for(unsigned int iy = 1; iy<=ny; iy++ ){
+	    double val = hw->GetBinContent(ix,iy);
+	    val += (jac*x)(bin_counter);
+	    hw_postfit->SetBinContent(ix,iy,val);
+	    bin_counter++;
+	  }
+	}
+	hMC->Write(TString(Form("hw_prefit%d", m))+toy_tag);
+	hw_postfit->Write(TString(Form("hw_postfit%d", m))+toy_tag);
+      }
+
+      
+      std::vector<int> helicities = {-1, 0, 1, 2, 3, 4};
+      for(auto hel : helicities) {
+	vector< std::pair<unsigned int, unsigned int> > active;
+	for(unsigned int i = 0; i < active_pois.size(); i++){
+	  if(poi_cat[ active_pois[i] ]==hel){
+	    active.emplace_back( std::make_pair(i,active_pois[i]) );
+	  }
+	}  
+	unsigned int n = active.size();
+	double xx[n], yy[n], yyMC[n], exx[n], eyy[n];
+	for(unsigned int i = 0; i < active.size(); i++){
+	  auto p = active[i];
+	  xx[i]  = p.second;
+	  yy[i]  = poi_val[p.second] + x(p.first);
+	  yyMC[i]= poi_val[p.second];
+	  exx[i] = 0.0;
+	  eyy[i] = TMath::Sqrt(C(p.first,p.first));
+	}
+	fout->cd();
 	TGraphErrors* fit   = new TGraphErrors(n,xx,yy,exx,eyy);
 	TGraphErrors* fitMC = new TGraphErrors(n,xx,yyMC,exx,exx);
-	string name = "x_inty";
+	string name = hel==-1 ? "corrxy" : std::string(Form("A%d", hel));
+	
 	if(m>=0) name += std::string(Form("_mass%d", m));
+	
 	if(m<0) fit->Write(("fit_"+name).c_str());
-	if(m<0) fitMC->Write(("fitMC_"+name).c_str());      
+	if(m<0) fitMC->Write(("fitMC_"+name).c_str());
+	
+	if(hel==-1){
+	  n = n_pdfx;
+	  double xx[n], yy[n], yyMC[n], exx[n], eyy[n];
+	  for(unsigned int i = 0; i < n_pdfx; i++){
+	    xx[i]  = points_x[i];
+	    yy[i]  = xMC_int(i)+x_int(i); 
+	    yyMC[i]= xMC_int(i);
+	    exx[i] = 0.0;
+	    eyy[i] = TMath::Sqrt( Cx_int(i,i) );
+	  }
+	  TGraphErrors* fit   = new TGraphErrors(n,xx,yy,exx,eyy);
+	  TGraphErrors* fitMC = new TGraphErrors(n,xx,yyMC,exx,exx);
+	  string name = "x_inty";
+	  if(m>=0) name += std::string(Form("_mass%d", m));
+	  if(m<0) fit->Write(("fit_"+name).c_str());
+	  if(m<0) fitMC->Write(("fitMC_"+name).c_str());      
+	}
       }
     }
+    
+    //hwMC->Write("hw_nominal");
+    TGraphErrors* chi2_fit = new TGraphErrors(NMASS,xx_mass,yy_chi2,exx_mass,eyy_chi2);
+    chi2_fit->Write("chi2_vs_mass"+toy_tag);
+
+    chi2_fit->Fit("pol2", "Q");
+    TF1* parabola = chi2_fit->GetFunction("pol2");
+    float param0 = parabola->GetParameter(0); 
+    float param1 = parabola->GetParameter(1); 
+    float param2 = parabola->GetParameter(2); 
+    float deltaM = 1./TMath::Sqrt(param2);
+    float biasM = -param1/param2*0.5;
+    float pullM = (MW-biasM)/deltaM; 
+    if(do_toys) cout << itoy << ": ";
+    cout << "dM = " << deltaM*1e+03 << " MeV" 
+	 << " -- bias: " << (biasM-MW)*1e+03  << " MeV"
+	 << ", pull: " << pullM 
+	 << endl;
+
+    int idx = 0;
+    for(int m=0; m<NMASS; m++){
+      float mass_m = MW - 0.100 + 0.200/NMASS*m;
+      if(mass_m > (biasM - deltaM)){
+	idx = m;
+	break;
+      }
+    }
+    cout << "Intersection at mass index [" << idx-1 << "," << idx << "]" << endl; 
+    best_mass     = (biasM-MW)*1e+03;
+    best_mass_err = deltaM*1e+03;
+    tree->Fill();
   }
 
-  //hwMC->Write("hw_nominal");
-  TGraphErrors* chi2_fit = new TGraphErrors(NMASS,xx_mass,yy_chi2,exx_mass,eyy_chi2);
-  chi2_fit->Write("chi2_vs_mass");
+  tree->Write();
   fout->Close();
   fin->Close();
 
-  chi2_fit->Fit("pol2", "Q");
-  TF1* parabola = chi2_fit->GetFunction("pol2");
-  float param0 = parabola->GetParameter(0); 
-  float param1 = parabola->GetParameter(1); 
-  float param2 = parabola->GetParameter(2); 
-  float deltaM = 1./TMath::Sqrt(param2);
-  float biasM = -param1/param2*0.5;
-  float pullM = (MW-biasM)/deltaM; 
-  cout << "dM = " << deltaM*1e+03 << " MeV" 
-       << " -- bias: " << (MW-biasM)*1e+03  << " MeV"
-       << ", pull: " << pullM 
-       << endl;
-
-  int idx = 0;
-  for(int m=0; m<NMASS; m++){
-    float mass_m = MW - 0.100 + 0.200/NMASS*m;
-    if(mass_m > (biasM - deltaM)){
-      idx = m;
-      break;
-    }
-  }
-  cout << "Intersection at mass index [" << idx-1 << "," << idx << "]" << endl; 
-  
   sw.Stop();
   std::cout << "Real time: " << sw.RealTime() << " seconds " << "(CPU time:  " << sw.CpuTime() << " seconds)" << std::endl;
   return 1;
