@@ -340,8 +340,10 @@ int main(int argc, char* argv[])
       bin_counter = 0;
       for(unsigned int ix = 1; ix<=nx; ix++ ){
 	for(unsigned int iy = 1; iy<=ny; iy++ ){
-	  y(bin_counter) = -all_histos[0]->GetBinContent(ix,iy)+hMC->GetBinContent(ix,iy);
-	  if(do_toys) y(bin_counter) = -mu_ran(bin_counter)+hMC->GetBinContent(ix,iy);
+	  if(!do_toys)
+	    y(bin_counter) = -all_histos[0]->GetBinContent(ix,iy)+hMC->GetBinContent(ix,iy);
+	  else
+	    y(bin_counter) = -mu_ran(bin_counter)+hMC->GetBinContent(ix,iy);
 	  bin_counter++;
 	}
       }
@@ -504,6 +506,7 @@ int main(int argc, char* argv[])
 	  }
 	}  
 	unsigned int n = active.size();
+	if(verbose && m<0) cout << n << " active POIs for hel=" << hel << endl;
 	double xx[n], yy[n], yyMC[n], exx[n], eyy[n];
 	for(unsigned int i = 0; i < active.size(); i++){
 	  auto p = active[i];
@@ -554,7 +557,7 @@ int main(int argc, char* argv[])
     float param2 = parabola->GetParameter(2); 
     float deltaM = 1./TMath::Sqrt(param2);
     float biasM = -param1/param2*0.5;
-    float pullM = (MW-biasM)/deltaM; 
+    float pullM = (biasM-MW)/deltaM; 
     if(do_toys) cout << itoy << ": ";
     cout << "dM = " << deltaM*1e+03 << " MeV" 
 	 << " -- bias: " << (biasM-MW)*1e+03  << " MeV"

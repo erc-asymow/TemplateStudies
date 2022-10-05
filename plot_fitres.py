@@ -189,24 +189,26 @@ tags      = [#'dev0_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
     #'dev0_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_4_3_closure',
     #'dev0_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_4_A4_4_3_closure',
     #'dev0_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_4_closure',
-    'addmass3_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure'
+    'addmass2_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+    'addmass3_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+    'addmass4_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure'
          ]
 #post_tags = ['rebin11', 'rebin12', 'rebin13', 'rebin14', 'rebin16', 'rebin21', 'rebin31' ]
-post_tags = ['rebin11' ]
-legends   = ['100M events, 36/60']
+post_tags = ['1G_SCALE_ALL_BUT_A4', '4G_SCALE_ALL_BUT_A4', '10G_SCALE_ALL_BUT_A4' ]
+legends   = ['1G --> 100M events, 36/60', '4G --> 100M events, 36/60', '10G --> 100M events, 36/60']
 #legends   = ['100M events, 36/240', '100M events, 36/120', '100M events, 36/80', '100M events, 36/60', '100M events, 36/40', '100M events, 18/240', '100M events, 12/240' ]
 #legends   = ['100M events, 36/120', '100M events, 36/60', '100M events, 36/40', '100M events, 36/30', '100M events, 36/20', '100M events, 18/120', '100M events, 12/120' ]
 
-for t in tags:
-    continue
-    for i,pt in enumerate(post_tags):        
-        plot_fitopt(var='x_inty', tag=t, post_tag=pt, legend=legends[i], offset=0.003, xmin= 0.0, xmax=1.2, view_err=False)
-        plot_fitopt(var='x_inty', tag=t, post_tag=pt, legend=legends[i], offset=0.003, xmin=-0.2, xmax=0.2, view_err=True)
-        plot_fitopt(var='corrxy',   tag=t, post_tag=pt, legend=legends[i], offset=0.1, xmin= 0.0, xmax=1.2, view_err=False)
-        plot_fitopt(var='corrxy',   tag=t, post_tag=pt, legend=legends[i], offset=0.1, xmin=-0.2, xmax=0.2, view_err=True)
-        for Ai in ['A0', 'A1', 'A2', 'A3', 'A4']:
-            plot_fitopt(var=Ai,   tag=t, post_tag=pt, legend=legends[i], offset=0.1, xmin=-0.5, xmax=1.5, view_err=False)
-            plot_fitopt(var=Ai,   tag=t, post_tag=pt, legend=legends[i], offset=0.1, xmin=-0.5, xmax=0.5, view_err=True)
+for i,t in enumerate(tags):
+    #continue
+    pt = post_tags[i]
+    plot_fitopt(var='x_inty', tag=t, post_tag=pt, legend=legends[i], offset=0.003, xmin= 0.0, xmax=1.2, view_err=False)
+    plot_fitopt(var='x_inty', tag=t, post_tag=pt, legend=legends[i], offset=0.003, xmin=-0.1, xmax=0.1, view_err=True)
+    plot_fitopt(var='corrxy',   tag=t, post_tag=pt, legend=legends[i], offset=0.1, xmin= 0.0, xmax=1.2, view_err=False)
+    plot_fitopt(var='corrxy',   tag=t, post_tag=pt, legend=legends[i], offset=0.1, xmin=-0.2, xmax=0.2, view_err=True)
+    for Ai in ['A0', 'A1', 'A2', 'A3', 'A4']:
+        plot_fitopt(var=Ai,   tag=t, post_tag=pt, legend=legends[i], offset=0.1, xmin=-0.5, xmax=1.5, view_err=False)
+        plot_fitopt(var=Ai,   tag=t, post_tag=pt, legend=legends[i], offset=0.1, xmin=-0.1, xmax=0.1, view_err=True)
 
 #plot_fitopt(var='A0', tag='dev0_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure', post_tag='rebin11', legend='100M events, 36/120', offset=0.003, xmin=-0.3, xmax=0.3, view_err=True)
 #plot_fitopt(var='A4', tag='polAifix_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure')
@@ -265,6 +267,6 @@ for j,t in enumerate(tags):
     plot_chi2(tag=t, post_tag=pt, legend=legends[j], offset=80.0, xmin=0.0, xmax=5)
 
 
-plot_pulls_1D(tag='addmass2_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure', post_tag='jUL_j0_j1_j2_j3_j4_DEBUG', legend='Mass', xmin=-2, xmax=2)
-plot_pulls_1D(tag='addmass3_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure', post_tag='jUL_j0_j1_j2_j3_j4_DEBUG', legend='Mass', xmin=-2, xmax=2)
-plot_pulls_1D(tag='addmass4_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure', post_tag='jUL_j0_j1_j2_j3_j4_DEBUG', legend='Mass', xmin=-2, xmax=2)
+#plot_pulls_1D(tag='addmass2_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure', post_tag='jUL_j0_j1_j2_j3_j4_DEBUG', legend='Mass', xmin=-2, xmax=2)
+#plot_pulls_1D(tag='addmass3_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure', post_tag='jUL_j0_j1_j2_j3_j4_DEBUG', legend='Mass', xmin=-2, xmax=2)
+#plot_pulls_1D(tag='addmass4_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure', post_tag='jUL_j0_j1_j2_j3_j4_DEBUG', legend='Mass', xmin=-2, xmax=2)
