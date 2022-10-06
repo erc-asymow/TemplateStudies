@@ -189,13 +189,16 @@ int main(int argc, char* argv[])
       }
       else if( poi_cat[p]==hel && vm[std::string(Form("scale%d", hel))].as<bool>()  ){
 	if(hjac_first==0){
-	  if(verbose) cout << "Found first jacobian of A" << hel << endl;
 	  hjac_first = fin->Get<TH2D>(Form("jac_%d", p));
+	  hjac_first->Scale( poi_val[p] );
+	  if(verbose) cout << "Found first jacobian of A" << hel << ", scaled by initial value " << poi_val[p] << endl;
 	  cleaned_active_pois.emplace_back(p);
 	}
 	else{
-	  if(verbose) cout << "Found >1 jacobian of A" << hel << ": adding up..." << endl;
-	  hjac_first->Add(fin->Get<TH2D>(Form("jac_%d", p)));
+	  TH2D* hjac_next = fin->Get<TH2D>(Form("jac_%d", p));
+	  hjac_next->Scale( poi_val[p]);
+	  hjac_first->Add( hjac_next );
+	  if(verbose) cout << "Found >1 jacobian of A" << hel << ", scaled by initial value " << poi_val[p] << ": adding up..." << endl;
 	}
       }
       else if(poi_cat[p]==hel && !vm[std::string(Form("scale%d", hel))].as<bool>()){
