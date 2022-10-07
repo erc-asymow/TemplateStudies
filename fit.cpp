@@ -117,8 +117,6 @@ int main(int argc, char* argv[])
   int verbose = vm["verbose"].as<bool>();
   int debug = vm["debug"].as<bool>();
 
-  //if(vm.count("degs_pdf_x"))  tag += std::string(Form("_%d", degs_pdf_x));
-  //if(vm.count("degs_pdf_y"))  tag += std::string(Form("_%d", degs_pdf_y));
   if(vm.count("degs_corr_x")) tag += std::string(Form("_UL_%d", degs_corr_x));
   if(vm.count("degs_corr_y")) tag += std::string(Form("_%d", degs_corr_y));
   if(vm.count("degs_A0_x"))   tag += std::string(Form("_A0_%d", degs_A0_x));
@@ -161,19 +159,22 @@ int main(int argc, char* argv[])
   outtree->SetBranchAddress("points_x", &points_x);
   outtree->SetBranchAddress("points_y", &points_y);
   outtree->GetEntry(0);    
-  
+
+  if(verbose) cout << "Listing all POIs..." << endl;
   std::vector<unsigned int> active_pois = {};
   for(unsigned int p = 0; p < poi_counter; p++){
-    if(verbose) cout << p << ", " << poi_cat[p] << endl;
+    if(verbose) cout << "(" << p << ", " << poi_cat[p] << "), ";
     if(poi_cat[p]==-1 && jUL) active_pois.emplace_back(p);
     if(poi_cat[p]==0  && j0)  active_pois.emplace_back(p);
     if(poi_cat[p]==1  && j1)  active_pois.emplace_back(p);
     if(poi_cat[p]==2  && j2)  active_pois.emplace_back(p);      
     if(poi_cat[p]==3  && j3)  active_pois.emplace_back(p);      
     if(poi_cat[p]==4  && j4)  active_pois.emplace_back(p);      
-  }
+  }  
   poi_counter = active_pois.size();
   if(verbose){
+    cout << endl;
+    cout << poi_counter << " selected POIs: ";
     for(auto p : active_pois) cout << p << ", ";
     cout << endl;
   }
@@ -198,7 +199,7 @@ int main(int argc, char* argv[])
 	  TH2D* hjac_next = fin->Get<TH2D>(Form("jac_%d", p));
 	  hjac_next->Scale( poi_val[p]);
 	  hjac_first->Add( hjac_next );
-	  if(verbose) cout << "Found >1 jacobian of A" << hel << ", scaled by initial value " << poi_val[p] << ": adding up..." << endl;
+	  if(verbose) cout << "Found another jacobian of A" << hel << ", scaled by initial value " << poi_val[p] << ": adding up..." << endl;
 	}
       }
       else if(poi_cat[p]==hel && !vm[std::string(Form("scale%d", hel))].as<bool>()){
@@ -209,7 +210,7 @@ int main(int argc, char* argv[])
   active_pois.clear();
   active_pois = cleaned_active_pois;
   if(verbose){
-    cout << "After cleaning:" << endl;
+    cout << active_pois.size() << " POIs after cleaning: " << endl;
     for(auto p : active_pois) cout << p << ", ";
     cout << endl;
   }
@@ -433,7 +434,10 @@ int main(int argc, char* argv[])
 	  rhox_int(i,j) = Cx_int(i,j)/TMath::Sqrt(Cx_int(i,i)*Cx_int(j,j));
 	}
       }
-      if(m<0 && verbose) cout << rhox_int << endl;
+      if(m<0 && verbose){
+	cout << "Correlation matrix rhox_int:" << endl;
+	cout << rhox_int << endl;
+      }
       
       TH2D* rhox_int_th2 = 0;
       if(m<0){
@@ -471,8 +475,8 @@ int main(int argc, char* argv[])
       if(m<0 && verbose){
 	for(unsigned int j = 0; j<poi_counter; j++){
 	  unsigned int idx = active_pois[j];
-	  cout << "poi " << idx << ": " << poi_val[idx] << " +/- " << TMath::Sqrt(C(j,j)) 
-	       << ". Pull = " << pulls(j) << endl;
+	  cout << "POI " << idx << ": " << poi_val[idx] << " +/- " << TMath::Sqrt(C(j,j)) 
+	       << " (pull = " << pulls(j) << ")" <<  endl;
 	}
       }
       
@@ -499,7 +503,7 @@ int main(int argc, char* argv[])
 	hw_postfit->Write(TString(Form("hw_postfit%d", m))+toy_tag);
       }
 
-      
+      if(verbose && m<0) cout << "Saving results to file..." << endl;
       std::vector<int> helicities = {-1, 0, 1, 2, 3, 4};
       for(auto hel : helicities) {
 	vector< std::pair<unsigned int, unsigned int> > active;
@@ -509,7 +513,9 @@ int main(int argc, char* argv[])
 	  }
 	}  
 	unsigned int n = active.size();
-	if(verbose && m<0) cout << n << " active POIs for hel=" << hel << endl;
+	if(verbose && m<0){
+	  cout << "\t" << n << " active POIs for hel=" << hel << endl;
+	}
 	double xx[n], yy[n], yyMC[n], exx[n], eyy[n];
 	for(unsigned int i = 0; i < active.size(); i++){
 	  auto p = active[i];
@@ -562,7 +568,7 @@ int main(int argc, char* argv[])
     float biasM = -param1/param2*0.5;
     float pullM = (biasM-MW)/deltaM; 
     if(do_toys) cout << itoy << ": ";
-    cout << "dM = " << deltaM*1e+03 << " MeV" 
+    cout << "DeltaM = " << deltaM*1e+03 << " MeV" 
 	 << " -- bias: " << (biasM-MW)*1e+03  << " MeV"
 	 << ", pull: " << pullM 
 	 << endl;
