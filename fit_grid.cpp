@@ -24,7 +24,8 @@ using namespace boost::program_options;
 
 constexpr double MW = 80.;
 constexpr int NMAX  = 1000;
-constexpr int NMASS = 50;
+constexpr int NMASS = 20;
+constexpr double DELTAM = 0.200;
 
 int main(int argc, char* argv[])
 {
@@ -288,7 +289,7 @@ int main(int argc, char* argv[])
     double chi2norm = chi2(0,0)/ndof;
 
     if(m>=0){
-      xx_mass[m] = MW - 0.100 + 0.200/NMASS*m; 
+      xx_mass[m] = MW - DELTAM*0.5 + DELTAM/NMASS*m; 
       exx_mass[m] = 0.0;
       yy_chi2[m] = chi2(0,0);
       eyy_chi2[m] = 0.0;

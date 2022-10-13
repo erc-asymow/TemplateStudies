@@ -30,8 +30,10 @@ std::vector<std::string> helicities = {"A0", "A1", "A2", "A3", "A4"};
 
 constexpr double MW = 80.;
 constexpr double GW = 2.0;
+constexpr double MASSSHIFT = 0.050;
 constexpr int NMAX  = 1000;
-constexpr int NMASS = 50;
+constexpr int NMASS = 20;
+constexpr double DELTAM = 0.200;
 
 enum pdf_type { pdf_x=0, pdf_y, corr_x, corr_y, unknown};
 
@@ -59,6 +61,7 @@ int main(int argc, char* argv[])
 	("getbin_extTH2_corr",  bool_switch()->default_value(false), "get bin corr(x,y)")
 	("inter_extTH2_corr",  bool_switch()->default_value(false), "interpol corr(x,y)")
 	("toyTF2_corr",  bool_switch()->default_value(false), "toy TF2 corr(x,y)")
+	("seed", value<int>()->default_value(4357), "seed")
 	("fit_qt_y",  bool_switch()->default_value(false), "fit qt vs y");
 
       store(parse_command_line(argc, argv, desc), vm);
@@ -90,8 +93,9 @@ int main(int argc, char* argv[])
   bool toyTF2_corr= vm["toyTF2_corr"].as<bool>();
   bool fit_qt_y = vm["fit_qt_y"].as<bool>();
   bool fit_angularcoeff = vm["fit_angularcoeff"].as<bool>();
+  int seed = vm["seed"].as<int>();  
+  std::cout << "Using initial seed " << seed << " (each thread will use a different one though...)" << std::endl;
   
-
   if(vm.count("degs_corr_x")) tag += std::string(Form("_UL_%d", degs_corr_x));
   if(vm.count("degs_corr_y")) tag += std::string(Form("_%d", degs_corr_y));
 
@@ -168,7 +172,7 @@ int main(int argc, char* argv[])
   unsigned int nslots = d.GetNSlots();
   std::vector<TRandom3*> rans = {};
   for(unsigned int i = 0; i < nslots; i++){
-    rans.emplace_back( new TRandom3(4357 + i*10) );
+    rans.emplace_back( new TRandom3(seed + i*10) );
   }
 
   auto dlast = std::make_unique<RNode>(d);
@@ -190,10 +194,10 @@ int main(int argc, char* argv[])
 						  RVecD out;
 						  double gen = 1./TMath::Pi()/(1 + (Q-MW)*(Q-MW)/GW/GW);
 						  out.emplace_back( toy_mass(Q,MW,GW)/gen );
-						  out.emplace_back( toy_mass(Q,MW+0.010,GW)/gen );
-						  out.emplace_back( toy_mass(Q,MW-0.010,GW)/gen );
+						  out.emplace_back( toy_mass(Q,MW+MASSSHIFT,GW)/gen );
+						  out.emplace_back( toy_mass(Q,MW-MASSSHIFT,GW)/gen );
 						  for(unsigned int i=0; i<NMASS; i++)
-						    out.emplace_back( toy_mass(Q, MW - 0.100 + 0.200/NMASS*i,GW)/gen );
+						    out.emplace_back( toy_mass(Q, MW - DELTAM*0.5 + DELTAM/NMASS*i,GW)/gen );
 						  return out; 
 						}, {"Q"}));
   dlast = std::make_unique<RNode>(dlast->Define("p4lab",

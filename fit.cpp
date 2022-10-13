@@ -26,7 +26,11 @@ using namespace boost::program_options;
 
 constexpr double MW = 80.;
 constexpr int NMAX  = 200;
-constexpr int NMASS = 50;
+//constexpr int NMASS = 50;
+constexpr int NMASS = 20;
+constexpr double DELTAM = 0.200;
+constexpr double MASSSHIFT = 0.050;
+
 
 int main(int argc, char* argv[])
 {
@@ -69,6 +73,7 @@ int main(int argc, char* argv[])
 	("scale2",bool_switch()->default_value(false), "")
 	("scale3",bool_switch()->default_value(false), "")
 	("scale4",bool_switch()->default_value(false), "")
+	("jacmass", value<int>()->default_value(-1), "")
 	("verbose", bool_switch()->default_value(false), "")
 	("debug", bool_switch()->default_value(false), "")
 	("tag", value<std::string>()->default_value(""), "tag name")
@@ -108,6 +113,7 @@ int main(int argc, char* argv[])
   int degs_A4_y   = vm["degs_A4_y"].as<int>();
   int rebinX      = vm["rebinX"].as<int>();
   int rebinY      = vm["rebinY"].as<int>();
+  int jacmass     = vm["jacmass"].as<int>();
   int jUL  = vm["jUL"].as<bool>();
   int j0   = vm["j0"].as<bool>();
   int j1   = vm["j1"].as<bool>();
@@ -217,7 +223,14 @@ int main(int argc, char* argv[])
   poi_counter = active_pois.size();
 
   // hw is the "approximated" template
-  TH2D* hw   = fin->Get<TH2D>("h");
+  TString hw_name = "h";
+  if(jacmass==0)      hw_name += "";
+  else if(jacmass==1) hw_name += "_up";
+  else if(jacmass==2) hw_name += "_down";
+
+  cout << "Starting template is histo=" << hw_name << endl;
+  
+  TH2D* hw   = fin->Get<TH2D>( hw_name );
   // hwMC is the MC
   TH2D* hwMC = fin->Get<TH2D>("hMC");
   vector<TH2D*> all_histos = { hw, hwMC };
@@ -240,7 +253,17 @@ int main(int argc, char* argv[])
   MatrixXd jac(nbins, poi_counter);
   for(unsigned int j = 0; j<poi_counter; j++){
     unsigned int idx = active_pois[j];
-    TH2D* hjac = fin->Get<TH2D>(Form("jac_%d", idx));
+    TString jac_name(Form("jac_%d", idx));
+    if(jacmass==0)      jac_name = TString(Form("jac0_%d", idx));
+    else if(jacmass==1) jac_name = TString(Form("jac1_%d", idx));
+    else if(jacmass==2) jac_name = TString(Form("jac2_%d", idx));
+    TH2D* hjac = fin->Get<TH2D>( jac_name );
+    // fall-back for consistency
+    if( jacmass<0 && (hjac==0 || hjac==nullptr) ){
+      hjac = fin->Get<TH2D>( TString(Form("jac0_%d", idx)) );
+    }
+    if(verbose) cout << "\tUsing jacobian histo=" << hjac->GetName() << endl;
+    
     if(rebinX>0 || rebinY>0){
       hjac->Rebin2D(rebinX,rebinY);
     }
@@ -293,6 +316,14 @@ int main(int argc, char* argv[])
   tree->Branch("best_mass_err", &best_mass_err, "best_mass_err/D");
   //cout << "Commons done. Output file opened." << endl;
 
+  TTree* tree2 = new TTree("tree2", "tree2");
+  double chi2_start;
+  double chi2_min;
+  double mass_test;
+  tree2->Branch("chi2_start", &chi2_start, "chi2_start/D");
+  tree2->Branch("chi2_min", &chi2_min,     "chi2_min/D");
+  tree2->Branch("mass_test", &mass_test,   "mass_test/D");
+
   bool do_toys = ntoys>0;
   if(!do_toys) ntoys = 1;
 
@@ -318,6 +349,8 @@ int main(int argc, char* argv[])
 
     // mass specific
     for(int m = (!do_toys ? -1 : 0); m<NMASS; m++){
+
+      if(jacmass>=0 && m>=0) continue;
       
       //cout << "Now doing mass idx " << m << endl;
       //TH2D* hMC = m<0 ? all_histos[1] : fin->Get<TH2D>(Form("hMC_mass%d",m));
@@ -326,6 +359,7 @@ int main(int argc, char* argv[])
 	cout << "Null pointer" << endl;
 	continue;
       }
+      cout << "Pseudo-data is histo=" << hMC->GetName() << endl;
       
       // account for slight change in V for different mass hypos
       bin_counter = 0;
@@ -458,9 +492,19 @@ int main(int argc, char* argv[])
       MatrixXd chi2 = ((b - A*x).transpose())*(b-A*x);
       int ndof = nbins-poi_counter;
       double chi2norm = chi2(0,0)/ndof;
+
+      chi2_start = chi2old(0,0);
+      chi2_min = chi2(0,0);
+      if(m>=0){
+	mass_test =  (MW - DELTAM*0.5 + DELTAM/NMASS*m);
+      }
+      else if(jacmass==1) mass_test = MW + MASSSHIFT;
+      else if(jacmass==2) mass_test = MW - MASSSHIFT;
+      else mass_test = MW;
+      tree2->Fill();
       
       if(m>=0){
-	xx_mass[m] = MW - 0.100 + 0.200/NMASS*m; 
+	xx_mass[m] = MW - DELTAM*0.5 + DELTAM/NMASS*m; 
 	exx_mass[m] = 0.0;
 	yy_chi2[m] = chi2(0,0);
 	eyy_chi2[m] = 0.0;
@@ -556,38 +600,42 @@ int main(int argc, char* argv[])
     }
     
     //hwMC->Write("hw_nominal");
-    TGraphErrors* chi2_fit = new TGraphErrors(NMASS,xx_mass,yy_chi2,exx_mass,eyy_chi2);
-    chi2_fit->Write("chi2_vs_mass"+toy_tag);
-
-    chi2_fit->Fit("pol2", "Q");
-    TF1* parabola = chi2_fit->GetFunction("pol2");
-    float param0 = parabola->GetParameter(0); 
-    float param1 = parabola->GetParameter(1); 
-    float param2 = parabola->GetParameter(2); 
-    float deltaM = 1./TMath::Sqrt(param2);
-    float biasM = -param1/param2*0.5;
-    float pullM = (biasM-MW)/deltaM; 
-    if(do_toys) cout << itoy << ": ";
-    cout << "DeltaM = " << deltaM*1e+03 << " MeV" 
-	 << " -- bias: " << (biasM-MW)*1e+03  << " MeV"
-	 << ", pull: " << pullM 
+    if(NMASS>1){
+      TGraphErrors* chi2_fit = new TGraphErrors(NMASS,xx_mass,yy_chi2,exx_mass,eyy_chi2);
+      chi2_fit->Write("chi2_vs_mass"+toy_tag);
+      
+      chi2_fit->Fit("pol2", "Q");
+      TF1* parabola = chi2_fit->GetFunction("pol2");
+      float param0 = parabola->GetParameter(0); 
+      float param1 = parabola->GetParameter(1); 
+      float param2 = parabola->GetParameter(2); 
+      float deltaM = 1./TMath::Sqrt(param2);
+      float biasM = -param1/param2*0.5;
+      float pullM = (biasM-MW)/deltaM; 
+      if(do_toys) cout << itoy << ": ";
+      cout << "DeltaM = " << deltaM*1e+03 << " MeV" 
+	   << " -- bias: " << (biasM-MW)*1e+03  << " MeV"
+	   << ", pull: " << pullM 
 	 << endl;
-
-    int idx = 0;
-    for(int m=0; m<NMASS; m++){
-      float mass_m = MW - 0.100 + 0.200/NMASS*m;
-      if(mass_m > (biasM - deltaM)){
-	idx = m;
-	break;
+      
+      int idx = 0;
+      for(int m=0; m<NMASS; m++){
+	float mass_m = MW - DELTAM*0.5 + DELTAM/NMASS*m;
+	if(mass_m > (biasM - deltaM)){
+	  idx = m;
+	  break;
+	}
       }
+      cout << "Intersection at mass index [" << idx-1 << "," << idx << "]" << endl; 
+      best_mass     = (biasM-MW)*1e+03;
+      best_mass_err = deltaM*1e+03;
+      tree->Fill();
     }
-    cout << "Intersection at mass index [" << idx-1 << "," << idx << "]" << endl; 
-    best_mass     = (biasM-MW)*1e+03;
-    best_mass_err = deltaM*1e+03;
-    tree->Fill();
+    
   }
 
   tree->Write();
+  tree2->Write();
   fout->Close();
   fin->Close();
 
