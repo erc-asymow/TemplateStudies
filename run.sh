@@ -1,5 +1,13 @@
 #!/bin/sh
 
+#./fit_grid --nevents=100000000 --tag=addmass7_seed0   --run=grid --post_tag=seed0 --degs_corr_x=10 --degs_corr_y=4 --jUL --j0 --j1 --j2 --j3 --j4
+#./fit_grid --nevents=100000000 --tag=addmass7_merged  --run=grid --post_tag=merged --degs_corr_x=10 --degs_corr_y=4 --jUL --j0 --j1 --j2 --j3 --j4
+#./fit_grid --nevents=100000000 --tag=addmass7_merged2 --run=grid --post_tag=merged2 --degs_corr_x=10 --degs_corr_y=4 --jUL --j0 --j1 --j2 --j3 --j4
+#./fit_grid --nevents=100000000 --tag=addmass7_merged3 --run=grid --post_tag=merged3 --degs_corr_x=10 --degs_corr_y=4 --jUL --j0 --j1 --j2 --j3 --j4
+#./fit_grid --nevents=100000000 --tag=addmass7_merged4 --run=grid --post_tag=merged4 --degs_corr_x=10 --degs_corr_y=4 --jUL --j0 --j1 --j2 --j3 --j4
+#./fit_grid --nevents=100000000 --tag=addmass7_merged5 --run=grid --post_tag=merged5 --degs_corr_x=10 --degs_corr_y=4 --jUL --j0 --j1 --j2 --j3 --j4
+
+./fit_grid --nevents=100000000 --tag=addmass7_hadd --run=grid --post_tag=hadd --degs_corr_x=10 --degs_corr_y=4 --jUL --j0 --j1 --j2 --j3 --j4
 
 #python run.py --algo=jac3 --tag=addmass0  --nevents=1000000
 #python run.py --algo=jac3 --tag=addmass1  --nevents=2000000
@@ -21,9 +29,10 @@
 #./jac3 --nevents=128000000 --tag=addmass7_seed4 --run=grid --degs_corr_x=10 --degs_corr_y=4 --toyTF2_corr --seed=9061
 #./jac3 --nevents=128000000 --tag=addmass7_seed5 --run=grid --degs_corr_x=10 --degs_corr_y=4 --toyTF2_corr --seed=3487
 
-./fit --nevents=100000000 --tag=jacsvsmass100M_50shift --run=closure --post_tag=TEST --degs_corr_x=10 --degs_corr_y=4 --degs_A0_x=3 --degs_A0_y=3 --degs_A1_x=3 --degs_A1_y=3 --degs_A2_x=3 --degs_A2_y=3 --degs_A3_x=3 --degs_A3_y=3 --degs_A4_x=3 --degs_A4_y=3 --jUL --j0 --j1 --j2 --j3 --j4
-./fit --nevents=100000000 --tag=jacsvsmass100M_50shift --run=closure --post_tag=idx1 --degs_corr_x=10 --degs_corr_y=4 --degs_A0_x=3 --degs_A0_y=3 --degs_A1_x=3 --degs_A1_y=3 --degs_A2_x=3 --degs_A2_y=3 --degs_A3_x=3 --degs_A3_y=3 --degs_A4_x=3 --degs_A4_y=3 --jUL --j0 --j1 --j2 --j3 --j4 --jacmass=1
-./fit --nevents=100000000 --tag=jacsvsmass100M_50shift --run=closure --post_tag=idx2 --degs_corr_x=10 --degs_corr_y=4 --degs_A0_x=3 --degs_A0_y=3 --degs_A1_x=3 --degs_A1_y=3 --degs_A2_x=3 --degs_A2_y=3 --degs_A3_x=3 --degs_A3_y=3 --degs_A4_x=3 --degs_A4_y=3 --jUL --j0 --j1 --j2 --j3 --j4 --jacmass=2
+#./fit --nevents=100000000 --tag=jacsvsmass100M_50shift --run=closure --post_tag=TEST --degs_corr_x=10 --degs_corr_y=4 --degs_A0_x=3 --degs_A0_y=3 --degs_A1_x=3 --degs_A1_y=3 --degs_A2_x=3 --degs_A2_y=3 --degs_A3_x=3 --degs_A3_y=3 --degs_A4_x=3 --degs_A4_y=3 --jUL --j0 --j1 --j2 --j3 --j4
+#./fit --nevents=100000000 --tag=jacsvsmass100M_50shift --run=closure --post_tag=idx0 --degs_corr_x=10 --degs_corr_y=4 --degs_A0_x=3 --degs_A0_y=3 --degs_A1_x=3 --degs_A1_y=3 --degs_A2_x=3 --degs_A2_y=3 --degs_A3_x=3 --degs_A3_y=3 --degs_A4_x=3 --degs_A4_y=3 --jUL --j0 --j1 --j2 --j3 --j4 --jacmass=0
+#./fit --nevents=100000000 --tag=jacsvsmass100M_50shift --run=closure --post_tag=idx1 --degs_corr_x=10 --degs_corr_y=4 --degs_A0_x=3 --degs_A0_y=3 --degs_A1_x=3 --degs_A1_y=3 --degs_A2_x=3 --degs_A2_y=3 --degs_A3_x=3 --degs_A3_y=3 --degs_A4_x=3 --degs_A4_y=3 --jUL --j0 --j1 --j2 --j3 --j4 --jacmass=1
+#./fit --nevents=100000000 --tag=jacsvsmass100M_50shift --run=closure --post_tag=idx2 --degs_corr_x=10 --degs_corr_y=4 --degs_A0_x=3 --degs_A0_y=3 --degs_A1_x=3 --degs_A1_y=3 --degs_A2_x=3 --degs_A2_y=3 --degs_A3_x=3 --degs_A3_y=3 --degs_A4_x=3 --degs_A4_y=3 --jUL --j0 --j1 --j2 --j3 --j4 --jacmass=2
 
 #python run.py --algo=fit_grid --tag=addmass0 --post_tag=1M  --nevents=100000000
 #python run.py --algo=fit_grid --tag=addmass1 --post_tag=2M  --nevents=100000000

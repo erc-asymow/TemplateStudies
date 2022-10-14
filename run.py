@@ -17,6 +17,7 @@ parser.add_argument('--scale1', action='store_true'  , help = 'scale A1(x,y)')
 parser.add_argument('--scale2', action='store_true'  , help = 'scale A2(x,y)')
 parser.add_argument('--scale3', action='store_true'  , help = 'scale A3(x,y)')
 parser.add_argument('--scale4', action='store_true'  , help = 'scale A4(x,y)')
+parser.add_argument('--jacmass', dest = 'jacmass'  , type = int,  default=-1, help='')
 
 args = parser.parse_args()
 
@@ -88,7 +89,9 @@ elif args.algo=='fit':
     for hel in ['0','1','2','3','4']:
         if ( hasattr(args,"scale"+hel) and getattr(args,"scale"+hel) ):
             command += (' --scale'+hel)
-        
+    if args.jacmass>-1:
+        command += (' --jacmass='+str(args.jacmass))
+            
     fit_opts = [' --jUL', 
                 ' --jUL --j0', 
                 ' --jUL --j0 --j1', 
