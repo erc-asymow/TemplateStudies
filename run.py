@@ -80,6 +80,15 @@ elif args.algo=='jac3':
     print(command)
     os.system(command)   
 
+elif args.algo=='jac4':
+    command  = './jac4 --nevents='+str(args.nevents) +' --tag='+args.tag+' --run=exact'
+    for k in pol_default.keys():
+        if 'corr' not in k: continue
+        command += ' --degs_'+k+'_x='+str(pol_default[k][0])+' --degs_'+k+'_y='+str(pol_default[k][1])
+    command += ' --toyTF2_corr'
+    print(command)
+    os.system(command)   
+
 elif args.algo=='fit':
     command  = './fit --nevents='+str(args.nevents) +' --tag='+args.tag+' --run=closure --post_tag='+args.post_tag
     for k in pol_default.keys():
