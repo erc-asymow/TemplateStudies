@@ -424,6 +424,8 @@ int main(int argc, char* argv[])
       }
       //cout << rho << endl;
       TH2D* rho_th2 = 0;
+      TH2D* A_th2 = 0;
+      TH1D* b_th1 = 0;
       if(m<0){	
 	rho_th2 = new TH2D("rho_th2"+toy_tag, ";POI;POI", rho.rows(), 0, rho.rows(), rho.cols(), 0, rho.cols());
 	for(unsigned int i=0; i<rho.rows(); i++){
@@ -431,6 +433,16 @@ int main(int argc, char* argv[])
 	    rho_th2->SetBinContent(i+1,j+1, rho(i,j));
 	  }
 	}
+	A_th2 = new TH2D("A_th2", ";bin;POI", A.rows(), 0, A.rows(), A.cols(), 0, A.cols());
+	for(unsigned int i=0; i<A.rows(); i++){
+	  for(unsigned int j=0; j<A.cols(); j++){
+	    A_th2->SetBinContent(i+1,j+1, A(i,j));
+	  }
+	}
+	b_th1 = new TH1D("b_th1", ";bin;value", b.size(), 0, b.size());
+	for(unsigned int i=0; i<b.size(); i++){
+	  b_th1->SetBinContent(i+1, b(i));
+	}      	
       }
       
       Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver(C);
@@ -530,6 +542,8 @@ int main(int argc, char* argv[])
       if(m<0){
 	rho_th2->Write();
 	rhox_int_th2->Write();
+	A_th2->Write();
+	b_th1->Write();
       }
       
       if(debug && m>=0){

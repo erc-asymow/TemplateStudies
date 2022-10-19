@@ -275,13 +275,13 @@ int main(int argc, char* argv[])
 	  rho_th2->SetBinContent(i+1,j+1, rho(i,j));
 	}
       }
-      A_th2 = new TH2D("A_th2", ";;", A.rows(), 0, A.rows(), A.cols(), 0, A.cols());
+      A_th2 = new TH2D("A_th2", ";bin;POI", A.rows(), 0, A.rows(), A.cols(), 0, A.cols());
       for(unsigned int i=0; i<A.rows(); i++){
 	for(unsigned int j=0; j<A.cols(); j++){
 	  A_th2->SetBinContent(i+1,j+1, A(i,j));
 	}
       }
-      b_th1 = new TH1D("b_th1", ";;", b.size(), 0, b.size());
+      b_th1 = new TH1D("b_th1", ";bin;value", b.size(), 0, b.size());
       for(unsigned int i=0; i<b.size(); i++){
 	b_th1->SetBinContent(i+1, b(i));
       }      
