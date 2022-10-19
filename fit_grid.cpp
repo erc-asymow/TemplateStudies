@@ -24,7 +24,7 @@ using namespace boost::program_options;
 
 constexpr double MW = 80.;
 constexpr int NMAX  = 1000;
-constexpr int NMASS = 20;
+constexpr int NMASS = 50;
 constexpr double DELTAM = 0.200;
 
 int main(int argc, char* argv[])
@@ -266,6 +266,8 @@ int main(int argc, char* argv[])
     if(verbose && m<0) cout << rho << endl;
     
     TH2D* rho_th2 = 0;
+    TH2D* A_th2 = 0;
+    TH1D* b_th1 = 0;
     if(m<0){
       rho_th2 = new TH2D("rho_th2", ";POI;POI", rho.rows(), 0, rho.rows(), rho.cols(), 0, rho.cols());
       for(unsigned int i=0; i<rho.rows(); i++){
@@ -273,6 +275,16 @@ int main(int argc, char* argv[])
 	  rho_th2->SetBinContent(i+1,j+1, rho(i,j));
 	}
       }
+      A_th2 = new TH2D("A_th2", ";;", A.rows(), 0, A.rows(), A.cols(), 0, A.cols());
+      for(unsigned int i=0; i<A.rows(); i++){
+	for(unsigned int j=0; j<A.cols(); j++){
+	  A_th2->SetBinContent(i+1,j+1, A(i,j));
+	}
+      }
+      b_th1 = new TH1D("b_th1", ";;", b.size(), 0, b.size());
+      for(unsigned int i=0; i<b.size(); i++){
+	b_th1->SetBinContent(i+1, b(i));
+      }      
     }
 
     Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver(C);
@@ -304,7 +316,11 @@ int main(int argc, char* argv[])
     if(m<0) cout << "chi2     : " << chi2old(0,0) << " --> " << chi2 << "; ndof = " << ndof << " => chi2/ndof = " << chi2norm << endl; 
 
     fout->cd();
-    if(m<0) rho_th2->Write();
+    if(m<0){
+      rho_th2->Write();
+      A_th2->Write();
+      b_th1->Write();
+    }
 
     //std::vector<int> helicities = {-1, 0, 1, 2, 3, 4};
     for(auto hel : helicities) {

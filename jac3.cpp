@@ -372,7 +372,9 @@ int main(int argc, char* argv[])
     
     RVecD out(njacs);						
     double absy = TMath::Abs(y);
-    unsigned int ijac = -1; 
+    int ijac = -1; 
+    if(x==max_x)    x -= 1e-04;
+    if(absy==max_y) y -= 1e-04;
     unsigned int counter = 0;
     for(unsigned int i = 0; i<degs(pdf_type::corr_x); i++){
       for(unsigned int j = 0; j<degs(pdf_type::corr_y); j++){
