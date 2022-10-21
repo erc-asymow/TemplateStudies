@@ -98,6 +98,7 @@ int main(int argc, char* argv[])
 	("tag", value<std::string>()->default_value(""), "tag name")
 	("run", value<std::string>()->default_value("closure"), "run type")
 	("do_absy",    bool_switch()->default_value(false), "polycheb in abs(y)")
+	("jacmass",    bool_switch()->default_value(false), "compute jacobians for three mass values")
 	("getbin_extTH2_corr",  bool_switch()->default_value(false), "get bin corr(x,y)")
 	("inter_extTH2_corr",  bool_switch()->default_value(false), "interpol corr(x,y)")
 	("toyTF2_corr",  bool_switch()->default_value(false), "toy TF2 corr(x,y)")
@@ -142,6 +143,7 @@ int main(int argc, char* argv[])
   int degs_A4_x   = vm["degs_A4_x"].as<int>();
   int degs_A4_y   = vm["degs_A4_y"].as<int>();
   bool do_absy = vm["do_absy"].as<bool>();
+  bool jacmass = vm["jacmass"].as<bool>();
   bool getbin_extTH2_corr= vm["getbin_extTH2_corr"].as<bool>();
   bool inter_extTH2_corr= vm["inter_extTH2_corr"].as<bool>();
   bool toyTF2_corr= vm["toyTF2_corr"].as<bool>();
@@ -628,7 +630,16 @@ int main(int argc, char* argv[])
 	poi_counter++;
       }
     }
-		
+
+    if(true){
+      // mass
+      poi_val[poi_counter] = 0.0;
+      poi_cat[poi_counter] = 5;
+      poi_idx[poi_counter] = 0;
+      poi_counter++;
+    }
+    
+    
     dlast = std::make_unique<RNode>(dlast->Define("harmonics", [&](double x, double y, double cos, double phi) -> RVecD{
 	  RVecD out;
 	  double cosS = y>0 ? cos : -cos;
@@ -702,7 +713,18 @@ int main(int argc, char* argv[])
 						      "A4xy_vec",
 						      "harmonics",
 						      "weightsM"} ));
-
+    
+    dlast = std::make_unique<RNode>(dlast->Define("weight_jacM",
+						  [&](RVecD weights, RVecD weightsM, double Q)->double {
+						    double wM = weightsM.at(0);
+						    double w = weights.at(0)/wM;
+						    w *= TMath::Pi()*toy_mass(Q,MW,GW)*2*(Q-MW)/GW/GW;
+						    return w;
+						  },
+						  {"weights",
+						   "weightsM",
+						   "Q"} ));
+    
     dlast = std::make_unique<RNode>(dlast->Define("weights_jac", [&,corrxy_in,A0xy_in,A1xy_in,A2xy_in,A3xy_in,A4xy_in]
 						  (RVecD corrxy_vec,
 						   RVecD A0xy_vec,
@@ -710,8 +732,8 @@ int main(int argc, char* argv[])
 						   RVecD A2xy_vec,
 						   RVecD A3xy_vec,
 						   RVecD A4xy_vec,
-						   RVecD harmonics,
-						   RVecD weightsM  )->RVecD {
+						   RVecD harmonics
+						   /*RVecD weightsM*/  )->RVecD {
 						    RVecD out;						
 						    double wUL{3./16/TMath::Pi()};	  
 						    double A = ROOT::VecOps::Dot(corrxy_vec,corrxy_in);
@@ -807,11 +829,14 @@ int main(int argc, char* argv[])
 						      "A3xy_vec",
 						      "A4xy_vec",
 						      "harmonics",
-						      "weightsM"} ));
-
+						      /*"weightsM"*/} ));
+    
+    
     dlast = std::make_unique<RNode>(dlast->Define("w",        [](RVecD weights){ return weights.at(0);}, {"weights"} ));
-    dlast = std::make_unique<RNode>(dlast->Define("w_up",     [](RVecD weights){ return weights.at(1);}, {"weights"} ));
-    dlast = std::make_unique<RNode>(dlast->Define("w_down",   [](RVecD weights){ return weights.at(2);}, {"weights"} ));
+    if(jacmass){
+      dlast = std::make_unique<RNode>(dlast->Define("w_up",     [](RVecD weights){ return weights.at(1);}, {"weights"} ));
+      dlast = std::make_unique<RNode>(dlast->Define("w_down",   [](RVecD weights){ return weights.at(2);}, {"weights"} ));
+    }
     dlast = std::make_unique<RNode>(dlast->Define("wMC",      [](RVecD weights){ return weights.at(0);}, {"weightsMC"} ));
     dlast = std::make_unique<RNode>(dlast->Define("wMC_up",   [](RVecD weights){ return weights.at(1);}, {"weightsMC"} ));
     dlast = std::make_unique<RNode>(dlast->Define("wMC_down", [](RVecD weights){ return weights.at(2);}, {"weightsMC"} ));
@@ -820,32 +845,34 @@ int main(int argc, char* argv[])
     }
 
     for(unsigned int i = 0; i < njacs; i++){
-      for(unsigned int j = 0; j < 3; j++){
-	dlast = std::make_unique<RNode>(dlast->Define(Form("jac%d_%d", j, i), [i,j](RVecD weights, RVecD weightsM){ return weights.at(i)*weightsM.at(j);}, {"weights_jac", "weightsM"} ));
+      if(jacmass){
+	for(unsigned int j = 0; j < 3; j++){
+	  dlast = std::make_unique<RNode>(dlast->Define(Form("jac%d_%d", j, i), [i,j](RVecD weights, RVecD weightsM){ return weights.at(i)*weightsM.at(j);}, {"weights_jac", "weightsM"} ));
+	}
+      }
+      else{
+	dlast = std::make_unique<RNode>(dlast->Define(Form("jac_%d",i), [i](RVecD weights, RVecD weightsM){ return weights.at(i)*weightsM.at(0);}, {"weights_jac", "weightsM"} ));
       }
     }
     
     sums.emplace_back( dlast->Sum<double>("w") );
     sums.emplace_back( dlast->Sum<double>("wMC") );
 
-    if(!fit_qt_y){
-      histos2D.emplace_back(dlast->Histo2D({"h",       "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "w"));
-      histos2D.emplace_back(dlast->Histo2D({"h_up",    "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "w_up"));
-      histos2D.emplace_back(dlast->Histo2D({"h_down",  "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "w_down"));      
-      histos2D.emplace_back(dlast->Histo2D({"hMC",     "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "wMC"));      
-      histos2D.emplace_back(dlast->Histo2D({"hMC_up",  "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "wMC_up"));      
-      histos2D.emplace_back(dlast->Histo2D({"hMC_down","", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", "wMC_down"));
-      for(unsigned int i=0; i<NMASS; i++){
-	histos2D.emplace_back(dlast->Histo2D({Form("hMC_mass%d", i),"", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", Form("wMC_mass%d",i)));
-      }
-    }
-    else{
-      histos2D.emplace_back(dlast->Histo2D({"h",       "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "y", "x", "w"));      
-      histos2D.emplace_back(dlast->Histo2D({"hMC",     "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "y", "x", "wMC"));      
-      histos2D.emplace_back(dlast->Histo2D({"hMC_up",  "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "y", "x", "wMC_up"));      
-      histos2D.emplace_back(dlast->Histo2D({"hMC_down","", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "y", "x", "wMC_down"));
-    }
+    string varx = fit_qt_y ? "y" : "eta";
+    string vary = fit_qt_y ? "x" : "pt";
 
+    histos2D.emplace_back(dlast->Histo2D({"h",       "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, varx, vary, "w"));
+    if(jacmass){
+      histos2D.emplace_back(dlast->Histo2D({"h_up",    "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, varx, vary, "w_up"));
+      histos2D.emplace_back(dlast->Histo2D({"h_down",  "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, varx, vary, "w_down"));
+    }
+    histos2D.emplace_back(dlast->Histo2D({"hMC",     "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, varx, vary, "wMC"));      
+    histos2D.emplace_back(dlast->Histo2D({"hMC_up",  "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, varx, vary, "wMC_up"));      
+    histos2D.emplace_back(dlast->Histo2D({"hMC_down","", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, varx, vary, "wMC_down"));
+    for(unsigned int i=0; i<NMASS; i++){
+      histos2D.emplace_back(dlast->Histo2D({Form("hMC_mass%d", i),"", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, varx, vary, Form("wMC_mass%d",i)));
+    }
+    
     for(unsigned int i = 0; i < njacs; i++){
       std::string hname = "";
       if(i>=first_jac_corrxy && i<first_jac_A0xy){
@@ -879,16 +906,20 @@ int main(int argc, char* argv[])
 	hname = std::string(Form("jac_%d: d(pdf) / d(A4xy_in[%d][%d])", i, idx_x, idx_y));	
       }
       
-      if(!fit_qt_y){
+      if(jacmass){
 	for(unsigned int j = 0; j < 3; j++){
-	  histosJac.emplace_back(dlast->Histo2D({ Form("jac%d_%d",j,i), hname.c_str(), nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "eta", "pt", Form("jac%d_%d",j,i)));
+	  histosJac.emplace_back(dlast->Histo2D({ Form("jac%d_%d",j,i), hname.c_str(), nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, varx, vary, Form("jac%d_%d",j,i)));
 	}
       }
       else{
-	histosJac.emplace_back(dlast->Histo2D({ Form("jac_%d",i), hname.c_str(), nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, "y", "x", Form("jac_%d",i)));
-      }
+	histosJac.emplace_back(dlast->Histo2D({ Form("jac_%d",i), hname.c_str(), nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, varx, vary, Form("jac_%d",i)));
+      }            
     }
 
+    // This is the last jacobian
+    std::string hname = "jac_mass: d(pdf) / dM";
+    histosJac.emplace_back(dlast->Histo2D({Form("jac_%d", njacs), hname.c_str(), nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, varx, vary, "weight_jacM"));
+    
     /*
     histos1D.emplace_back(dlast->Histo1D({"w_pdfx",    "", 20, 0.0, max_x}, "x", "w"));      
     histos1D.emplace_back(dlast->Histo1D({"w_pdfy",    "", 20, 0.0, max_y}, "y", "w"));      

@@ -68,6 +68,7 @@ int main(int argc, char* argv[])
 	("j2",    bool_switch()->default_value(false), "")
 	("j3",    bool_switch()->default_value(false), "")
 	("j4",    bool_switch()->default_value(false), "")
+	("jM",    bool_switch()->default_value(false), "")
 	("scale0",bool_switch()->default_value(false), "")
 	("scale1",bool_switch()->default_value(false), "")
 	("scale2",bool_switch()->default_value(false), "")
@@ -120,6 +121,7 @@ int main(int argc, char* argv[])
   int j2   = vm["j2"].as<bool>();
   int j3   = vm["j3"].as<bool>();
   int j4   = vm["j4"].as<bool>();
+  int jM   = vm["jM"].as<bool>();
   int verbose = vm["verbose"].as<bool>();
   int debug = vm["debug"].as<bool>();
 
@@ -175,7 +177,8 @@ int main(int argc, char* argv[])
     if(poi_cat[p]==1  && j1)  active_pois.emplace_back(p);
     if(poi_cat[p]==2  && j2)  active_pois.emplace_back(p);      
     if(poi_cat[p]==3  && j3)  active_pois.emplace_back(p);      
-    if(poi_cat[p]==4  && j4)  active_pois.emplace_back(p);      
+    if(poi_cat[p]==4  && j4)  active_pois.emplace_back(p);
+    if(poi_cat[p]==5  && jM)  active_pois.emplace_back(p);      
   }  
   poi_counter = active_pois.size();
   if(verbose){
@@ -186,11 +189,11 @@ int main(int argc, char* argv[])
   }
 
   std::vector<unsigned int> cleaned_active_pois = {};
-  std::vector<int> helicities = {-1, 0, 1, 2, 3, 4};
+  std::vector<int> helicities = {-1, 0, 1, 2, 3, 4, 5};
   for(auto hel : helicities){
     TH2D* hjac_first = 0;
     for(auto p : active_pois){
-      if(hel<0 && poi_cat[p]==hel){
+      if((hel<0 || hel==5) && poi_cat[p]==hel){
 	cleaned_active_pois.emplace_back(p);
 	continue;
       }
@@ -212,7 +215,8 @@ int main(int argc, char* argv[])
 	cleaned_active_pois.emplace_back(p);
       }
     }
-  }
+  }  
+    
   active_pois.clear();
   active_pois = cleaned_active_pois;
   if(verbose){
