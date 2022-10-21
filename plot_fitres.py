@@ -7,6 +7,9 @@ ROOT.gROOT.SetBatch(True)
 argv.remove( '-b-' )
 import math
 
+#outdir = './'
+outdir = './plots_Oct17/'
+
 def plot_fitopt(var='corrxy', tag='testall_UL_10_4_A0_3_4_A1_3_4_A2_3_4_A3_3_4_A4_3_4_closure', post_tag='test', legend='', offset=0.1, xmin=0, xmax=1.2, view_err=False):
     fit_opts        = ['jUL',
                        'jUL_j0',
@@ -69,7 +72,7 @@ def plot_fitopt(var='corrxy', tag='testall_UL_10_4_A0_3_4_A1_3_4_A2_3_4_A3_3_4_A
     mg.Draw('ap')
     leg1.Draw()    
     #raw_input()
-    c.SaveAs('root/plot_'+var+'_'+tag+'_'+post_tag+('_err' if view_err else '')+'.png')
+    c.SaveAs('root/'+outdir+'plot_'+var+'_'+tag+'_'+post_tag+('_err' if view_err else '')+'.png')
     for ff in files: ff.Close()
     
     
@@ -141,7 +144,7 @@ def plot_chi2(tag='testall_UL_10_4_A0_3_4_A1_3_4_A2_3_4_A3_3_4_A4_3_4_closure', 
     line.SetLineColor(ROOT.kBlack)
     line.Draw("same")
     #input()
-    c.SaveAs('root/plot_chi2vsmass'+'_'+tag+'_'+post_tag+'.png')
+    c.SaveAs('root/'+outdir+'plot_chi2vsmass'+'_'+tag+'_'+post_tag+'.png')
     for ff in files: ff.Close()
 
 def plot_pulls_1D(tag='testall_UL_10_4_A0_3_4_A1_3_4_A2_3_4_A3_3_4_A4_3_4_closure', post_tag='test', legend='', xmin=0.0, xmax=10):
@@ -196,9 +199,9 @@ def plot_pulls_1D(tag='testall_UL_10_4_A0_3_4_A1_3_4_A2_3_4_A3_3_4_A4_3_4_closur
         count += 1
     leg1.Draw()
     #input()
-    c.SaveAs('root/pull1D'+'_'+tag+'_'+post_tag+'.png')
+    c.SaveAs('root/'+outdir+'pull1D'+'_'+tag+'_'+post_tag+'.png')
 
-
+'''
 tags      = [
     'addmass2_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
     'addmass3_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
@@ -250,16 +253,105 @@ legends   = [' 1G --> 100M events, 36/60, float A_{0,1,2,3}',
              ' 4G --> 100M events, 36/60',
              '10G --> 100M events, 36/60',             
              ]
+'''
+
+tags      = [
+    'jacVsM_1G_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+    'jacVsM_1G_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+    'jacVsM_4G_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+    'jacVsM_4G_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+    'jacVsM_4G_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+    'jacVsM_4G_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+    'jacVsM_4G_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+    'jacVsM_4G_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+    'jacVsM_4G_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+    'jacVsM_4G_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+    'jacVsM_4G_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+    'jacVsM_4G_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+    'jacVsM_4G_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+    'jacVsM_4G_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+    'jacVsM_4G_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+    'jacVsM_4G_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+    'SYSTS_1G_UL_8_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+    'SYSTS_1G_UL_12_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+    'SYSTS_1G_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+    'SYSTS_1G_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_4_4_A4_3_3_closure',
+    'SYSTS_1G_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_4_4_closure',
+    'SYSTS_1G_UL_8_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+    'SYSTS_1G_UL_12_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+    'SYSTS_1G_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure',
+    'SYSTS_1G_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_4_4_A4_3_3_closure',
+    'SYSTS_1G_UL_10_4_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_4_4_closure',
+]
+
+post_tags = [
+    '1G',
+    '1G_SCALE_ALL_BUT_A4',    
+    '4G',
+    '4G_SCALE_ALL_BUT_A4',
+    '4G_SCALE_ALL_BUT_A4_rebin21',
+    '4G_SCALE_ALL_BUT_A4_rebin12',
+    '4G_SCALE_ALL_BUT_A4_rebin22',
+    '4G_SCALE_ALL_BUT_A4_rebin32',
+    '4G_SCALE_ALL_BUT_A4_rebin23',
+    '4G_SCALE_ALL_BUT_A4_rebin33',
+    '4G_rebin21',
+    '4G_rebin12',
+    '4G_rebin22',
+    '4G_rebin32',
+    '4G_rebin23',
+    '4G_rebin33',
+    '1G_SCALE_ALL_BUT_A4',
+    '1G_SCALE_ALL_BUT_A4',
+    '1G_SCALE_ALL_BUT_A4',
+    '1G_SCALE_ALL_BUT_A4',
+    '1G_SCALE_ALL_BUT_A4',
+    '1G',
+    '1G',
+    '1G',
+    '1G',
+    '1G',
+]
+
+legends   = [
+    ' 1G --> 100M events, 36/60',
+    ' 1G --> 100M events, 36/60, float A_{0,1,2,3}',
+    ' 4G --> 100M events, 36/60',
+    ' 4G --> 100M events, 36/60, float A_{0,1,2,3}',
+    ' 4G --> 100M events, 18/60, float A_{0,1,2,3}',
+    ' 4G --> 100M events, 36/30, float A_{0,1,2,3}',
+    ' 4G --> 100M events, 18/30, float A_{0,1,2,3}',
+    ' 4G --> 100M events, 12/30, float A_{0,1,2,3}',
+    ' 4G --> 100M events, 18/20, float A_{0,1,2,3}',
+    ' 4G --> 100M events, 12/20, float A_{0,1,2,3}',
+    ' 4G --> 100M events, 18/60',
+    ' 4G --> 100M events, 36/30',
+    ' 4G --> 100M events, 18/30',
+    ' 4G --> 100M events, 12/30',
+    ' 4G --> 100M events, 18/20',
+    ' 4G --> 100M events, 12/20',
+    ' 1G --> 100M events, 36/60, float A_{0,1,2,3}, d_{x}: 10 --> 8',
+    ' 1G --> 100M events, 36/60, float A_{0,1,2,3}, d_{x}: 10 --> 12',
+    ' 1G --> 100M events, 36/60, float A_{0,1,2,3}, d_{y}: 4 --> 6',
+    ' 1G --> 100M events, 36/60, float A_{0,1,2,3}, d_{A3}: 3,3 --> 4,4',
+    ' 1G --> 100M events, 36/60, float A_{0,1,2,3}, d_{A4}: 3,3 --> 4,4',
+    ' 1G --> 100M events, 36/60, d_{x}: 10 --> 8',
+    ' 1G --> 100M events, 36/60, d_{x}: 10 --> 12',
+    ' 1G --> 100M events, 36/60, d_{y}: 4 --> 6',
+    ' 1G --> 100M events, 36/60, d_{A3}: 3,3 --> 4,4',
+    ' 1G --> 100M events, 36/60, d_{A4}: 3,3 --> 4,4',
+]
 
 for i,t in enumerate(tags):
     #continue
     pt = post_tags[i]
-    plot_fitopt(var='x_inty', tag=t, post_tag=pt, legend=legends[i], offset=0.003, xmin= 0.0, xmax=1.2, view_err=False)
-    plot_fitopt(var='x_inty', tag=t, post_tag=pt, legend=legends[i], offset=0.003, xmin=-0.1, xmax=0.1, view_err=True)
-    plot_fitopt(var='corrxy',   tag=t, post_tag=pt, legend=legends[i], offset=0.1, xmin= 0.0, xmax=1.2, view_err=False)
-    plot_fitopt(var='corrxy',   tag=t, post_tag=pt, legend=legends[i], offset=0.1, xmin=-0.2, xmax=0.2, view_err=True)
+    #plot_fitopt(var='x_inty', tag=t, post_tag=pt, legend=legends[i], offset=0.003, xmin= 0.0, xmax=1.2, view_err=False)
+    #plot_fitopt(var='x_inty', tag=t, post_tag=pt, legend=legends[i], offset=0.003, xmin=-0.1, xmax=0.1, view_err=True)
+    #plot_fitopt(var='corrxy',   tag=t, post_tag=pt, legend=legends[i], offset=0.1, xmin= 0.0, xmax=1.2, view_err=False)
+    #plot_fitopt(var='corrxy',   tag=t, post_tag=pt, legend=legends[i], offset=0.1, xmin=-0.2, xmax=0.2, view_err=True)
     for Ai in ['A0', 'A1', 'A2', 'A3', 'A4']:
-        plot_fitopt(var=Ai,   tag=t, post_tag=pt, legend=legends[i], offset=0.1, xmin=-0.5, xmax=1.5, view_err=False)
+        continue
+        #plot_fitopt(var=Ai,   tag=t, post_tag=pt, legend=legends[i], offset=0.1, xmin=-0.5, xmax=1.5, view_err=False)
         plot_fitopt(var=Ai,   tag=t, post_tag=pt, legend=legends[i], offset=0.1, xmin=-0.5, xmax=0.5, view_err=True)
     plot_chi2(tag=t, post_tag=pt, legend=legends[i], offset=80.0, xmin=0.0, xmax=5)
         
@@ -289,7 +381,6 @@ legends   = [#'1M  --> 100M events, 36/60',
              ] 
 
 
-'''
 tags      = ['addmass0_UL_8_4_grid',
              'addmass1_UL_8_4_grid',
              'addmass2_UL_8_4_grid',
@@ -299,9 +390,12 @@ tags      = ['addmass0_UL_8_4_grid',
              'addmass6_UL_8_4_grid',
              'addmass7_UL_8_4_grid',
              'addmass8_UL_8_4_grid',
+             'addmass9_UL_8_4_grid',
+             'addmass10_UL_8_4_grid',
+             'addmass11_UL_8_4_grid',
              ]
-#post_tags = ['1M', '2M', '4M', '8M', '16M', '32M', '64M', '128M', '256M'] 
-post_tags = ['SCALE_ALL_BUT_A4','SCALE_ALL_BUT_A4','SCALE_ALL_BUT_A4','SCALE_ALL_BUT_A4','SCALE_ALL_BUT_A4','SCALE_ALL_BUT_A4','SCALE_ALL_BUT_A4','SCALE_ALL_BUT_A4','SCALE_ALL_BUT_A4',]
+post_tags = ['1M', '2M', '4M', '8M', '16M', '32M', '64M', '128M', '256M', '512M', '1024M', '2048M'] 
+#post_tags = ['SCALE_ALL_BUT_A4','SCALE_ALL_BUT_A4','SCALE_ALL_BUT_A4','SCALE_ALL_BUT_A4','SCALE_ALL_BUT_A4','SCALE_ALL_BUT_A4','SCALE_ALL_BUT_A4','SCALE_ALL_BUT_A4','SCALE_ALL_BUT_A4',]
 legends   = ['1M  --> 100M events, 36/60',
              '2M  --> 100M events, 36/60',
              '4M  --> 100M events, 36/60',
@@ -311,8 +405,11 @@ legends   = ['1M  --> 100M events, 36/60',
              '64M --> 100M events, 36/60',
              '128M --> 100M events, 36/60',
              '256M --> 100M events, 36/60',
+             '512M --> 100M events, 36/60',
+             '1024M --> 100M events, 36/60',
+             '2048M --> 100M events, 36/60',
              ] 
-'''
+
 for j,t in enumerate(tags):
     continue
     #for i,pt in enumerate(post_tags):        

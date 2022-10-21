@@ -21,16 +21,6 @@ parser.add_argument('--jacmass', dest = 'jacmass'  , type = int,  default=-1, he
 
 args = parser.parse_args()
 
-'''
-pol_default = {
-    'corr'   : [10,4],
-    'A0'     : [3,3],
-    'A1'     : [3,3],
-    'A2'     : [3,3],
-    'A3'     : [3,3],
-    'A4'     : [3,3]
-}
-'''
 pol_default = {
     'corr'   : [10,4],
     'A0'     : [3,3],
@@ -40,19 +30,29 @@ pol_default = {
     'A4'     : [3,3]
 }
 
+
 pol_systs = []
+
 pol_syst0 = copy.deepcopy(pol_default)
 pol_syst0['corr'] = [8,4]
-#pol_systs.append( pol_syst0 )
+pol_systs.append( pol_syst0 )
+
 pol_syst1 = copy.deepcopy(pol_default)
 pol_syst1['corr'] = [10,6]
 pol_systs.append( pol_syst1 )
+
 pol_syst2 = copy.deepcopy(pol_default)
-pol_syst2['A3'] = [3,4]
-#pol_systs.append( pol_syst2 )
+pol_syst2['A3'] = [4,4]
+pol_systs.append( pol_syst2 )
+
 pol_syst3 = copy.deepcopy(pol_default)
-pol_syst3['A4'] = [3,4]
-#pol_systs.append( pol_syst3 )
+pol_syst3['A4'] = [4,4]
+pol_systs.append( pol_syst3 )
+
+pol_syst4 = copy.deepcopy(pol_default)
+pol_syst4['corr'] = [12,4]
+pol_systs.append( pol_syst4 )
+
 
 if args.algo=='jac2':
     command  = './jac2 --nevents='+str(args.nevents) +' --tag='+args.tag+' --run=closure'
@@ -121,6 +121,12 @@ elif args.algo=='fit_systs':
             command += ' --degs_'+k+'_x='+str(syst[k][0])+' --degs_'+k+'_y='+str(syst[k][1])
         if (args.rebinX>0 or args.rebinY>0):
             command += ' --rebinX='+str(args.rebinX)+' --rebinY='+str(args.rebinY)
+        for hel in ['0','1','2','3','4']:
+            if ( hasattr(args,"scale"+hel) and getattr(args,"scale"+hel) ):
+                command += (' --scale'+hel)
+        if args.jacmass>-1:
+            command += (' --jacmass='+str(args.jacmass))
+
         fit_opts = [' --jUL', 
                     ' --jUL --j0', 
                     ' --jUL --j0 --j1', 
