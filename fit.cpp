@@ -75,6 +75,10 @@ int main(int argc, char* argv[])
 	("scale3",bool_switch()->default_value(false), "")
 	("scale4",bool_switch()->default_value(false), "")
 	("jacmass", value<int>()->default_value(-1), "")
+	("X_max", value<float>()->default_value(3.0), "")
+	("X_min", value<float>()->default_value(0.0), "")
+	("Y_max", value<float>()->default_value(55), "")
+	("Y_min", value<float>()->default_value(25), "")
 	("verbose", bool_switch()->default_value(false), "")
 	("debug", bool_switch()->default_value(false), "")
 	("tag", value<std::string>()->default_value(""), "tag name")
@@ -115,6 +119,10 @@ int main(int argc, char* argv[])
   int rebinX      = vm["rebinX"].as<int>();
   int rebinY      = vm["rebinY"].as<int>();
   int jacmass     = vm["jacmass"].as<int>();
+  float X_max     = vm["X_max"].as<float>();
+  float X_min     = vm["X_min"].as<float>();
+  float Y_max     = vm["Y_max"].as<float>();
+  float Y_min     = vm["Y_min"].as<float>();
   int jUL  = vm["jUL"].as<bool>();
   int j0   = vm["j0"].as<bool>();
   int j1   = vm["j1"].as<bool>();
@@ -144,6 +152,41 @@ int main(int argc, char* argv[])
     return 0;
   }
 
+  auto get_nbins_XY = [X_max,X_min,Y_max,Y_min](TH2D* h)-> std::pair<int,int> {
+    int nx = 0;
+    int ny = 0;
+    for(unsigned int ix = 1; ix<=h->GetXaxis()->GetNbins(); ix++ ){	
+      if( h->GetXaxis()->GetBinLowEdge(ix)>=X_min &&
+	  (h->GetXaxis()->GetBinLowEdge(ix)+h->GetXaxis()->GetBinWidth(ix))<=X_max ) nx++;
+    }
+    for(unsigned int iy = 1; iy<=h->GetYaxis()->GetNbins(); iy++ ){	
+      if( h->GetYaxis()->GetBinLowEdge(iy)>=Y_min &&
+	  (h->GetYaxis()->GetBinLowEdge(iy)+h->GetYaxis()->GetBinWidth(iy))<=Y_max ) ny++;
+    }
+    return std::make_pair(nx,ny);
+  };
+
+  auto accept_bin = [&](TH2D* h, int ix, int iy)->bool{
+    if( h->GetXaxis()->GetBinLowEdge(ix)>=X_min && (h->GetXaxis()->GetBinLowEdge(ix)+h->GetXaxis()->GetBinWidth(ix))<=X_max &&
+	h->GetYaxis()->GetBinLowEdge(iy)>=Y_min && (h->GetYaxis()->GetBinLowEdge(iy)+h->GetYaxis()->GetBinWidth(iy))<=Y_max)
+      return true;
+    return false;
+  };
+
+  auto rescale_aftercut = [&](TH2D* h)->double{
+    double all = h->Integral();
+    double cut{0.0};
+    for(unsigned int ix = 1; ix<=h->GetXaxis()->GetNbins(); ix++ ){
+      for(unsigned int iy = 1; iy<=h->GetYaxis()->GetNbins(); iy++ ){
+	if(accept_bin(h,ix,iy)) cut += h->GetBinContent(ix,iy); 
+      }
+    }
+    cout << "After range restriction, " << h->GetName() << " scaled by "
+	 << cut << "/" << all << "=" << cut/all << endl;  
+    return cut/all;
+  };
+
+  
   TRandom3* ran = new TRandom3();
   
   Long64_t N;
@@ -235,21 +278,27 @@ int main(int argc, char* argv[])
   cout << "Starting template is histo=" << hw_name << endl;
   
   TH2D* hw   = fin->Get<TH2D>( hw_name );
-  // hwMC is the MC
   TH2D* hwMC = fin->Get<TH2D>("hMC");
   vector<TH2D*> all_histos = { hw, hwMC };
   for(unsigned int i=0; i<NMASS; i++) all_histos.push_back( fin->Get<TH2D>(Form("hMC_mass%d",i)) );
   if(rebinX>0 || rebinY>0){
     for(auto h : all_histos) h->Rebin2D(rebinX,rebinY);
   }
-  double lumi_fact = nevents>0 ? nevents/hwMC->Integral() : 1.0; 
+
+  int nx = hw->GetXaxis()->GetNbins(); 
+  int ny = hw->GetYaxis()->GetNbins(); 
+  int nx_cut = get_nbins_XY(hw).first;
+  int ny_cut = get_nbins_XY(hw).second;
+  double extra_scale = rescale_aftercut(hwMC);
+  int nbins = nx_cut*ny_cut;
+
+  double lumi_fact = nevents>0 ? nevents/hwMC->Integral() : 1.0;
+  lumi_fact /= extra_scale;
   cout << "Scaling input histos by " << lumi_fact << endl;  
   N *= lumi_fact;
   for(auto h : all_histos) h->Scale(lumi_fact);
-  int nx = hw->GetXaxis()->GetNbins(); 
-  int ny = hw->GetYaxis()->GetNbins(); 
-  int nbins = nx*ny;
-  cout << "Number of data points: " << nx << "*" << ny << " = " << nbins << endl;
+
+  cout << "Number of data points: " << nx_cut << "*" << ny_cut << " = " << nbins << endl;
   cout << "Data integral: " << hwMC->Integral() << endl;
   
   unsigned int bin_counter = 0;
@@ -274,6 +323,7 @@ int main(int argc, char* argv[])
     bin_counter = 0;
     for(unsigned int ix = 1; ix<=nx; ix++ ){
       for(unsigned int iy = 1; iy<=ny; iy++ ){
+	if(!accept_bin(hjac,ix,iy)) continue;
 	jac(bin_counter,j) = N*hjac->GetBinContent(ix,iy); 
 	bin_counter++;
       }
@@ -284,15 +334,16 @@ int main(int argc, char* argv[])
 
   MatrixXd inv_sqrtV(nbins, nbins);
   MatrixXd inv_V(nbins, nbins);
-  for(unsigned int ix = 0; ix<nbins; ix++ ){
-    for(unsigned int iy = 0; iy<nbins; iy++ ){
-      inv_sqrtV(ix,iy) = 0.;
-      inv_V(ix,iy) = 0.;
+  for(unsigned int ib = 0; ib<nbins; ib++ ){
+    for(unsigned int jb = 0; jb<nbins; jb++ ){
+      inv_sqrtV(ib,jb) = 0.;
+      inv_V(ib,jb) = 0.;
     }
   }
   bin_counter = 0;
   for(unsigned int ix = 1; ix<=nx; ix++ ){
     for(unsigned int iy = 1; iy<=ny; iy++ ){
+      if(!accept_bin(hwMC,ix,iy)) continue;
       inv_sqrtV(bin_counter,bin_counter) = 1./TMath::Sqrt(hwMC->GetBinContent(ix,iy));
       inv_V(bin_counter,bin_counter) = 1./hwMC->GetBinContent(ix,iy);
       bin_counter++;
@@ -344,6 +395,7 @@ int main(int argc, char* argv[])
       bin_counter = 0;
       for(unsigned int ix = 1; ix<=nx; ix++ ){
 	for(unsigned int iy = 1; iy<=ny; iy++ ){
+	  if(!accept_bin(all_histos[0],ix,iy)) continue;
 	  double mu = all_histos[0]->GetBinContent(ix,iy);
 	  mu_ran(bin_counter) = ran->PoissonD(mu);  
 	  bin_counter++;
@@ -369,6 +421,7 @@ int main(int argc, char* argv[])
       bin_counter = 0;
       for(unsigned int ix = 1; ix<=nx; ix++ ){
 	for(unsigned int iy = 1; iy<=ny; iy++ ){
+	  if(!accept_bin(hMC,ix,iy)) continue;
 	  double val = hMC->GetBinContent(ix,iy);
 	  if(do_toys) val = mu_ran(bin_counter);
 	  if(val<=0) continue;
@@ -382,6 +435,7 @@ int main(int argc, char* argv[])
       bin_counter = 0;
       for(unsigned int ix = 1; ix<=nx; ix++ ){
 	for(unsigned int iy = 1; iy<=ny; iy++ ){
+	  if(!accept_bin(hMC,ix,iy)) continue;
 	  if(!do_toys)
 	    y(bin_counter) = -all_histos[0]->GetBinContent(ix,iy)+hMC->GetBinContent(ix,iy);
 	  else
@@ -555,6 +609,7 @@ int main(int argc, char* argv[])
 	bin_counter = 0;
 	for(unsigned int ix = 1; ix<=nx; ix++ ){
 	  for(unsigned int iy = 1; iy<=ny; iy++ ){
+	    if(!accept_bin(hw,ix,iy)) continue;
 	    double val = hw->GetBinContent(ix,iy);
 	    val += (jac*x)(bin_counter);
 	    hw_postfit->SetBinContent(ix,iy,val);
