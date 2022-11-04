@@ -95,6 +95,8 @@ int main(int argc, char* argv[])
 	("degs_A3_y",   value<int>()->default_value(2), "max degree in y for A3")
 	("degs_A4_x",   value<int>()->default_value(2), "max degree in x for A4")
 	("degs_A4_y",   value<int>()->default_value(2), "max degree in y for A4")
+	("max_x",       value<double>()->default_value(0.4), "range in x")
+	("max_y",       value<double>()->default_value(2.5), "range in y")
 	("tag", value<std::string>()->default_value(""), "tag name")
 	("run", value<std::string>()->default_value("closure"), "run type")
 	("do_absy",    bool_switch()->default_value(false), "polycheb in abs(y)")
@@ -163,8 +165,16 @@ int main(int argc, char* argv[])
   if(vm.count("degs_A4_x"))   tag += std::string(Form("_A4_%d", degs_A4_x));
   if(vm.count("degs_A4_y"))   tag += std::string(Form("_%d", degs_A4_y));
 
-  const double max_x = 0.4;
-  const double max_y = 2.5;
+  const double deltapOp = 0.015;
+  const double deltakOk = 0.0002;
+  const double deltah   = 0.001;
+    
+  //const double max_x = 0.4;
+  //const double max_x = 0.48;
+  //const double max_y = 2.5;
+  //const double max_y = 4.00;
+  double max_x = vm["max_x"].as<double>();
+  double max_y = vm["max_y"].as<double>();
   
   int nbinsX   = 36; 
   double xLow  = 0.0;
@@ -278,7 +288,8 @@ int main(int argc, char* argv[])
   TF2* toy_A1 = new TF2("toy_A1", "(0.5*y + 2*y*y)*( 0.05*x + 0.01*x*x)", 0., max_y, 0., max_x);
   TF2* toy_A2 = new TF2("toy_A2", "2*y*y*(1 - 0.01*x*x)", 0., max_y, 0., max_x);
   TF2* toy_A3 = new TF2("toy_A3", "(y + y*y + y*y*y)*(1 - 0.01*x*x)", 0., max_y, 0., max_x);
-  TF2* toy_A4 = new TF2("toy_A4", "(y+1)*(0.5*x + x*x)/6.0", 0., max_y, 0., max_x);
+  //TF2* toy_A4 = new TF2("toy_A4", "(y+1)*(0.5*x + x*x)/6.0", 0., max_y, 0., max_x);
+  TF2* toy_A4 = new TF2("toy_A4", "(-y/3+2.0)*TMath::TanH(x/2.5)", 0., max_y, 0., max_x);
 
   // preprare inputs
   if(true){
@@ -432,7 +443,17 @@ int main(int argc, char* argv[])
 						  RVecD p4lab{pt,eta};
 						  return p4lab;
 						}, {"Q", "cos", "phi", "x", "y"}));
-    
+
+
+  dlast = std::make_unique<RNode>(dlast->DefineSlot("p4lab_smear",
+						    [&](unsigned int nslot, RVecD p4lab)->RVecD {
+						      double pt_smear  = rans[nslot]->Gaus(p4lab.at(0)*(1.0 + deltakOk), p4lab.at(0)*deltapOp);
+						      double eta_smear = p4lab.at(1) + rans[nslot]->Gaus(0.0, deltah);
+						      RVecD p4lab_smear{pt_smear,eta_smear};
+						      //cout << "Smear: " << p4lab.at(0) << " --> " << pt_smear << ", eta: " << p4lab.at(1) << " -->" << eta_smear << endl;
+						      return p4lab_smear;
+						    }, {"p4lab"}));
+  
   dlast = std::make_unique<RNode>(dlast->Define("corrxy_vec", 
 						[&](double x, double y)->RVecD{
 						  RVecD out;						  
@@ -482,14 +503,16 @@ int main(int argc, char* argv[])
 						  }, {"x","y"} ));
   }
   
-  dlast = std::make_unique<RNode>(dlast->Define("pt",  [](RVecD p4lab){ return p4lab[0];}, {"p4lab"}));
-  if(xLow>=0.)
-    dlast = std::make_unique<RNode>(dlast->Define("eta", [](RVecD p4lab){ return TMath::Abs(p4lab[1]);}, {"p4lab"}));
-  else
-    dlast = std::make_unique<RNode>(dlast->Define("eta", [](RVecD p4lab){ return p4lab[1];}, {"p4lab"}));
+  dlast = std::make_unique<RNode>(dlast->Define("pt",        [](RVecD p4lab){ return p4lab[0];}, {"p4lab"}));
+  dlast = std::make_unique<RNode>(dlast->Define("pt_smear",  [](RVecD p4lab){ return p4lab[0];}, {"p4lab_smear"}));
+  dlast = std::make_unique<RNode>(dlast->Define("eta",       xLow>=0. ? [](RVecD p4lab){ return TMath::Abs(p4lab[1]);} : [](RVecD p4lab){ return p4lab[1];}, {"p4lab"}));
+  dlast = std::make_unique<RNode>(dlast->Define("eta_smear", xLow>=0. ? [](RVecD p4lab){ return TMath::Abs(p4lab[1]);} : [](RVecD p4lab){ return p4lab[1];}, {"p4lab_smear"}));
+  
+  //if(xLow>=0.)
+  //else
+  //  dlast = std::make_unique<RNode>(dlast->Define("eta", [](RVecD p4lab){ return p4lab[1];}, {"p4lab"}));
 
   std::vector<ROOT::RDF::RResultPtr<TH1D> > histos1D;
-  
   std::vector<ROOT::RDF::RResultPtr<TH2D> > histos2D;
   std::vector<ROOT::RDF::RResultPtr<TH2D> > histosJac;
 
@@ -928,6 +951,22 @@ int main(int argc, char* argv[])
     histos1D.emplace_back(dlast->Histo1D({"wMC_pdfy",  "", 20, 0.0, max_y}, "y", "wMC"));      
     histos2D.emplace_back(dlast->Histo2D({"wMC_corrxy","", 20, 0.0, max_y, 20, 0.0, max_x}, "y", "x", "wMC"));      
     */
+
+    dlast = std::make_unique<RNode>(dlast->Define("ibin",
+						  [&](double pt, double eta){
+						    int ibin = histos2D.at(0)->FindBin(eta,pt);
+						    //cout << "ibin " << ibin << endl;
+						    return ibin;
+						  }, {"pt", "eta"}));
+    dlast = std::make_unique<RNode>(dlast->Define("ibin_smear",
+						  [&](double pt, double eta){
+						    int ibin = histos2D.at(0)->FindBin(eta,pt);
+						    //cout << "ibin " << ibin << endl;
+						    return ibin;
+						  }, {"pt_smear", "eta_smear"}));
+    int nbins_transfer = histos2D.at(0)->GetNcells(); 
+    //histos2D.emplace_back(dlast->Histo2D({"transfer_MC", "", nbins_transfer, 0, double(nbins_transfer), nbins_transfer, 0, double(nbins_transfer)}, "ibin", "ibin_smear", "wMC"));
+    
 
     fin->Close();
   }

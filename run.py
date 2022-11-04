@@ -22,7 +22,7 @@ parser.add_argument('--jacmass', dest = 'jacmass'  , type = int,  default=-1, he
 args = parser.parse_args()
 
 pol_default = {
-    'corr'   : [10,4],
+    'corr'   : [10,6],
     'A0'     : [3,3],
     'A1'     : [3,3],
     'A2'     : [3,3],
@@ -35,23 +35,35 @@ pol_systs = []
 
 pol_syst0 = copy.deepcopy(pol_default)
 pol_syst0['corr'] = [8,4]
-pol_systs.append( pol_syst0 )
+#pol_systs.append( pol_syst0 )
 
 pol_syst1 = copy.deepcopy(pol_default)
 pol_syst1['corr'] = [10,6]
-pol_systs.append( pol_syst1 )
+#pol_systs.append( pol_syst1 )
 
 pol_syst2 = copy.deepcopy(pol_default)
 pol_syst2['A3'] = [4,4]
-pol_systs.append( pol_syst2 )
+#pol_systs.append( pol_syst2 )
 
 pol_syst3 = copy.deepcopy(pol_default)
-pol_syst3['A4'] = [4,4]
+pol_syst3['A4'] = [3,4]
 pol_systs.append( pol_syst3 )
 
 pol_syst4 = copy.deepcopy(pol_default)
-pol_syst4['corr'] = [12,4]
+pol_syst4['A4'] = [3,5]
 pol_systs.append( pol_syst4 )
+
+pol_syst5 = copy.deepcopy(pol_default)
+pol_syst5['A4'] = [3,6]
+pol_systs.append( pol_syst5 )
+
+pol_syst6 = copy.deepcopy(pol_default)
+pol_syst6['corr'] = [13,4]
+#pol_systs.append( pol_syst6 )
+
+pol_syst7 = copy.deepcopy(pol_default)
+pol_syst7['corr'] = [14,4]
+#pol_systs.append( pol_syst7 )
 
 
 if args.algo=='jac2':

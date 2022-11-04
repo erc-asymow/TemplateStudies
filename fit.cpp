@@ -359,7 +359,10 @@ int main(int argc, char* argv[])
   norms_cheb4 << 0.0332073, 0.266696, 0.400194, 0.266696, 0.0332073;
   VectorXd norms_cheb6(7);
   norms_cheb6 << 0.0141919, 0.126953, 0.228635, 0.26044, 0.228635, 0.126953, 0.0141919; 
-  assert(degs_corr_y==4 || degs_corr_y==6);
+  VectorXd norms_cheb8(9);
+  norms_cheb8 << 0.00792723, 0.0731216, 0.139826, 0.180815, 0.196621, 0.180815, 0.139826, 0.0731216, 0.00792723;
+
+  assert(degs_corr_y==4 || degs_corr_y==6 || degs_corr_y==8);
 
   // plotting
   vector<string> fit_tags = {"UL", "0", "1", "2", "3", "4" };
