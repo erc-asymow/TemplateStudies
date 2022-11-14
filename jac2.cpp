@@ -31,7 +31,8 @@ constexpr double MW = 80.;
 constexpr double GW = 2.0;
 constexpr double MASSSHIFT = 0.050;
 constexpr int NMAX  = 200;
-constexpr int NMASS = 20;
+//constexpr int NMASS = 20;
+constexpr int NMASS = 3;
 constexpr double DELTAM = 0.200;
 
 enum pdf_type { pdf_x=0, pdf_y, corr_x, corr_y, A0_x, A0_y, A1_x, A1_y, A2_x, A2_y, A3_x, A3_y, A4_x, A4_y, unknown};
@@ -99,8 +100,8 @@ int main(int argc, char* argv[])
 	("max_y",       value<double>()->default_value(2.5), "range in y")
 	("tag", value<std::string>()->default_value(""), "tag name")
 	("run", value<std::string>()->default_value("closure"), "run type")
-	("do_absy",    bool_switch()->default_value(false), "polycheb in abs(y)")
-	("jacmass",    bool_switch()->default_value(false), "compute jacobians for three mass values")
+	("do_jac_vs_mass",    bool_switch()->default_value(false), "compute jacobians for three mass values")
+	("do_cheb_as_modifiers",  bool_switch()->default_value(false), "compute jacobians of offset")
 	("getbin_extTH2_corr",  bool_switch()->default_value(false), "get bin corr(x,y)")
 	("inter_extTH2_corr",  bool_switch()->default_value(false), "interpol corr(x,y)")
 	("toyTF2_corr",  bool_switch()->default_value(false), "toy TF2 corr(x,y)")
@@ -122,7 +123,6 @@ int main(int argc, char* argv[])
 	if (vm.count("degs_"+hel+"_x")) std::cout << "Degree in x of "+hel+": " << vm["degs_"+hel+"_x"].as<int>() << '\n';
 	if (vm.count("degs_"+hel+"_y")) std::cout << "Degree in y of "+hel+": " << vm["degs_"+hel+"_y"].as<int>() << '\n';
       }
-      if (vm.count("do_absy"))     std::cout << "Do abs(Y): " << vm["do_absy"].as<bool>() << '\n';
     }
   catch (const error &ex)
     {
@@ -144,8 +144,8 @@ int main(int argc, char* argv[])
   int degs_A3_y   = vm["degs_A3_y"].as<int>();
   int degs_A4_x   = vm["degs_A4_x"].as<int>();
   int degs_A4_y   = vm["degs_A4_y"].as<int>();
-  bool do_absy = vm["do_absy"].as<bool>();
-  bool jacmass = vm["jacmass"].as<bool>();
+  bool do_jac_vs_mass = vm["do_jac_vs_mass"].as<bool>();
+  bool do_cheb_as_modifiers = vm["do_cheb_as_modifiers"].as<bool>();
   bool getbin_extTH2_corr= vm["getbin_extTH2_corr"].as<bool>();
   bool inter_extTH2_corr= vm["inter_extTH2_corr"].as<bool>();
   bool toyTF2_corr= vm["toyTF2_corr"].as<bool>();
@@ -169,27 +169,23 @@ int main(int argc, char* argv[])
   const double deltakOk = 0.0002;
   const double deltah   = 0.001;
     
-  //const double max_x = 0.4;
-  //const double max_x = 0.48;
-  //const double max_y = 2.5;
-  //const double max_y = 4.00;
   double max_x = vm["max_x"].as<double>();
   double max_y = vm["max_y"].as<double>();
   
-  int nbinsX   = 36; 
-  double xLow  = 0.0;
-  double xHigh = +2.5;
-  int nbinsY   = 60; 
-  double yLow  = 25.;
-  double yHigh = 55.;
+  int nbins_rap   = 36; 
+  double rap_low  = 0.0;
+  double rap_high = +2.5;
+  int nbins_pt    = 70; 
+  double pt_low   = 25.;
+  double pt_high  = 60.;
 
   if(fit_qt_y){
-    nbinsX   = 13; 
-    xLow  = -max_y;
-    xHigh = +max_y;
-    nbinsY   = 15; 
-    yLow  = 0.;
-    yHigh = +max_x;
+    nbins_rap   = 13; 
+    rap_low  = -max_y;
+    rap_high = +max_y;
+    nbins_pt   = 15; 
+    pt_low  = 0.;
+    pt_high = +max_x;
   }
 
   auto degs = [degs_corr_x,degs_corr_y,degs_A0_x,degs_A0_y,degs_A1_x,degs_A1_y,degs_A2_x,degs_A2_y,degs_A3_x,degs_A3_y,degs_A4_x,degs_A4_y]
@@ -236,61 +232,91 @@ int main(int argc, char* argv[])
   };
 
   unsigned int njacs = 0;
-  unsigned int first_jac_corrxy = njacs;  
-  njacs += (degs(pdf_type::corr_x))*( (do_absy ? degs(pdf_type::corr_y) : degs(pdf_type::corr_y)/2) + 1 );
-  unsigned int first_jac_A0xy = njacs;  
-  njacs += (degs(pdf_type::A0_x))*( (do_absy ? degs(pdf_type::A0_y) : degs(pdf_type::A0_y)/2) + 1 );
-  unsigned int first_jac_A1xy = njacs;  
-  njacs += (degs(pdf_type::A1_x))*( degs(pdf_type::A1_y) );
-  unsigned int first_jac_A2xy = njacs;  
-  njacs += (degs(pdf_type::A2_x))*( (do_absy ? degs(pdf_type::A2_y) : degs(pdf_type::A2_y)/2) + 1 );
-  unsigned int first_jac_A3xy = njacs;  
-  njacs += (degs(pdf_type::A3_x))*( (do_absy ? degs(pdf_type::A3_y) : degs(pdf_type::A3_y)/2) + 1 );
-  unsigned int first_jac_A4xy = njacs;  
-  njacs += (degs(pdf_type::A4_x)+1)*( degs(pdf_type::A4_y) );
+  unsigned int first_jac_corrxy = 0;
+  unsigned int first_jac_A0xy   = 0;
+  unsigned int first_jac_A1xy   = 0;
+  unsigned int first_jac_A2xy   = 0;
+  unsigned int first_jac_A3xy   = 0;
+  unsigned int first_jac_A4xy   = 0;
+  if(!do_cheb_as_modifiers){
+     //A1(.,0)=0
+     //A4(.,0)=0, but A4(0,.)!=0
+    njacs += (degs(pdf_type::corr_x))*( degs(pdf_type::corr_y)/2 + 1 );
+    first_jac_A0xy = njacs;  
+    njacs += (degs(pdf_type::A0_x))*( degs(pdf_type::A0_y)/2 + 1 );
+    first_jac_A1xy = njacs;  
+    njacs += (degs(pdf_type::A1_x))*( degs(pdf_type::A1_y) );
+    first_jac_A2xy = njacs;  
+    njacs += (degs(pdf_type::A2_x))*( degs(pdf_type::A2_y)/2 + 1 );
+    first_jac_A3xy = njacs;  
+    njacs += (degs(pdf_type::A3_x))*( degs(pdf_type::A3_y)/2 + 1 );
+    first_jac_A4xy = njacs;  
+    njacs += (degs(pdf_type::A4_x) + 1)*( degs(pdf_type::A4_y) );
+  }
+  else{
+    njacs += (degs(pdf_type::corr_x)+1)*( degs(pdf_type::corr_y)/2 + 1 );
+    first_jac_A0xy = njacs;  
+    njacs += (degs(pdf_type::A0_x)+1)*( degs(pdf_type::A0_y)/2 + 1 );
+    first_jac_A1xy = njacs;  
+    njacs += (degs(pdf_type::A1_x)+1)*( degs(pdf_type::A1_y)/2 + 1 );
+    first_jac_A2xy = njacs;  
+    njacs += (degs(pdf_type::A2_x)+1)*( degs(pdf_type::A2_y)/2 + 1 );
+    first_jac_A3xy = njacs;  
+    njacs += (degs(pdf_type::A3_x)+1)*( degs(pdf_type::A3_y)/2 + 1 );
+    first_jac_A4xy = njacs;  
+    njacs += (degs(pdf_type::A4_x)+1)*( degs(pdf_type::A4_y)/2 + 1 );
+  }
 
   auto toy_mass = [](double Q, double M, double G){
     return 1./TMath::Pi()/(1 + (Q-M)*(Q-M)/G/G);
   };
 
-  TF1* toy_x = new TF1("toy_x", "[0]*x/(x*x+[1])", 0.0, max_x);  
-  toy_x->SetParameter(0, 1.0);
-  toy_x->SetParameter(1, +2.35e-03);
-  double int_toy_x = toy_x->Integral(0.0, max_x);
-  toy_x->SetParameter(0, 1.0/int_toy_x);
-  //TF1* toy_x = new TF1("toy_x", "[0]", 0.0, max_x);  
-  //toy_x->SetParameter(0, 1./max_x);
-
-  TF1* toy_y = new TF1("toy_y", "[2]/TMath::Sqrt(2*TMath::Pi()*[1])*TMath::Exp(-0.5*(x-[0])*(x-[0])/[1]/[1])", -max_y, max_y);
-  toy_y->SetParameter(0, 0.0);
-  toy_y->SetParameter(1, 5.0);
-  toy_y->SetParameter(2, 1.0);
-  double int_toy_y = toy_y->Integral(-max_y, max_y);
-  toy_y->SetParameter(2, 1.0/int_toy_y);
-
+  TF1* tf1toy_x = new TF1("toy_x", "[0]*x/(x*x+[1])", 0.0, max_x);  
+  double p0_x = +2.35e-03;
+  tf1toy_x->SetParameter(0, 1.0);
+  tf1toy_x->SetParameter(1, p0_x);
+  double int_toy_x = tf1toy_x->Integral(0.0, max_x);
+  tf1toy_x->SetParameter(0, 1.0/int_toy_x);
+  auto toy_x = [&](double x)->double{
+    return x/(x*x + p0_x)/int_toy_x;
+  };
+  
+  TF1* tf1toy_y = new TF1("toy_y", "[2]/TMath::Sqrt(2*TMath::Pi()*[1])*TMath::Exp(-0.5*(x-[0])*(x-[0])/[1])", -max_y, max_y);
+  double sigma2_y = 5.0*5.0;
+  tf1toy_y->SetParameter(0, 0.0);
+  tf1toy_y->SetParameter(1, sigma2_y);
+  tf1toy_y->SetParameter(2, 1.0);
+  double int_toy_y = tf1toy_y->Integral(-max_y, max_y);
+  tf1toy_y->SetParameter(2, 1.0/int_toy_y);
+  auto toy_y = [&](double y)->double{
+    return 1.0/int_toy_y/TMath::Sqrt(2*TMath::Pi()*sigma2_y)*TMath::Exp(-0.5*y*y/sigma2_y);
+  };
+  
   TFile* fWJets = TFile::Open("WJets.root","READ");
   TH2F* th2_corrxy = 0;
-  TF2* toy_corrxy = new TF2("toy_corrxy","0.1*(1.0 - 0.3*x*x)*TMath::Erf(5.0*y) + 1.0", 0., max_y, 0., max_x);
+  TF2* tf2toy_corrxy = new TF2("toy_corrxy","0.1*(1.0 - 0.3*x*x)*TMath::Erf(5.0*y) + 1.0", 0., max_y, 0., max_x);
+  auto toy_corrxy = [](double x, double y)->double{
+    return 0.1*(1.0 - 0.3*x*x)*TMath::Erf(5.0*y) + 1.0;
+  };
   if(fWJets!=nullptr && !fWJets->IsZombie()){
     std::cout << "WJets file found! Taking h2 as corrxy" << std::endl;
     th2_corrxy = fWJets->Get<TH2F>("h2");
   }
 
-  /*
-  TF2* toy_A0 = new TF2("toy_A0", "2*y*y*(1/(1 + 0.02*x*x))", 0., max_y, 0., max_x);
-  TF2* toy_A1 = new TF2("toy_A1", "(0.5*y + 2*y*y)*(x/(1 + x))", 0., max_y, 0., max_x);
-  TF2* toy_A2 = new TF2("toy_A2", "2*y*y*(1/(1 + 0.02*x*x))", 0., max_y, 0., max_x);
-  TF2* toy_A3 = new TF2("toy_A3", "(y + y*y + y*y*y)*(1/(1 + 0.02*x*x))", 0., max_y, 0., max_x);
-  TF2* toy_A4 = new TF2("toy_A4", "(y+1)*(0.5*x + x*x)/10", 0., max_y, 0., max_x);
-  */
+  TF2* tf2toy_A0 = new TF2("toy_A0", "2*y*y*(1 - 0.01*x*x)", 0., max_y, 0., max_x);  
+  TF2* tf2toy_A1 = new TF2("toy_A1", "(0.5*y + 2*y*y)*( 0.05*x + 0.01*x*x)", 0., max_y, 0., max_x);
+  TF2* tf2toy_A2 = new TF2("toy_A2", "2*y*y*(1 - 0.01*x*x)", 0., max_y, 0., max_x);
+  TF2* tf2toy_A3 = new TF2("toy_A3", "(y + y*y + y*y*y)*(1 - 0.01*x*x)", 0., max_y, 0., max_x);
+  //TF2* tf2toy_A4 = new TF2("toy_A4", "(y+1)*(0.5*x + x*x)/6.0", 0., max_y, 0., max_x);
+  TF2* tf2toy_A4 = new TF2("toy_A4", "(-y/3+2.0)*TMath::TanH(x/2.5)", 0., max_y, 0., max_x);
 
-  TF2* toy_A0 = new TF2("toy_A0", "2*y*y*(1 - 0.01*x*x)", 0., max_y, 0., max_x);
-  TF2* toy_A1 = new TF2("toy_A1", "(0.5*y + 2*y*y)*( 0.05*x + 0.01*x*x)", 0., max_y, 0., max_x);
-  TF2* toy_A2 = new TF2("toy_A2", "2*y*y*(1 - 0.01*x*x)", 0., max_y, 0., max_x);
-  TF2* toy_A3 = new TF2("toy_A3", "(y + y*y + y*y*y)*(1 - 0.01*x*x)", 0., max_y, 0., max_x);
-  //TF2* toy_A4 = new TF2("toy_A4", "(y+1)*(0.5*x + x*x)/6.0", 0., max_y, 0., max_x);
-  TF2* toy_A4 = new TF2("toy_A4", "(-y/3+2.0)*TMath::TanH(x/2.5)", 0., max_y, 0., max_x);
-
+  auto toy_A0 = [](double x, double y)->double{ return 2*y*y*(1 - 0.01*x*x); };
+  auto toy_A1 = [](double x, double y)->double{ return (0.5*y + 2*y*y)*( 0.05*x + 0.01*x*x); };
+  auto toy_A2 = [](double x, double y)->double{ return 2*y*y*(1 - 0.01*x*x); };
+  auto toy_A3 = [](double x, double y)->double{ return (y + y*y + y*y*y)*(1 - 0.01*x*x); };
+  auto toy_A4 = [](double x, double y)->double{ return (-y/3+2.0)*TMath::TanH(x/2.5); };
+  
+  
   // preprare inputs
   if(true){
 
@@ -303,78 +329,77 @@ int main(int argc, char* argv[])
       for(int l = 0; l<=degs(pdf_type::corr_y); l++){      
 	int idx = (degs(pdf_type::corr_y)+1)*k + l; 
 	tree->Branch(Form("corrxy_%d_%d", k,l), &(corr_xy[idx]), Form("corrxy_%d_%d/D", k,l));
-	double y = do_absy ? 
-	  (TMath::Cos((degs(pdf_type::corr_y)-l)*TMath::Pi()/degs(pdf_type::corr_y))+1.0)*0.5*max_y : 
-	  TMath::Cos((degs(pdf_type::corr_y)-l)*TMath::Pi()/degs(pdf_type::corr_y))*max_y;
-	corr_xy[idx] = toy_x->Eval(x)*toy_y->Eval(y);
-	if(getbin_extTH2_corr) 
-	  corr_xy[idx] *= th2_corrxy->GetBinContent( th2_corrxy->FindBin(TMath::Abs(y), x) );
-	else if(inter_extTH2_corr)  
-	  corr_xy[idx] *= th2_corrxy->Interpolate(TMath::Abs(y),x);
-	else if(toyTF2_corr) 
-	  corr_xy[idx] *= toy_corrxy->Eval(TMath::Abs(y),x);
+	double y = TMath::Cos((degs(pdf_type::corr_y)-l)*TMath::Pi()/degs(pdf_type::corr_y))*max_y;
+	corr_xy[idx] = toy_x(x)*toy_y(y);
+	if(getbin_extTH2_corr)     corr_xy[idx] *= th2_corrxy->GetBinContent( th2_corrxy->FindBin(TMath::Abs(y), x) );
+	else if(inter_extTH2_corr) corr_xy[idx] *= th2_corrxy->Interpolate(TMath::Abs(y),x);
+	else if(toyTF2_corr)       corr_xy[idx] *= toy_corrxy(TMath::Abs(y),x);
+	//if(do_cheb_as_modifiers) corr_xy[idx] = 0.0;
       }
     }
-  
+
+    // for A0 we sample in [-max_y,max_y]
     double A0_xy[NMAX];
     for(int m = 0; m<=degs(pdf_type::A0_x); m++){
       double x = (TMath::Cos((degs(pdf_type::A0_x)-m)*TMath::Pi()/degs(pdf_type::A0_x))+1.0)*0.5*max_x;
       for(int n = 0; n<=degs(pdf_type::A0_y); n++){
 	int idx = (degs(pdf_type::A0_y)+1)*m + n; 
 	tree->Branch(Form("A0_xy_%d_%d", m,n), &(A0_xy[idx]), Form("A0_xy_%d_%d/D", m,n));
-	double y = do_absy ? (TMath::Cos((degs(pdf_type::A0_y)-n)*TMath::Pi()/degs(pdf_type::A0_y))+1.0)*0.5*max_y : 
-	  TMath::Cos((degs(pdf_type::A0_y)-n)*TMath::Pi()/degs(pdf_type::A0_y))*max_y;
-	A0_xy[idx] = toy_A0->Eval(TMath::Abs(y),x);      
+	double y = TMath::Cos((degs(pdf_type::A0_y)-n)*TMath::Pi()/degs(pdf_type::A0_y))*max_y;
+	A0_xy[idx] = toy_A0(TMath::Abs(y),x);
+	//if(do_cheb_as_modifiers) A0_xy[idx] = 0.0;
       }
     }
 
+    // for A1 we sample in [0,max_y]
     double A1_xy[NMAX];
     for(int m = 0; m<=degs(pdf_type::A1_x); m++){
       double x = (TMath::Cos((degs(pdf_type::A1_x)-m)*TMath::Pi()/degs(pdf_type::A1_x))+1.0)*0.5*max_x;
       for(int n = 0; n<=degs(pdf_type::A1_y); n++){
 	int idx = (degs(pdf_type::A1_y)+1)*m + n; 
 	tree->Branch(Form("A1_xy_%d_%d", m,n), &(A1_xy[idx]), Form("A1_xy_%d_%d/D", m,n));
-	//double y = do_absy ? (TMath::Cos((degs(pdf_type::A1_y)-n)*TMath::Pi()/degs(pdf_type::A1_y))+1.0)*0.5*max_y : 
-	//TMath::Cos((degs(pdf_type::A1_y)-n)*TMath::Pi()/degs(pdf_type::A1_y))*max_y;
 	double y = (TMath::Cos((degs(pdf_type::A1_y)-n)*TMath::Pi()/degs(pdf_type::A1_y))+1.0)*0.5*max_y; 
-	A1_xy[idx] = toy_A1->Eval(TMath::Abs(y),x);      
+	A1_xy[idx] = toy_A1(TMath::Abs(y),x);
+	//if(do_cheb_as_modifiers) A1_xy[idx] = 0.0;
       }
     }
 
+    // for A2 we sample in [-max_y,max_y]
     double A2_xy[NMAX];
     for(int m = 0; m<=degs(pdf_type::A2_x); m++){
       double x = (TMath::Cos((degs(pdf_type::A2_x)-m)*TMath::Pi()/degs(pdf_type::A2_x))+1.0)*0.5*max_x;
       for(int n = 0; n<=degs(pdf_type::A2_y); n++){
 	int idx = (degs(pdf_type::A2_y)+1)*m + n; 
 	tree->Branch(Form("A2_xy_%d_%d", m,n), &(A2_xy[idx]), Form("A2_xy_%d_%d/D", m,n));
-	double y = do_absy ? (TMath::Cos((degs(pdf_type::A2_y)-n)*TMath::Pi()/degs(pdf_type::A2_y))+1.0)*0.5*max_y : 
-	  TMath::Cos((degs(pdf_type::A2_y)-n)*TMath::Pi()/degs(pdf_type::A2_y))*max_y;
-	A2_xy[idx] = toy_A2->Eval(TMath::Abs(y),x);      
+	double y = TMath::Cos((degs(pdf_type::A2_y)-n)*TMath::Pi()/degs(pdf_type::A2_y))*max_y;
+	A2_xy[idx] = toy_A2(TMath::Abs(y),x);
+	//if(do_cheb_as_modifiers) A2_xy[idx] = 0.0;
       }
     }
 
+    // for A3 we sample in [-max_y,max_y]
     double A3_xy[NMAX];
     for(int m = 0; m<=degs(pdf_type::A3_x); m++){
       double x = (TMath::Cos((degs(pdf_type::A3_x)-m)*TMath::Pi()/degs(pdf_type::A3_x))+1.0)*0.5*max_x;
       for(int n = 0; n<=degs(pdf_type::A3_y); n++){
 	int idx = (degs(pdf_type::A3_y)+1)*m + n; 
 	tree->Branch(Form("A3_xy_%d_%d", m,n), &(A3_xy[idx]), Form("A3_xy_%d_%d/D", m,n));
-	double y = do_absy ? (TMath::Cos((degs(pdf_type::A3_y)-n)*TMath::Pi()/degs(pdf_type::A3_y))+1.0)*0.5*max_y : 
-	  TMath::Cos((degs(pdf_type::A3_y)-n)*TMath::Pi()/degs(pdf_type::A3_y))*max_y;
-	A3_xy[idx] = toy_A3->Eval(TMath::Abs(y),x);      
+	double y = TMath::Cos((degs(pdf_type::A3_y)-n)*TMath::Pi()/degs(pdf_type::A3_y))*max_y;
+	A3_xy[idx] = toy_A3(TMath::Abs(y),x);
+	//if(do_cheb_as_modifiers) A3_xy[idx] = 0.0;
       }
     }
 
+    // for A4 we sample in [0,max_y]
     double A4_xy[NMAX];
     for(int m = 0; m<=degs(pdf_type::A4_x); m++){
       double x = (TMath::Cos((degs(pdf_type::A4_x)-m)*TMath::Pi()/degs(pdf_type::A4_x))+1.0)*0.5*max_x;
       for(int n = 0; n<=degs(pdf_type::A4_y); n++){
 	int idx = (degs(pdf_type::A4_y)+1)*m + n; 
 	tree->Branch(Form("A4_xy_%d_%d", m,n), &(A4_xy[idx]), Form("A4_xy_%d_%d/D", m,n));
-	//double y = do_absy ? (TMath::Cos((degs(pdf_type::A4_y)-n)*TMath::Pi()/degs(pdf_type::A4_y))+1.0)*0.5*max_y : 
-	//TMath::Cos((degs(pdf_type::A4_y)-n)*TMath::Pi()/degs(pdf_type::A4_y))*max_y;
 	double y = (TMath::Cos((degs(pdf_type::A4_y)-n)*TMath::Pi()/degs(pdf_type::A4_y))+1.0)*0.5*max_y;
-	A4_xy[idx] = toy_A4->Eval(TMath::Abs(y),x);      
+	A4_xy[idx] = toy_A4(TMath::Abs(y),x);
+	//if(do_cheb_as_modifiers) A4_xy[idx] = 0.0;
       }
     }
 
@@ -411,7 +436,7 @@ int main(int argc, char* argv[])
   dlast = std::make_unique<RNode>(dlast->DefineSlot("phi",[&](unsigned int nslot){ return rans[nslot]->Uniform(-TMath::Pi(), +TMath::Pi());} ));
   dlast = std::make_unique<RNode>(dlast->DefineSlot("x",  [&](unsigned int nslot){ return rans[nslot]->Uniform(0.0, max_x); }));
   dlast = std::make_unique<RNode>(dlast->DefineSlot("y",  [&](unsigned int nslot){ return rans[nslot]->Uniform(-max_y, max_y);}));
-  dlast = std::make_unique<RNode>(dlast->Define("weightsM", 
+  dlast = std::make_unique<RNode>(dlast->Define("weights_mass", 
 						[&](double Q)->RVecD{
 						  RVecD out;
 						  double gen = 1./TMath::Pi()/(1 + (Q-MW)*(Q-MW)/GW/GW);
@@ -450,29 +475,22 @@ int main(int argc, char* argv[])
 						      double pt_smear  = rans[nslot]->Gaus(p4lab.at(0)*(1.0 + deltakOk), p4lab.at(0)*deltapOp);
 						      double eta_smear = p4lab.at(1) + rans[nslot]->Gaus(0.0, deltah);
 						      RVecD p4lab_smear{pt_smear,eta_smear};
-						      //cout << "Smear: " << p4lab.at(0) << " --> " << pt_smear << ", eta: " << p4lab.at(1) << " -->" << eta_smear << endl;
+						      //cout << "Smear: " << p4lab.at(0) << " --> " << pt_smear <<
+						      //", eta: " << p4lab.at(1) << " -->" << eta_smear << endl;
 						      return p4lab_smear;
 						    }, {"p4lab"}));
   
   dlast = std::make_unique<RNode>(dlast->Define("corrxy_vec", 
 						[&](double x, double y)->RVecD{
 						  RVecD out;						  
-						  for(unsigned int k = 1; k<=degs(pdf_type::corr_x); k++){
+						  for(unsigned int k = (do_cheb_as_modifiers ? 0 : 1); k<=degs(pdf_type::corr_x); k++){
 						    double corrx = cheb(x, 0.5*max_x, 1.0, degs(pdf_type::corr_x), k);
-						    if(do_absy){
-						      for(unsigned int l = 0; l<=degs(pdf_type::corr_y); l++){
-							double corry = cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(pdf_type::corr_y), l);
-							out.emplace_back( corrx*corry );
-						      }
-						    }
-						    else{
-						      unsigned int deg = degs(pdf_type::corr_y);
-						      unsigned int mid_deg = deg/2;
-						      for(unsigned int l = 0; l<=mid_deg; l++){
-							double cheb_l = cheb(y, max_y, 0.0, deg, l) + cheb(y, max_y, 0.0, deg, deg-l) ;
-							double alpha_l = l<mid_deg ? 1.0 : (deg%2==0 ? 0.5 : 1.0);
-							out.emplace_back( corrx*(cheb_l*alpha_l) );
-						      }
+						    unsigned int deg = degs(pdf_type::corr_y);
+						    unsigned int mid_deg = deg/2;
+						    for(unsigned int l = 0; l<=mid_deg; l++){
+						      double cheb_l = cheb(y, max_y, 0.0, deg, l) + cheb(y, max_y, 0.0, deg, deg-l) ;
+						      double alpha_l = l<mid_deg ? 1.0 : (deg%2==0 ? 0.5 : 1.0);
+						      out.emplace_back( corrx*(cheb_l*alpha_l) );
 						    }
 						  }
 						  return out;
@@ -481,10 +499,12 @@ int main(int argc, char* argv[])
     dlast = std::make_unique<RNode>(dlast->Define(hel+"xy_vec", 
 						  [&,hel](double x, double y)->RVecD{
 						    RVecD out;
-						    for(unsigned int k = (hel!="A4") ? 1: 0; k<=degs(get_pdf_type(hel+"_x")); k++){
+						    unsigned int k0 = (do_cheb_as_modifiers || hel=="A4") ? 0 : 1;
+						    for(unsigned int k = k0; k<=degs(get_pdf_type(hel+"_x")); k++){
 						      double Ax = cheb(x, 0.5*max_x, 1.0, degs(get_pdf_type(hel+"_x")), k);
-						      if(do_absy || (hel=="A1" || hel=="A4")){
-							for(unsigned int l = (hel=="A1" || hel=="A4") ? 1 : 0; l<=degs(get_pdf_type(hel+"_y")); l++){
+						      if(hel=="A1" || hel=="A4"){
+							unsigned int l0 = do_cheb_as_modifiers ? 0 : 1;
+							for(unsigned int l = l0; l<=degs(get_pdf_type(hel+"_y")); l++){
 							  double Ay = cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(get_pdf_type(hel+"_y")), l);
 							  out.emplace_back( Ax*Ay );
 							}
@@ -505,13 +525,9 @@ int main(int argc, char* argv[])
   
   dlast = std::make_unique<RNode>(dlast->Define("pt",        [](RVecD p4lab){ return p4lab[0];}, {"p4lab"}));
   dlast = std::make_unique<RNode>(dlast->Define("pt_smear",  [](RVecD p4lab){ return p4lab[0];}, {"p4lab_smear"}));
-  dlast = std::make_unique<RNode>(dlast->Define("eta",       xLow>=0. ? [](RVecD p4lab){ return TMath::Abs(p4lab[1]);} : [](RVecD p4lab){ return p4lab[1];}, {"p4lab"}));
-  dlast = std::make_unique<RNode>(dlast->Define("eta_smear", xLow>=0. ? [](RVecD p4lab){ return TMath::Abs(p4lab[1]);} : [](RVecD p4lab){ return p4lab[1];}, {"p4lab_smear"}));
+  dlast = std::make_unique<RNode>(dlast->Define("eta",       rap_low>=0. ? [](RVecD p4lab){ return TMath::Abs(p4lab[1]);} : [](RVecD p4lab){ return p4lab[1];}, {"p4lab"}));
+  dlast = std::make_unique<RNode>(dlast->Define("eta_smear", rap_low>=0. ? [](RVecD p4lab){ return TMath::Abs(p4lab[1]);} : [](RVecD p4lab){ return p4lab[1];}, {"p4lab_smear"}));
   
-  //if(xLow>=0.)
-  //else
-  //  dlast = std::make_unique<RNode>(dlast->Define("eta", [](RVecD p4lab){ return p4lab[1];}, {"p4lab"}));
-
   std::vector<ROOT::RDF::RResultPtr<TH1D> > histos1D;
   std::vector<ROOT::RDF::RResultPtr<TH2D> > histos2D;
   std::vector<ROOT::RDF::RResultPtr<TH2D> > histosJac;
@@ -521,7 +537,7 @@ int main(int argc, char* argv[])
   unsigned int poi_idx[NMAX];
   unsigned int poi_counter = 0;
   unsigned int n_pdfx = degs(pdf_type::corr_x);
-  unsigned int n_pdfy = (do_absy ? degs(pdf_type::corr_y) : degs(pdf_type::corr_y)/2 ) + 1;
+  unsigned int n_pdfy = degs(pdf_type::corr_y)/2 + 1;
   double points_x[ NMAX ];
   double points_y[ NMAX ];
 
@@ -529,9 +545,7 @@ int main(int argc, char* argv[])
     points_x[i] = (TMath::Cos((degs(pdf_type::corr_x)-(i+1))*TMath::Pi()/degs(pdf_type::corr_x))+1.0)*0.5*max_x;
   }
   for(unsigned int j = 0; j<n_pdfy; j++){
-    points_y[j]   = do_absy ? 
-      (TMath::Cos((degs(pdf_type::corr_y)-j)*TMath::Pi()/degs(pdf_type::corr_y))+1.0)*0.5*max_y : 
-      TMath::Cos((degs(pdf_type::corr_y)-j)*TMath::Pi()/degs(pdf_type::corr_y))*max_y;
+    points_y[j] = TMath::Cos((degs(pdf_type::corr_y)-j)*TMath::Pi()/degs(pdf_type::corr_y))*max_y;
   }
   
   if(true){
@@ -586,9 +600,12 @@ int main(int argc, char* argv[])
     tree->GetEntry(0);    
     fin->Close();     
 
+    int k0 = do_cheb_as_modifiers ? 0 : 1;
+    int l0 = do_cheb_as_modifiers ? 0 : 1;
+
     RVecD corrxy_in;
-    for(int k = 1; k<=degs(pdf_type::corr_x); k++){
-      for(int l = 0; l<=(do_absy ? degs(pdf_type::corr_y) : degs(pdf_type::corr_y)/2); l++){      
+    for(int k = k0; k<=degs(pdf_type::corr_x); k++){
+      for(int l = 0; l<=degs(pdf_type::corr_y)/2; l++){      
 	int idx = (degs(pdf_type::corr_y) + 1)*k + l; 
 	corrxy_in.emplace_back( corr_xy[idx] );
 	poi_val[poi_counter] = corr_xy[idx];
@@ -599,8 +616,8 @@ int main(int argc, char* argv[])
     }
 
     RVecD A0xy_in;
-    for(int k = 1; k<=degs(pdf_type::A0_x); k++){
-      for(int l = 0; l<=(do_absy ? degs(pdf_type::A0_y) : degs(pdf_type::A0_y)/2); l++){      
+    for(int k = k0; k<=degs(pdf_type::A0_x); k++){
+      for(int l = 0; l<=degs(pdf_type::A0_y)/2; l++){      
 	int idx = (degs(pdf_type::A0_y)+1)*k + l; 
 	A0xy_in.emplace_back( A0_xy[idx] );
 	poi_val[poi_counter] = A0_xy[idx];
@@ -610,8 +627,8 @@ int main(int argc, char* argv[])
       }
     }
     RVecD A1xy_in;
-    for(int k = 1; k<=degs(pdf_type::A1_x); k++){
-      for(int l = 1; l<=degs(pdf_type::A1_y); l++){      
+    for(int k = k0; k<=degs(pdf_type::A1_x); k++){
+      for(int l = l0; l<=(!do_cheb_as_modifiers ?  degs(pdf_type::A1_y) : degs(pdf_type::A1_y)/2); l++){      
 	int idx = (degs(pdf_type::A1_y)+1)*k + l; 
 	A1xy_in.emplace_back( A1_xy[idx] );
 	poi_val[poi_counter] = A1_xy[idx];
@@ -621,8 +638,8 @@ int main(int argc, char* argv[])
       }
     }
     RVecD A2xy_in;
-    for(int k = 1; k<=degs(pdf_type::A2_x); k++){
-      for(int l = 0; l<=(do_absy ? degs(pdf_type::A2_y) : degs(pdf_type::A2_y)/2); l++){      
+    for(int k = k0; k<=degs(pdf_type::A2_x); k++){
+      for(int l = 0; l<=degs(pdf_type::A2_y)/2; l++){      
 	int idx = (degs(pdf_type::A2_y)+1)*k + l; 
 	A2xy_in.emplace_back( A2_xy[idx] );
 	poi_val[poi_counter] = A2_xy[idx];
@@ -632,8 +649,8 @@ int main(int argc, char* argv[])
       }
     }
     RVecD A3xy_in;
-    for(int k = 1; k<=degs(pdf_type::A3_x); k++){
-      for(int l = 0; l<=(do_absy ? degs(pdf_type::A3_y) : degs(pdf_type::A3_y)/2); l++){      
+    for(int k = k0; k<=degs(pdf_type::A3_x); k++){
+      for(int l = 0; l<=degs(pdf_type::A3_y)/2; l++){      
 	int idx = (degs(pdf_type::A3_y)+1)*k + l; 
 	A3xy_in.emplace_back( A3_xy[idx] );
 	poi_val[poi_counter] = A3_xy[idx];
@@ -644,7 +661,7 @@ int main(int argc, char* argv[])
     }
     RVecD A4xy_in;
     for(int k = 0; k<=degs(pdf_type::A4_x); k++){
-      for(int l = 1; l<=degs(pdf_type::A4_y); l++){      
+      for(int l = l0; l<=(!do_cheb_as_modifiers ? degs(pdf_type::A4_y) : degs(pdf_type::A4_y)/2); l++){      
 	int idx = (degs(pdf_type::A4_y)+1)*k + l; 
 	A4xy_in.emplace_back( A4_xy[idx] );
 	poi_val[poi_counter] = A4_xy[idx];
@@ -654,14 +671,11 @@ int main(int argc, char* argv[])
       }
     }
 
-    if(true){
-      // mass
-      poi_val[poi_counter] = 0.0;
-      poi_cat[poi_counter] = 5;
-      poi_idx[poi_counter] = 0;
-      poi_counter++;
-    }
-    
+    // mass
+    poi_val[poi_counter] = 0.0;
+    poi_cat[poi_counter] = 5;
+    poi_idx[poi_counter] = 0;
+    poi_counter++;        
     
     dlast = std::make_unique<RNode>(dlast->Define("harmonics", [&](double x, double y, double cos, double phi) -> RVecD{
 	  RVecD out;
@@ -678,270 +692,234 @@ int main(int argc, char* argv[])
 	  return out;
 	} , {"x", "y", "cos", "phi"} ));
 
-    dlast = std::make_unique<RNode>(dlast->Define("weightsMC", [&](double x, double y, RVecD harmonics, RVecD weightsM  )->RVecD {
+    dlast = std::make_unique<RNode>(dlast->Define("weights_mctruth", [&](double x, double y, RVecD har)->RVecD {
 	  RVecD out;
-	  double wMC{3./16/TMath::Pi()};
-	  wMC *= toy_x->Eval(x);
-	  wMC *= toy_y->Eval(y);
-	  double corrxyMC  = 1.0;
-	  if(getbin_extTH2_corr) 
-	    corrxyMC = th2_corrxy->GetBinContent( th2_corrxy->FindBin(TMath::Abs(y),x) );
-	  else if(inter_extTH2_corr)  
-	    corrxyMC = th2_corrxy->Interpolate(TMath::Abs(y),x);
-	  else if(toyTF2_corr)        
-	    corrxyMC = toy_corrxy->Eval(TMath::Abs(y),x);	   
-	  wMC *= corrxyMC;
-	  wMC *= (harmonics.at(0) + 
-	  	  toy_A0->Eval(TMath::Abs(y),x)*harmonics.at(1) +
-	  	  toy_A1->Eval(TMath::Abs(y),x)*harmonics.at(2) + 
-	  	  toy_A2->Eval(TMath::Abs(y),x)*harmonics.at(3) +
-	  	  toy_A3->Eval(TMath::Abs(y),x)*harmonics.at(4) +
-	  	  toy_A4->Eval(TMath::Abs(y),x)*harmonics.at(5)
-	  	  );
-	  out.emplace_back( wMC*weightsM.at(0) );
-	  out.emplace_back( wMC*weightsM.at(1) );
-	  out.emplace_back( wMC*weightsM.at(2) );
-	  for(unsigned int i=0; i<NMASS; i++) out.emplace_back( wMC*weightsM.at(3+i) );
+	  double norm{3./16/TMath::Pi()};
+	  double UL = toy_x(x)*toy_y(y);
+	  if(getbin_extTH2_corr)     UL *= th2_corrxy->GetBinContent( th2_corrxy->FindBin(TMath::Abs(y),x) );
+	  else if(inter_extTH2_corr) UL *= th2_corrxy->Interpolate(TMath::Abs(y),x);
+	  else if(toyTF2_corr)       UL *= toy_corrxy(TMath::Abs(y),x);	   
+	  double A0 = toy_A0(TMath::Abs(y),x);
+	  double A1 = toy_A1(TMath::Abs(y),x);
+	  double A2 = toy_A2(TMath::Abs(y),x);
+	  double A3 = toy_A3(TMath::Abs(y),x);
+	  double A4 = toy_A4(TMath::Abs(y),x);
+	  double norm_UL   = norm*UL;
+	  double norm_PiAi = norm*(har.at(0)+A0*har.at(1)+A1*har.at(2)+A2*har.at(3)+A3*har.at(4)+A4*har.at(5));
+	  out.emplace_back( UL*norm_PiAi);       // full weight 
+	  out.emplace_back( norm_PiAi );         // weight for corr 
+	  out.emplace_back( norm_UL*har.at(1) ); // weight for A0
+	  out.emplace_back( norm_UL*har.at(2) ); // weight for A1
+	  out.emplace_back( norm_UL*har.at(3) ); // weight for A2
+	  out.emplace_back( norm_UL*har.at(4) ); // weight for A3
+	  out.emplace_back( norm_UL*har.at(5) ); // weight for A4
 	  return out;
-	}, {"x", "y", "harmonics", "weightsM"} ));
+    }, {"x", "y", "harmonics"} ));        
     
-    dlast = std::make_unique<RNode>(dlast->Define("weights", [&,corrxy_in,A0xy_in,A1xy_in,A2xy_in,A3xy_in,A4xy_in]
+    dlast = std::make_unique<RNode>(dlast->Define("weights_cheb", [&,corrxy_in,A0xy_in,A1xy_in,A2xy_in,A3xy_in,A4xy_in]
 						  (RVecD corrxy_vec,
 						   RVecD A0xy_vec,
 						   RVecD A1xy_vec,
 						   RVecD A2xy_vec,
 						   RVecD A3xy_vec,
 						   RVecD A4xy_vec,
-						   RVecD harmonics,
-						   RVecD weightsM  )->RVecD {
-						    RVecD out;
-						    double wUL{3./16/TMath::Pi()};	  
-						    wUL *= ROOT::VecOps::Dot(corrxy_vec,corrxy_in);
-						    double w = wUL*(harmonics.at(0) + 
-								    ROOT::VecOps::Dot(A0xy_vec,A0xy_in)*harmonics.at(1) +
-								    ROOT::VecOps::Dot(A1xy_vec,A1xy_in)*harmonics.at(2) +
-								    ROOT::VecOps::Dot(A2xy_vec,A2xy_in)*harmonics.at(3) +
-								    ROOT::VecOps::Dot(A3xy_vec,A3xy_in)*harmonics.at(4) +
-								    ROOT::VecOps::Dot(A4xy_vec,A4xy_in)*harmonics.at(5)
-								    ); 
-						    out.emplace_back( w*weightsM.at(0) );
-						    out.emplace_back( w*weightsM.at(1) );
-						    out.emplace_back( w*weightsM.at(2) );
-						    return out;
-						  }, {"corrxy_vec", 
-						      "A0xy_vec",
-						      "A1xy_vec",
-						      "A2xy_vec",
-						      "A3xy_vec",
-						      "A4xy_vec",
-						      "harmonics",
-						      "weightsM"} ));
+						   RVecD har )->RVecD {
+      RVecD out;
+      double norm{3./16/TMath::Pi()};	  
+      double UL = ROOT::VecOps::Dot(corrxy_vec,corrxy_in);
+      double A0 = ROOT::VecOps::Dot(A0xy_vec,A0xy_in); 
+      double A1 = ROOT::VecOps::Dot(A1xy_vec,A1xy_in); 
+      double A2 = ROOT::VecOps::Dot(A2xy_vec,A2xy_in); 
+      double A3 = ROOT::VecOps::Dot(A3xy_vec,A3xy_in);
+      double A4 = ROOT::VecOps::Dot(A4xy_vec,A4xy_in);  
+      double norm_UL   = norm*UL;      
+      double norm_PiAi = norm*(har.at(0)+A0*har.at(1)+A1*har.at(2)+A2*har.at(3)+A3*har.at(4)+A4*har.at(5));
+      out.emplace_back( UL*norm_PiAi);       // full weight 
+      out.emplace_back( norm_PiAi );         // weight for corr 
+      out.emplace_back( norm_UL*har.at(1) ); // weight for A0
+      out.emplace_back( norm_UL*har.at(2) ); // weight for A1
+      out.emplace_back( norm_UL*har.at(3) ); // weight for A2
+      out.emplace_back( norm_UL*har.at(4) ); // weight for A3
+      out.emplace_back( norm_UL*har.at(5) ); // weight for A4
+      return out;
+    }, {"corrxy_vec", 
+	"A0xy_vec",
+	"A1xy_vec",
+	"A2xy_vec",
+	"A3xy_vec",
+	"A4xy_vec",
+	"harmonics"} ));
     
-    dlast = std::make_unique<RNode>(dlast->Define("weight_jacM",
-						  [&](RVecD weights, RVecD weightsM, double Q)->double {
-						    double wM = weightsM.at(0);
-						    double w = weights.at(0)/wM;
-						    w *= TMath::Pi()*toy_mass(Q,MW,GW)*2*(Q-MW)/GW/GW;
-						    return w;
-						  },
-						  {"weights",
-						   "weightsM",
-						   "Q"} ));
+    dlast = std::make_unique<RNode>(dlast->Define("weight_jacM",[&](RVecD weights, double Q)->double {
+      double w = weights.at(0);
+      w *= TMath::Pi()*toy_mass(Q,MW,GW)*2*(Q-MW)/GW/GW;
+      return w;
+    }, {(do_cheb_as_modifiers ? "weights_mctruth" : "weights_cheb"), "Q"} ));
     
-    dlast = std::make_unique<RNode>(dlast->Define("weights_jac", [&,corrxy_in,A0xy_in,A1xy_in,A2xy_in,A3xy_in,A4xy_in]
+    dlast = std::make_unique<RNode>(dlast->Define("weights_jac", [&]
 						  (RVecD corrxy_vec,
 						   RVecD A0xy_vec,
 						   RVecD A1xy_vec,
 						   RVecD A2xy_vec,
 						   RVecD A3xy_vec,
 						   RVecD A4xy_vec,
-						   RVecD harmonics
-						   /*RVecD weightsM*/  )->RVecD {
-						    RVecD out;						
-						    double wUL{3./16/TMath::Pi()};	  
-						    double A = ROOT::VecOps::Dot(corrxy_vec,corrxy_in);
- 						    double B = ROOT::VecOps::Dot(A0xy_vec,A0xy_in); 
- 						    double C = ROOT::VecOps::Dot(A1xy_vec,A1xy_in); 
- 						    double D = ROOT::VecOps::Dot(A2xy_vec,A2xy_in); 
- 						    double E = ROOT::VecOps::Dot(A3xy_vec,A3xy_in);
- 						    double F = ROOT::VecOps::Dot(A4xy_vec,A4xy_in);  
+						   RVecD weights )->RVecD {
+      RVecD out;						
+      
+      unsigned int njacs_corrxy = !do_cheb_as_modifiers ?
+	degs(pdf_type::corr_x)*( degs(pdf_type::corr_y)/2 + 1 ) :
+        (degs(pdf_type::corr_x)+1)*( degs(pdf_type::corr_y)/2 + 1 );
+      for(unsigned int i = 0; i<njacs_corrxy; i++){
+	out.emplace_back( weights.at(1)*corrxy_vec.at(i) );
+      }						   
+      
+      unsigned int njacs_A0xy = !do_cheb_as_modifiers ?
+	degs(pdf_type::A0_x)*( degs(pdf_type::A0_y)/2 + 1 ) : 
+	(degs(pdf_type::A0_x)+1)*( degs(pdf_type::A0_y)/2 + 1 );
+      for(unsigned int i = 0; i<njacs_A0xy; i++){
+	out.emplace_back( weights.at(2)*A0xy_vec.at(i));
+      }						   
+      
+      unsigned int njacs_A1xy = !do_cheb_as_modifiers ?
+	degs(pdf_type::A1_x)*degs(pdf_type::A1_y) : 
+	(degs(pdf_type::A1_x)+1)*( degs(pdf_type::A1_y)/2 + 1 );
+      for(unsigned int i = 0; i<njacs_A1xy; i++){
+	out.emplace_back( weights.at(3)*A1xy_vec.at(i));
+      }						   
+      
+      unsigned int njacs_A2xy = !do_cheb_as_modifiers ?
+	degs(pdf_type::A2_x)*( degs(pdf_type::A2_y)/2 + 1 ) :
+	(degs(pdf_type::A2_x)+1)*( degs(pdf_type::A2_y)/2 + 1 );
+      for(unsigned int i = 0; i<njacs_A2xy; i++){
+	out.emplace_back( weights.at(3)*A2xy_vec.at(i));
+      }						   
 
-						    unsigned int njacs_corrxy = degs(pdf_type::corr_x)*( (do_absy ? degs(pdf_type::corr_y) : degs(pdf_type::corr_y)/2) + 1 );
-						    for(unsigned int i = 0; i<njacs_corrxy; i++){
-						      RVecD corrxy_in_copy( corrxy_in.size(), 0.0 );
-						      corrxy_in_copy[i] = 1.0;
-						      out.emplace_back( wUL*
-									ROOT::VecOps::Dot(corrxy_vec,corrxy_in_copy)*
-									(  
-									 harmonics.at(0) + 
-									 B*harmonics.at(1) +
-									 C*harmonics.at(2) +
-									 D*harmonics.at(3) +
-									 E*harmonics.at(4) +
-									 F*harmonics.at(5)
-									   )*
-									1.0 /*weightsM.at(0)*/ );
-						    }						   
-						    
- 						    unsigned int njacs_A0xy = degs(pdf_type::A0_x)*( (do_absy ? degs(pdf_type::A0_y) : degs(pdf_type::A0_y)/2) + 1 );
-						    for(unsigned int i = 0; i<njacs_A0xy; i++){
- 						      RVecD A0xy_in_copy( A0xy_in.size(), 0.0 );
-						      A0xy_in_copy[i] = 1.0;
-						      out.emplace_back( wUL*
-									A*
-									(
-									 ROOT::VecOps::Dot(A0xy_vec,A0xy_in_copy)*harmonics.at(1)
-									 )*
-									1.0 /*weightsM.at(0)*/ );
-						    }						   
-
-						    unsigned int njacs_A1xy = degs(pdf_type::A1_x)*degs(pdf_type::A1_y);
-						    for(unsigned int i = 0; i<njacs_A1xy; i++){
- 						      RVecD A1xy_in_copy( A1xy_in.size(), 0.0 );
-						      A1xy_in_copy[i] = 1.0;
-						      out.emplace_back( wUL*
-									A*
-									(
-									 ROOT::VecOps::Dot(A1xy_vec,A1xy_in_copy)*harmonics.at(2)
-									 )* 
-									1.0 /*weightsM.at(0)*/ );
-						    }						   
-
-						    unsigned int njacs_A2xy = degs(pdf_type::A2_x)*( (do_absy ? degs(pdf_type::A2_y) : degs(pdf_type::A2_y)/2) + 1 );
-						    for(unsigned int i = 0; i<njacs_A2xy; i++){
- 						      RVecD A2xy_in_copy( A2xy_in.size(), 0.0 );
-						      A2xy_in_copy[i] = 1.0;
-						      out.emplace_back( wUL*
-									A*
-									(
-									 ROOT::VecOps::Dot(A2xy_vec,A2xy_in_copy)*harmonics.at(3)
-									 )* 
-									1.0 /*weightsM.at(0)*/ );
-						    }						   
-
-						    unsigned int njacs_A3xy = degs(pdf_type::A3_x)*( (do_absy ? degs(pdf_type::A3_y) : degs(pdf_type::A3_y)/2) + 1 );
-						    for(unsigned int i = 0; i<njacs_A3xy; i++){
- 						      RVecD A3xy_in_copy( A3xy_in.size(), 0.0 );
-						      A3xy_in_copy[i] = 1.0;
-						      out.emplace_back( wUL*
-									A*
-									(
-									 ROOT::VecOps::Dot(A3xy_vec,A3xy_in_copy)*harmonics.at(4)
-									 )* 
-									1.0 /*weightsM.at(0)*/ );
-						    }
-
-						    unsigned int njacs_A4xy = (degs(pdf_type::A4_x)+1)*degs(pdf_type::A4_y);
-						    for(unsigned int i = 0; i<njacs_A4xy; i++){
- 						      RVecD A4xy_in_copy( A4xy_in.size(), 0.0 );
-						      A4xy_in_copy[i] = 1.0;
-						      out.emplace_back( wUL*
-									A*
-									(
-									 ROOT::VecOps::Dot(A4xy_vec,A4xy_in_copy)*harmonics.at(5)
-									 )* 
-									1.0 /*weightsM.at(0)*/ );
-						    }						   
-
-
-						    return out;
-						  }, {"corrxy_vec",
-						      "A0xy_vec",
-						      "A1xy_vec",
-						      "A2xy_vec",
-						      "A3xy_vec",
-						      "A4xy_vec",
-						      "harmonics",
-						      /*"weightsM"*/} ));
+      unsigned int njacs_A3xy = !do_cheb_as_modifiers ?
+	degs(pdf_type::A3_x)*( degs(pdf_type::A3_y)/2 + 1 ) : 
+	(degs(pdf_type::A3_x)+1)*( degs(pdf_type::A3_y)/2 + 1 );
+      for(unsigned int i = 0; i<njacs_A3xy; i++){
+	out.emplace_back( weights.at(4)*A3xy_vec.at(i));
+      }
+      
+      unsigned int njacs_A4xy = !do_cheb_as_modifiers ?
+	(degs(pdf_type::A4_x)+1)*degs(pdf_type::A4_y) :
+	(degs(pdf_type::A4_x)+1)*( degs(pdf_type::A4_y)/2 + 1 );
+      for(unsigned int i = 0; i<njacs_A4xy; i++){
+	out.emplace_back( weights.at(5)*A4xy_vec.at(i));
+      }						   
+      
+      return out;
+    }, {"corrxy_vec",
+	"A0xy_vec",
+	"A1xy_vec",
+	"A2xy_vec",
+	"A3xy_vec",
+	"A4xy_vec",
+	(do_cheb_as_modifiers ? "weights_mctruth" : "weights_cheb")} ));
     
-    
-    dlast = std::make_unique<RNode>(dlast->Define("w",        [](RVecD weights){ return weights.at(0);}, {"weights"} ));
-    if(jacmass){
-      dlast = std::make_unique<RNode>(dlast->Define("w_up",     [](RVecD weights){ return weights.at(1);}, {"weights"} ));
-      dlast = std::make_unique<RNode>(dlast->Define("w_down",   [](RVecD weights){ return weights.at(2);}, {"weights"} ));
+    dlast = std::make_unique<RNode>(dlast->Define("w", [](RVecD weights, RVecD weights_mass){ return weights.at(0)*weights_mass.at(0);}, {"weights_cheb", "weights_mass"} ));
+    if(do_jac_vs_mass){
+      dlast = std::make_unique<RNode>(dlast->Define("w_up",   [](RVecD weights, RVecD weights_mass){ return weights.at(0)*weights_mass.at(1);}, {"weights_cheb", "weights_mass"} ));
+      dlast = std::make_unique<RNode>(dlast->Define("w_down", [](RVecD weights, RVecD weights_mass){ return weights.at(0)*weights_mass.at(2);}, {"weights_cheb", "weights_mass"} ));
     }
-    dlast = std::make_unique<RNode>(dlast->Define("wMC",      [](RVecD weights){ return weights.at(0);}, {"weightsMC"} ));
-    dlast = std::make_unique<RNode>(dlast->Define("wMC_up",   [](RVecD weights){ return weights.at(1);}, {"weightsMC"} ));
-    dlast = std::make_unique<RNode>(dlast->Define("wMC_down", [](RVecD weights){ return weights.at(2);}, {"weightsMC"} ));
+    dlast = std::make_unique<RNode>(dlast->Define("wMC",      [](RVecD weights, RVecD weights_mass){ return weights.at(0)*weights_mass.at(0);}, {"weights_mctruth", "weights_mass"} ));
+    dlast = std::make_unique<RNode>(dlast->Define("wMC_up",   [](RVecD weights, RVecD weights_mass){ return weights.at(0)*weights_mass.at(1);}, {"weights_mctruth", "weights_mass"} ));
+    dlast = std::make_unique<RNode>(dlast->Define("wMC_down", [](RVecD weights, RVecD weights_mass){ return weights.at(0)*weights_mass.at(2);}, {"weights_mctruth", "weights_mass"} ));
     for(unsigned int i=0; i<NMASS; i++){
-      dlast = std::make_unique<RNode>(dlast->Define(Form("wMC_mass%d", i), [i](RVecD weights){ return weights.at(3+i);}, {"weightsMC"} ));
+      dlast = std::make_unique<RNode>(dlast->Define(Form("wMC_mass%d", i), [i](RVecD weights, RVecD weights_mass){ return weights.at(0)*weights_mass.at(3+i);}, {"weights_mctruth", "weights_mass"} ));
     }
 
     for(unsigned int i = 0; i < njacs; i++){
-      if(jacmass){
+      if(do_jac_vs_mass){
 	for(unsigned int j = 0; j < 3; j++){
-	  dlast = std::make_unique<RNode>(dlast->Define(Form("jac%d_%d", j, i), [i,j](RVecD weights, RVecD weightsM){ return weights.at(i)*weightsM.at(j);}, {"weights_jac", "weightsM"} ));
+	  dlast = std::make_unique<RNode>(dlast->Define(Form("jac%d_%d", j, i), [i,j](RVecD weights, RVecD weights_mass){ return weights.at(i)*weights_mass.at(j);}, {"weights_jac", "weights_mass"} ));
 	}
       }
       else{
-	dlast = std::make_unique<RNode>(dlast->Define(Form("jac_%d",i), [i](RVecD weights, RVecD weightsM){ return weights.at(i)*weightsM.at(0);}, {"weights_jac", "weightsM"} ));
+	dlast = std::make_unique<RNode>(dlast->Define(Form("jac_%d",i), [i](RVecD weights, RVecD weights_mass){ return weights.at(i)*weights_mass.at(0);}, {"weights_jac", "weights_mass"} ));
       }
     }
     
-    sums.emplace_back( dlast->Sum<double>("w") );
+    if(!do_cheb_as_modifiers) sums.emplace_back( dlast->Sum<double>("w") );
     sums.emplace_back( dlast->Sum<double>("wMC") );
 
     string varx = fit_qt_y ? "y" : "eta";
     string vary = fit_qt_y ? "x" : "pt";
 
-    histos2D.emplace_back(dlast->Histo2D({"h",       "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, varx, vary, "w"));
-    if(jacmass){
-      histos2D.emplace_back(dlast->Histo2D({"h_up",    "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, varx, vary, "w_up"));
-      histos2D.emplace_back(dlast->Histo2D({"h_down",  "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, varx, vary, "w_down"));
+    if(!do_cheb_as_modifiers)
+      histos2D.emplace_back(dlast->Histo2D({"h",       "", nbins_rap, rap_low, rap_high, nbins_pt, pt_low, pt_high}, varx, vary, "w"));
+    if(!do_cheb_as_modifiers && do_jac_vs_mass){
+      histos2D.emplace_back(dlast->Histo2D({"h_up",    "", nbins_rap, rap_low, rap_high, nbins_pt, pt_low, pt_high}, varx, vary, "w_up"));
+      histos2D.emplace_back(dlast->Histo2D({"h_down",  "", nbins_rap, rap_low, rap_high, nbins_pt, pt_low, pt_high}, varx, vary, "w_down"));
     }
-    histos2D.emplace_back(dlast->Histo2D({"hMC",     "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, varx, vary, "wMC"));      
-    histos2D.emplace_back(dlast->Histo2D({"hMC_up",  "", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, varx, vary, "wMC_up"));      
-    histos2D.emplace_back(dlast->Histo2D({"hMC_down","", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, varx, vary, "wMC_down"));
+    histos2D.emplace_back(dlast->Histo2D({"hMC",     "", nbins_rap, rap_low, rap_high, nbins_pt, pt_low, pt_high}, varx, vary, "wMC"));      
+    histos2D.emplace_back(dlast->Histo2D({"hMC_up",  "", nbins_rap, rap_low, rap_high, nbins_pt, pt_low, pt_high}, varx, vary, "wMC_up"));      
+    histos2D.emplace_back(dlast->Histo2D({"hMC_down","", nbins_rap, rap_low, rap_high, nbins_pt, pt_low, pt_high}, varx, vary, "wMC_down"));
     for(unsigned int i=0; i<NMASS; i++){
-      histos2D.emplace_back(dlast->Histo2D({Form("hMC_mass%d", i),"", nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, varx, vary, Form("wMC_mass%d",i)));
+      histos2D.emplace_back(dlast->Histo2D({Form("hMC_mass%d", i),"", nbins_rap, rap_low, rap_high, nbins_pt, pt_low, pt_high}, varx, vary, Form("wMC_mass%d",i)));
     }
     
     for(unsigned int i = 0; i < njacs; i++){
       std::string hname = "";
       if(i>=first_jac_corrxy && i<first_jac_A0xy){
-	unsigned int idx_x = (i-first_jac_corrxy) / ((do_absy ? degs(pdf_type::corr_y) : degs(pdf_type::corr_y)/2) +1) + 1;
-	unsigned int idx_y = (i-first_jac_corrxy) % ((do_absy ? degs(pdf_type::corr_y) : degs(pdf_type::corr_y)/2) +1);
+	unsigned int idx_x = (i-first_jac_corrxy) / (degs(pdf_type::corr_y)/2 +1) + 1;
+	unsigned int idx_y = (i-first_jac_corrxy) % (degs(pdf_type::corr_y)/2 +1);
+	if(do_cheb_as_modifiers) idx_x--;	  
 	hname = std::string(Form("jac_%d: d(pdf) / d(corrxy_in[%d][%d])", i, idx_x, idx_y));	
       }
       else if(i>=first_jac_A0xy && i<first_jac_A1xy){
-	unsigned int idx_x = (i-first_jac_A0xy) / ((do_absy ? degs(pdf_type::A0_y) : degs(pdf_type::A0_y)/2) +1) + 1;
-	unsigned int idx_y = (i-first_jac_A0xy) % ((do_absy ? degs(pdf_type::A0_y) : degs(pdf_type::A0_y)/2) +1);
+	unsigned int idx_x = (i-first_jac_A0xy) / (degs(pdf_type::A0_y)/2 +1) + 1;
+	unsigned int idx_y = (i-first_jac_A0xy) % (degs(pdf_type::A0_y)/2 +1);
+	if(do_cheb_as_modifiers) idx_x--;	  
 	hname = std::string(Form("jac_%d: d(pdf) / d(A0xy_in[%d][%d])", i, idx_x, idx_y));	
       }
       else if(i>=first_jac_A1xy && i<first_jac_A2xy){
 	unsigned int idx_x = (i-first_jac_A1xy) / degs(pdf_type::A1_y) + 1;
 	unsigned int idx_y = (i-first_jac_A1xy) % degs(pdf_type::A1_y) + 1;
+	if(do_cheb_as_modifiers){
+	  idx_x = (i-first_jac_A1xy) / (degs(pdf_type::A1_y)/2 + 1);
+ 	  idx_y = (i-first_jac_A1xy) % (degs(pdf_type::A1_y)/2 + 1);
+	}
 	hname = std::string(Form("jac_%d: d(pdf) / d(A1xy_in[%d][%d])", i, idx_x, idx_y));	
       }
       else if(i>=first_jac_A2xy && i<first_jac_A3xy){
-	unsigned int idx_x = (i-first_jac_A2xy) / ((do_absy ? degs(pdf_type::A2_y) : degs(pdf_type::A2_y)/2) +1) + 1;
-	unsigned int idx_y = (i-first_jac_A2xy) % ((do_absy ? degs(pdf_type::A2_y) : degs(pdf_type::A2_y)/2) +1);
+	unsigned int idx_x = (i-first_jac_A2xy) / (degs(pdf_type::A2_y)/2 +1) + 1;
+	unsigned int idx_y = (i-first_jac_A2xy) % (degs(pdf_type::A2_y)/2 +1);
+	if(do_cheb_as_modifiers) idx_x--;	  
 	hname = std::string(Form("jac_%d: d(pdf) / d(A2xy_in[%d][%d])", i, idx_x, idx_y));	
       }
       else if(i>=first_jac_A3xy && i<first_jac_A4xy){
-	unsigned int idx_x = (i-first_jac_A3xy) / ((do_absy ? degs(pdf_type::A3_y) : degs(pdf_type::A3_y)/2) +1) + 1;
-	unsigned int idx_y = (i-first_jac_A3xy) % ((do_absy ? degs(pdf_type::A3_y) : degs(pdf_type::A3_y)/2) +1);
+	unsigned int idx_x = (i-first_jac_A3xy) / (degs(pdf_type::A3_y)/2 +1) + 1;
+	unsigned int idx_y = (i-first_jac_A3xy) % (degs(pdf_type::A3_y)/2 +1);
+	if(do_cheb_as_modifiers) idx_x--;	  
 	hname = std::string(Form("jac_%d: d(pdf) / d(A3xy_in[%d][%d])", i, idx_x, idx_y));	
       }
       else if(i>=first_jac_A4xy){
 	unsigned int idx_x = (i-first_jac_A4xy) / degs(pdf_type::A4_y);
 	unsigned int idx_y = (i-first_jac_A4xy) % degs(pdf_type::A4_y) + 1;
+	if(do_cheb_as_modifiers){
+	  idx_x = (i-first_jac_A4xy) / (degs(pdf_type::A4_y)/2 + 1);
+ 	  idx_y = (i-first_jac_A4xy) % (degs(pdf_type::A4_y)/2 + 1);
+	}
 	hname = std::string(Form("jac_%d: d(pdf) / d(A4xy_in[%d][%d])", i, idx_x, idx_y));	
       }
       
-      if(jacmass){
+      if(do_jac_vs_mass){
 	for(unsigned int j = 0; j < 3; j++){
-	  histosJac.emplace_back(dlast->Histo2D({ Form("jac%d_%d",j,i), hname.c_str(), nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, varx, vary, Form("jac%d_%d",j,i)));
+	  histosJac.emplace_back(dlast->Histo2D({ Form("jac%d_%d",j,i), hname.c_str(), nbins_rap, rap_low, rap_high, nbins_pt, pt_low, pt_high}, varx, vary,
+						Form("jac%d_%d",j,i)));
 	}
       }
       else{
-	histosJac.emplace_back(dlast->Histo2D({ Form("jac_%d",i), hname.c_str(), nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, varx, vary, Form("jac_%d",i)));
+	histosJac.emplace_back(dlast->Histo2D({ Form("jac_%d",i), hname.c_str(), nbins_rap, rap_low, rap_high, nbins_pt, pt_low, pt_high}, varx, vary,
+					      Form("jac_%d",i)));
       }            
     }
 
     // This is the last jacobian
     std::string hname = "jac_mass: d(pdf) / dM";
-    histosJac.emplace_back(dlast->Histo2D({Form("jac_%d", njacs), hname.c_str(), nbinsX, xLow, xHigh, nbinsY, yLow, yHigh}, varx, vary, "weight_jacM"));
+    histosJac.emplace_back(dlast->Histo2D({Form("jac_%d", njacs), hname.c_str(), nbins_rap, rap_low, rap_high, nbins_pt, pt_low, pt_high}, varx, vary,
+					  "weight_jacM"));
     
     /*
     histos1D.emplace_back(dlast->Histo1D({"w_pdfx",    "", 20, 0.0, max_x}, "x", "w"));      
@@ -967,7 +945,6 @@ int main(int argc, char* argv[])
     int nbins_transfer = histos2D.at(0)->GetNcells(); 
     //histos2D.emplace_back(dlast->Histo2D({"transfer_MC", "", nbins_transfer, 0, double(nbins_transfer), nbins_transfer, 0, double(nbins_transfer)}, "ibin", "ibin_smear", "wMC"));
     
-
     fin->Close();
   }
 
