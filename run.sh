@@ -1,5 +1,19 @@
 #!/bin/sh
 
+#./jac2 --nevents=1000000000  --tag=DEV_1G --run=closure --degs_corr_x=3 --degs_corr_y=4 --degs_A0_x=2 --degs_A0_y=2 --degs_A1_x=2 --degs_A1_y=2 --degs_A2_x=2 --degs_A2_y=2 --degs_A3_x=2 --degs_A3_y=2 --degs_A4_x=2 --degs_A4_y=3 --toyTF2_corr --do_cheb_as_modifiers --max_y=3.5
+#./jac2 --nevents=10000000000 --tag=DEV_10G --run=closure --degs_corr_x=3 --degs_corr_y=4 --degs_A0_x=2 --degs_A0_y=2 --degs_A1_x=2 --degs_A1_y=2 --degs_A2_x=2 --degs_A2_y=2 --degs_A3_x=2 --degs_A3_y=2 --degs_A4_x=2 --degs_A4_y=3 --toyTF2_corr --do_cheb_as_modifiers --max_y=3.5
+#./jac2 --nevents=40000000000 --tag=DEV_40G --run=closure --degs_corr_x=3 --degs_corr_y=4 --degs_A0_x=2 --degs_A0_y=2 --degs_A1_x=2 --degs_A1_y=2 --degs_A2_x=2 --degs_A2_y=2 --degs_A3_x=2 --degs_A3_y=2 --degs_A4_x=2 --degs_A4_y=3 --toyTF2_corr --do_cheb_as_modifiers --max_y=3.5
+#./jac2 --nevents=80000000000 --tag=DEV_80G --run=closure --degs_corr_x=3 --degs_corr_y=4 --degs_A0_x=2 --degs_A0_y=2 --degs_A1_x=2 --degs_A1_y=2 --degs_A2_x=2 --degs_A2_y=2 --degs_A3_x=2 --degs_A3_y=2 --degs_A4_x=2 --degs_A4_y=3 --toyTF2_corr --do_cheb_as_modifiers --max_y=3.5
+
+./jac2     --nevents=1000000 --tag=DEV_1M --run=closure --degs_corr_x=3 --degs_corr_y=2 --degs_A0_x=1 --degs_A0_y=2 --degs_A1_x=1 --degs_A1_y=1 --degs_A2_x=1 --degs_A2_y=2 --degs_A3_x=1 --degs_A3_y=2 --degs_A4_x=1 --degs_A4_y=1 --toyTF2_corr --do_cheb_as_modifiers --max_y=3.5
+./jac2    --nevents=10000000 --tag=DEV_10M --run=closure --degs_corr_x=3 --degs_corr_y=2 --degs_A0_x=1 --degs_A0_y=2 --degs_A1_x=1 --degs_A1_y=1 --degs_A2_x=1 --degs_A2_y=2 --degs_A3_x=1 --degs_A3_y=2 --degs_A4_x=1 --degs_A4_y=1 --toyTF2_corr --do_cheb_as_modifiers --max_y=3.5
+./jac2   --nevents=100000000 --tag=DEV_100M --run=closure --degs_corr_x=3 --degs_corr_y=2 --degs_A0_x=1 --degs_A0_y=2 --degs_A1_x=1 --degs_A1_y=1 --degs_A2_x=1 --degs_A2_y=2 --degs_A3_x=1 --degs_A3_y=2 --degs_A4_x=1 --degs_A4_y=1 --toyTF2_corr --do_cheb_as_modifiers --max_y=3.5
+./jac2  --nevents=1000000000 --tag=DEV_1G --run=closure --degs_corr_x=3 --degs_corr_y=2 --degs_A0_x=1 --degs_A0_y=2 --degs_A1_x=1 --degs_A1_y=1 --degs_A2_x=1 --degs_A2_y=2 --degs_A3_x=1 --degs_A3_y=2 --degs_A4_x=1 --degs_A4_y=1 --toyTF2_corr --do_cheb_as_modifiers --max_y=3.5
+./jac2  --nevents=4000000000 --tag=DEV_4G --run=closure --degs_corr_x=3 --degs_corr_y=2 --degs_A0_x=1 --degs_A0_y=2 --degs_A1_x=1 --degs_A1_y=1 --degs_A2_x=1 --degs_A2_y=2 --degs_A3_x=1 --degs_A3_y=2 --degs_A4_x=1 --degs_A4_y=1 --toyTF2_corr --do_cheb_as_modifiers --max_y=3.5
+./jac2 --nevents=10000000000 --tag=DEV_10G --run=closure --degs_corr_x=3 --degs_corr_y=2 --degs_A0_x=1 --degs_A0_y=2 --degs_A1_x=1 --degs_A1_y=1 --degs_A2_x=1 --degs_A2_y=2 --degs_A3_x=1 --degs_A3_y=2 --degs_A4_x=1 --degs_A4_y=1 --toyTF2_corr --do_cheb_as_modifiers --max_y=3.5
+./jac2 --nevents=40000000000 --tag=DEV_40G --run=closure --degs_corr_x=3 --degs_corr_y=2 --degs_A0_x=1 --degs_A0_y=2 --degs_A1_x=1 --degs_A1_y=1 --degs_A2_x=1 --degs_A2_y=2 --degs_A3_x=1 --degs_A3_y=2 --degs_A4_x=1 --degs_A4_y=1 --toyTF2_corr --do_cheb_as_modifiers --max_y=3.5
+
+exit
 
 #./jac2 --nevents=4000000000 --tag=jacVsM_4G_y4p00_A4new --run=closure --degs_corr_x=10 --degs_corr_y=6 --degs_A0_x=3 --degs_A0_y=3 --degs_A1_x=3 --degs_A1_y=3 --degs_A2_x=3 --degs_A2_y=3 --degs_A3_x=3 --degs_A3_y=3 --degs_A4_x=3 --degs_A4_y=4 --toyTF2_corr --max_y=4.00
 #./jac2 --nevents=4000000000 --tag=jacVsM_4G_y4p00_A4new --run=closure --degs_corr_x=10 --degs_corr_y=6 --degs_A0_x=3 --degs_A0_y=3 --degs_A1_x=3 --degs_A1_y=3 --degs_A2_x=3 --degs_A2_y=3 --degs_A3_x=3 --degs_A3_y=3 --degs_A4_x=3 --degs_A4_y=6 --toyTF2_corr --max_y=4.00
@@ -7,9 +21,14 @@
 #./jac2tmp --nevents=4000000000 --tag=jacVsM_4G_y5p00 --run=closure --degs_corr_x=10 --degs_corr_y=6 --degs_A0_x=3 --degs_A0_y=3 --degs_A1_x=3 --degs_A1_y=3 --degs_A2_x=3 --degs_A2_y=3 --degs_A3_x=3 --degs_A3_y=3 --degs_A4_x=3 --degs_A4_y=3 --toyTF2_corr --max_y=5.00
 
 #./jac2 --nevents=4000000000 --tag=jacVsM_4G_y4p00_A4TanH --run=closure --degs_corr_x=10 --degs_corr_y=6 --degs_A0_x=3 --degs_A0_y=3 --degs_A1_x=3 --degs_A1_y=3 --degs_A2_x=3 --degs_A2_y=3 --degs_A3_x=3 --degs_A3_y=3 --degs_A4_x=3 --degs_A4_y=4 --toyTF2_corr --max_y=4.00
-./jac2 --nevents=10000000000 --tag=jacVsM_10G_y4p00_A4TanH --run=closure --degs_corr_x=10 --degs_corr_y=6 --degs_A0_x=3 --degs_A0_y=3 --degs_A1_x=3 --degs_A1_y=3 --degs_A2_x=3 --degs_A2_y=3 --degs_A3_x=3 --degs_A3_y=3 --degs_A4_x=3 --degs_A4_y=4 --toyTF2_corr --max_y=4.00
+#./jac2 --nevents=10000000000 --tag=jacVsM_10G_y4p00_A4TanH --run=closure --degs_corr_x=10 --degs_corr_y=6 --degs_A0_x=3 --degs_A0_y=3 --degs_A1_x=3 --degs_A1_y=3 --degs_A2_x=3 --degs_A2_y=3 --degs_A3_x=3 --degs_A3_y=3 --degs_A4_x=3 --degs_A4_y=4 --toyTF2_corr --max_y=4.00
 #./jac2 --nevents=4000000000 --tag=jacVsM_4G_y4p00_A4TanH --run=closure --degs_corr_x=10 --degs_corr_y=6 --degs_A0_x=3 --degs_A0_y=3 --degs_A1_x=3 --degs_A1_y=3 --degs_A2_x=3 --degs_A2_y=3 --degs_A3_x=3 --degs_A3_y=3 --degs_A4_x=3 --degs_A4_y=5 --toyTF2_corr --max_y=4.00
 #./jac2 --nevents=4000000000 --tag=jacVsM_4G_y4p00_A4TanH --run=closure --degs_corr_x=10 --degs_corr_y=6 --degs_A0_x=3 --degs_A0_y=3 --degs_A1_x=3 --degs_A1_y=3 --degs_A2_x=3 --degs_A2_y=3 --degs_A3_x=3 --degs_A3_y=3 --degs_A4_x=3 --degs_A4_y=6 --toyTF2_corr --max_y=4.00
+
+./fit --nevents=100000000 --tag=jacVsM_10G_y4p00_A4TanH --run=closure --post_tag=TEST_SCALEA0A1A2A3 --degs_corr_x=10 --degs_corr_y=6 --degs_A0_x=3 --degs_A0_y=3 --degs_A1_x=3 --degs_A1_y=3 --degs_A2_x=3 --degs_A2_y=3 --degs_A3_x=3 --degs_A3_y=3 --degs_A4_x=3 --degs_A4_y=4 --jUL --j0 --j1 --j2 --j4 --j3 --scale0 --scale1 --scale2 --scale3
+./fit --nevents=100000000 --tag=jacVsM_10G_y4p00_A4TanH --run=closure --post_tag=TEST_SCALEA0A1A2 --degs_corr_x=10 --degs_corr_y=6 --degs_A0_x=3 --degs_A0_y=3 --degs_A1_x=3 --degs_A1_y=3 --degs_A2_x=3 --degs_A2_y=3 --degs_A3_x=3 --degs_A3_y=3 --degs_A4_x=3 --degs_A4_y=4 --jUL --j0 --j1 --j2 --j4 --j3 --scale0 --scale1 --scale2
+./fit --nevents=100000000 --tag=jacVsM_10G_y4p00_A4TanH --run=closure --post_tag=TEST_SCALEA0A1 --degs_corr_x=10 --degs_corr_y=6 --degs_A0_x=3 --degs_A0_y=3 --degs_A1_x=3 --degs_A1_y=3 --degs_A2_x=3 --degs_A2_y=3 --degs_A3_x=3 --degs_A3_y=3 --degs_A4_x=3 --degs_A4_y=4 --jUL --j0 --j1 --j2 --j4 --j3 --scale0 --scale1
+./fit --nevents=100000000 --tag=jacVsM_10G_y4p00_A4TanH --run=closure --post_tag=TEST_FULL --degs_corr_x=10 --degs_corr_y=6 --degs_A0_x=3 --degs_A0_y=3 --degs_A1_x=3 --degs_A1_y=3 --degs_A2_x=3 --degs_A2_y=3 --degs_A3_x=3 --degs_A3_y=3 --degs_A4_x=3 --degs_A4_y=4 --jUL --j0 --j1 --j2 --j4 --j3 
 
 exit
 

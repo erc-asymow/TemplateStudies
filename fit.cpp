@@ -27,7 +27,7 @@ using namespace boost::program_options;
 constexpr double MW = 80.;
 constexpr int NMAX  = 200;
 //constexpr int NMASS = 50;
-constexpr int NMASS = 20;
+constexpr int NMASS = 3;
 constexpr double DELTAM = 0.200;
 constexpr double MASSSHIFT = 0.050;
 
@@ -76,6 +76,7 @@ int main(int argc, char* argv[])
 	("scale4",bool_switch()->default_value(false), "")
 	("jacmass", value<int>()->default_value(-1), "")
 	("add_MC_uncert", bool_switch()->default_value(false), "")
+	("do_cheb_as_modifiers", bool_switch()->default_value(false), "")
 	("X_max", value<float>()->default_value(99.), "")
 	("X_min", value<float>()->default_value(-99.), "")
 	("Y_max", value<float>()->default_value(99.), "")
@@ -132,6 +133,7 @@ int main(int argc, char* argv[])
   int j4   = vm["j4"].as<bool>();
   int jM   = vm["jM"].as<bool>();
   bool add_MC_uncert = vm["add_MC_uncert"].as<bool>();
+  bool do_cheb_as_modifiers = vm["do_cheb_as_modifiers"].as<bool>();
   int verbose = vm["verbose"].as<bool>();
   int debug = vm["debug"].as<bool>();
 
@@ -278,9 +280,11 @@ int main(int argc, char* argv[])
   else if(jacmass==2) hw_name += "_down";
 
   cout << "Starting template is histo=" << hw_name << endl;
-  
-  TH2D* hw   = fin->Get<TH2D>( hw_name );
+
   TH2D* hwMC = fin->Get<TH2D>("hMC");
+  TH2D* hw   = 0;
+  if(!do_cheb_as_modifiers) hw = fin->Get<TH2D>( hw_name );
+  else hw = (TH2D*)hwMC->Clone("h");
   vector<TH2D*> all_histos = { hw, hwMC };
   for(unsigned int i=0; i<NMASS; i++) all_histos.push_back( fin->Get<TH2D>(Form("hMC_mass%d",i)) );
   if(rebinX>0 || rebinY>0){
@@ -355,6 +359,9 @@ int main(int argc, char* argv[])
   }
   //cout << "V matrix filled" << endl;
 
+  VectorXd norms_chebDummy(20);
+  for(unsigned int i=0; i<20; i++) norms_chebDummy(i) = 1.0; 
+    
   VectorXd norms_cheb4(5);
   norms_cheb4 << 0.0332073, 0.266696, 0.400194, 0.266696, 0.0332073;
   VectorXd norms_cheb6(7);
@@ -362,7 +369,7 @@ int main(int argc, char* argv[])
   VectorXd norms_cheb8(9);
   norms_cheb8 << 0.00792723, 0.0731216, 0.139826, 0.180815, 0.196621, 0.180815, 0.139826, 0.0731216, 0.00792723;
 
-  assert(degs_corr_y==4 || degs_corr_y==6 || degs_corr_y==8);
+  //assert(degs_corr_y==4 || degs_corr_y==6 || degs_corr_y==8);
 
   // plotting
   vector<string> fit_tags = {"UL", "0", "1", "2", "3", "4" };
@@ -532,8 +539,16 @@ int main(int argc, char* argv[])
 	unsigned int j_first = i*n_pdfy; 
 	unsigned int j_last  = (i+1)*n_pdfy; 
 	for(unsigned int j = 0 ; j < D.cols() ; j++){
-	  if(j>=j_first && j<j_last) 
-	    D(i,j) = degs_corr_y==4 ? norms_cheb4(j-j_first)*( j==(j_last-1) ? 1.0 : 2.0) : norms_cheb6(j-j_first)*( j==(j_last-1) ? 1.0 : 2.0);
+	  if(j>=j_first && j<j_last){ 
+	    if(degs_corr_y==4)
+	      D(i,j) = norms_cheb4(j-j_first)*( j==(j_last-1) ? 1.0 : 2.0);
+	    else if(degs_corr_y==6)
+	      D(i,j) = norms_cheb6(j-j_first)*( j==(j_last-1) ? 1.0 : 2.0);
+	    else if(degs_corr_y==8)
+	      D(i,j) = norms_cheb8(j-j_first)*( j==(j_last-1) ? 1.0 : 2.0);
+	    else
+	      D(i,j) = norms_chebDummy(j-j_first)*( j==(j_last-1) ? 1.0 : 2.0);
+	  }
 	  else 
 	    D(i,j) = 0.0;
 	}
