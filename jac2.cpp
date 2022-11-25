@@ -75,7 +75,7 @@ int main(int argc, char* argv[])
   TStopwatch sw;
   sw.Start();
 
-  ROOT::EnableImplicitMT();
+  //ROOT::EnableImplicitMT();
 
   variables_map vm;
   try
@@ -101,7 +101,7 @@ int main(int argc, char* argv[])
 	("tag", value<std::string>()->default_value(""), "tag name")
 	("run", value<std::string>()->default_value("closure"), "run type")
 	("do_jac_vs_mass",    bool_switch()->default_value(false), "compute jacobians for three mass values")
-	("do_cheb_as_modifiers",  bool_switch()->default_value(false), "compute jacobians of offset")
+	("do_grid",  bool_switch()->default_value(false), "do grid")
 	("getbin_extTH2_corr",  bool_switch()->default_value(false), "get bin corr(x,y)")
 	("inter_extTH2_corr",  bool_switch()->default_value(false), "interpol corr(x,y)")
 	("toyTF2_corr",  bool_switch()->default_value(false), "toy TF2 corr(x,y)")
@@ -144,12 +144,11 @@ int main(int argc, char* argv[])
   int degs_A3_y   = vm["degs_A3_y"].as<int>();
   int degs_A4_x   = vm["degs_A4_x"].as<int>();
   int degs_A4_y   = vm["degs_A4_y"].as<int>();
-  bool do_jac_vs_mass = vm["do_jac_vs_mass"].as<bool>();
-  bool do_cheb_as_modifiers = vm["do_cheb_as_modifiers"].as<bool>();
-  bool getbin_extTH2_corr= vm["getbin_extTH2_corr"].as<bool>();
-  bool inter_extTH2_corr= vm["inter_extTH2_corr"].as<bool>();
-  bool toyTF2_corr= vm["toyTF2_corr"].as<bool>();
-  bool fit_qt_y = vm["fit_qt_y"].as<bool>();
+  bool do_jac_vs_mass     = vm["do_jac_vs_mass"].as<bool>();
+  bool getbin_extTH2_corr = vm["getbin_extTH2_corr"].as<bool>();
+  bool inter_extTH2_corr  = vm["inter_extTH2_corr"].as<bool>();
+  bool toyTF2_corr        = vm["toyTF2_corr"].as<bool>();
+  bool fit_qt_y           = vm["fit_qt_y"].as<bool>();
   int seed = vm["seed"].as<int>();
 
   if(vm.count("degs_corr_x")) tag += std::string(Form("_UL_%d", degs_corr_x));
@@ -171,6 +170,9 @@ int main(int argc, char* argv[])
     
   double max_x = vm["max_x"].as<double>();
   double max_y = vm["max_y"].as<double>();
+
+  bool do_cheb_as_modifiers = false;
+  if(run=="corr_cheb") do_cheb_as_modifiers = true;
   
   int nbins_rap   = 25; 
   double rap_low  = 0.0;
@@ -238,35 +240,83 @@ int main(int argc, char* argv[])
   unsigned int first_jac_A2xy   = 0;
   unsigned int first_jac_A3xy   = 0;
   unsigned int first_jac_A4xy   = 0;
-  if(!do_cheb_as_modifiers){
-     //A1(.,0)=0
-     //A4(.,0)=0, but A4(0,.)!=0
-    njacs += (degs(pdf_type::corr_x))*( degs(pdf_type::corr_y)/2 + 1 );
-    first_jac_A0xy = njacs;  
-    njacs += (degs(pdf_type::A0_x))*( degs(pdf_type::A0_y)/2 + 1 );
-    first_jac_A1xy = njacs;  
-    njacs += (degs(pdf_type::A1_x))*( degs(pdf_type::A1_y) );
-    first_jac_A2xy = njacs;  
-    njacs += (degs(pdf_type::A2_x))*( degs(pdf_type::A2_y)/2 + 1 );
-    first_jac_A3xy = njacs;  
-    njacs += (degs(pdf_type::A3_x))*( degs(pdf_type::A3_y)/2 + 1 );
-    first_jac_A4xy = njacs;  
-    njacs += (degs(pdf_type::A4_x) + 1)*( degs(pdf_type::A4_y) );
+
+  unsigned int njacs_corrxy_x = 0;
+  unsigned int njacs_corrxy_y = 0;
+  unsigned int njacs_A0_x = 0;
+  unsigned int njacs_A0_y = 0;
+  unsigned int njacs_A1_x = 0;
+  unsigned int njacs_A1_y = 0;
+  unsigned int njacs_A2_x = 0;
+  unsigned int njacs_A2_y = 0;
+  unsigned int njacs_A3_x = 0;
+  unsigned int njacs_A3_y = 0;
+  unsigned int njacs_A4_x = 0;
+  unsigned int njacs_A4_y = 0;
+
+  //A1(.,0)=0
+  //A4(.,0)=0, but A4(0,.)!=0
+  if(run=="full_cheb"){
+    njacs_corrxy_x = degs(pdf_type::corr_x);
+    njacs_corrxy_y = degs(pdf_type::corr_y)/2 + 1;
+    njacs_A0_x     = degs(pdf_type::A0_x) ;
+    njacs_A0_y     = degs(pdf_type::A0_y)/2 + 1;
+    njacs_A1_x     = degs(pdf_type::A1_x);
+    njacs_A1_y     = degs(pdf_type::A1_y);
+    njacs_A2_x     = degs(pdf_type::A2_x);
+    njacs_A2_y     = degs(pdf_type::A2_y)/2 + 1;
+    njacs_A3_x     = degs(pdf_type::A3_x);
+    njacs_A3_y     = degs(pdf_type::A3_y)/2 + 1;
+    njacs_A4_x     = degs(pdf_type::A4_x) + 1;
+    njacs_A4_y     = degs(pdf_type::A4_y);
   }
-  else{
-    njacs += (degs(pdf_type::corr_x)+1)*( degs(pdf_type::corr_y)/2 + 1 );
-    first_jac_A0xy = njacs;  
-    njacs += (degs(pdf_type::A0_x)+1)*( degs(pdf_type::A0_y)/2 + 1 );
-    first_jac_A1xy = njacs;  
-    njacs += (degs(pdf_type::A1_x)+1)*( degs(pdf_type::A1_y) + 1 );
-    first_jac_A2xy = njacs;  
-    njacs += (degs(pdf_type::A2_x)+1)*( degs(pdf_type::A2_y)/2 + 1 );
-    first_jac_A3xy = njacs;  
-    njacs += (degs(pdf_type::A3_x)+1)*( degs(pdf_type::A3_y)/2 + 1 );
-    first_jac_A4xy = njacs;  
-    njacs += (degs(pdf_type::A4_x)+1)*( degs(pdf_type::A4_y) + 1 );
+  else if(run=="corr_cheb"){
+    njacs_corrxy_x = degs(pdf_type::corr_x) + 1;
+    njacs_corrxy_y = degs(pdf_type::corr_y)/2 + 1;
+    njacs_A0_x     = degs(pdf_type::A0_x) + 1;
+    njacs_A0_y     = degs(pdf_type::A0_y)/2 + 1;
+    njacs_A1_x     = degs(pdf_type::A1_x) + 1;
+    njacs_A1_y     = degs(pdf_type::A1_y) + 1;
+    njacs_A2_x     = degs(pdf_type::A2_x) + 1;
+    njacs_A2_y     = degs(pdf_type::A2_y)/2 + 1;
+    njacs_A3_x     = degs(pdf_type::A3_x) + 1;
+    njacs_A3_y     = degs(pdf_type::A3_y)/2 + 1;
+    njacs_A4_x     = degs(pdf_type::A4_x) + 1;
+    njacs_A4_y     = degs(pdf_type::A4_y) + 1;
+  }
+  else if(run=="grid"){
+    njacs_corrxy_x = degs(pdf_type::corr_x);
+    njacs_corrxy_y = degs(pdf_type::corr_y);
+    njacs_A0_x     = njacs_corrxy_x;
+    njacs_A0_y     = njacs_corrxy_y;
+    njacs_A1_x     = njacs_corrxy_x;
+    njacs_A1_y     = njacs_corrxy_y;
+    njacs_A2_x     = njacs_corrxy_x;
+    njacs_A2_y     = njacs_corrxy_y;
+    njacs_A3_x     = njacs_corrxy_x;
+    njacs_A3_y     = njacs_corrxy_y;
+    njacs_A4_x     = njacs_corrxy_x;
+    njacs_A4_y     = njacs_corrxy_y;
   }
 
+  unsigned int njacs_corrxy = njacs_corrxy_x*njacs_corrxy_y;
+  unsigned int njacs_A0xy   = njacs_A0_x*njacs_A0_y;
+  unsigned int njacs_A1xy   = njacs_A1_x*njacs_A1_y;
+  unsigned int njacs_A2xy   = njacs_A2_x*njacs_A2_y;
+  unsigned int njacs_A3xy   = njacs_A3_x*njacs_A3_y;
+  unsigned int njacs_A4xy   = njacs_A4_x*njacs_A4_y; 
+  njacs += njacs_corrxy;
+  first_jac_A0xy = njacs;  
+  njacs += njacs_A0xy;
+  first_jac_A1xy = njacs;  
+  njacs += njacs_A1xy;
+  first_jac_A2xy = njacs;  
+  njacs += njacs_A2xy;
+  first_jac_A3xy = njacs;  
+  njacs += njacs_A3xy;
+  first_jac_A4xy = njacs;  
+  njacs += njacs_A4xy;
+  
   auto toy_mass = [](double Q, double M, double G){
     return 1./TMath::Pi()/(1 + (Q-M)*(Q-M)/G/G);
   };
@@ -334,7 +384,6 @@ int main(int argc, char* argv[])
 	if(getbin_extTH2_corr)     corr_xy[idx] *= th2_corrxy->GetBinContent( th2_corrxy->FindBin(TMath::Abs(y), x) );
 	else if(inter_extTH2_corr) corr_xy[idx] *= th2_corrxy->Interpolate(TMath::Abs(y),x);
 	else if(toyTF2_corr)       corr_xy[idx] *= toy_corrxy(TMath::Abs(y),x);
-	//if(do_cheb_as_modifiers) corr_xy[idx] = 0.0;
       }
     }
 
@@ -347,7 +396,6 @@ int main(int argc, char* argv[])
 	tree->Branch(Form("A0_xy_%d_%d", m,n), &(A0_xy[idx]), Form("A0_xy_%d_%d/D", m,n));
 	double y = TMath::Cos((degs(pdf_type::A0_y)-n)*TMath::Pi()/degs(pdf_type::A0_y))*max_y;
 	A0_xy[idx] = toy_A0(TMath::Abs(y),x);
-	//if(do_cheb_as_modifiers) A0_xy[idx] = 0.0;
       }
     }
 
@@ -360,7 +408,6 @@ int main(int argc, char* argv[])
 	tree->Branch(Form("A1_xy_%d_%d", m,n), &(A1_xy[idx]), Form("A1_xy_%d_%d/D", m,n));
 	double y = (TMath::Cos((degs(pdf_type::A1_y)-n)*TMath::Pi()/degs(pdf_type::A1_y))+1.0)*0.5*max_y; 
 	A1_xy[idx] = toy_A1(TMath::Abs(y),x);
-	//if(do_cheb_as_modifiers) A1_xy[idx] = 0.0;
       }
     }
 
@@ -373,7 +420,6 @@ int main(int argc, char* argv[])
 	tree->Branch(Form("A2_xy_%d_%d", m,n), &(A2_xy[idx]), Form("A2_xy_%d_%d/D", m,n));
 	double y = TMath::Cos((degs(pdf_type::A2_y)-n)*TMath::Pi()/degs(pdf_type::A2_y))*max_y;
 	A2_xy[idx] = toy_A2(TMath::Abs(y),x);
-	//if(do_cheb_as_modifiers) A2_xy[idx] = 0.0;
       }
     }
 
@@ -386,7 +432,6 @@ int main(int argc, char* argv[])
 	tree->Branch(Form("A3_xy_%d_%d", m,n), &(A3_xy[idx]), Form("A3_xy_%d_%d/D", m,n));
 	double y = TMath::Cos((degs(pdf_type::A3_y)-n)*TMath::Pi()/degs(pdf_type::A3_y))*max_y;
 	A3_xy[idx] = toy_A3(TMath::Abs(y),x);
-	//if(do_cheb_as_modifiers) A3_xy[idx] = 0.0;
       }
     }
 
@@ -399,7 +444,6 @@ int main(int argc, char* argv[])
 	tree->Branch(Form("A4_xy_%d_%d", m,n), &(A4_xy[idx]), Form("A4_xy_%d_%d/D", m,n));
 	double y = (TMath::Cos((degs(pdf_type::A4_y)-n)*TMath::Pi()/degs(pdf_type::A4_y))+1.0)*0.5*max_y;
 	A4_xy[idx] = toy_A4(TMath::Abs(y),x);
-	//if(do_cheb_as_modifiers) A4_xy[idx] = 0.0;
       }
     }
 
@@ -485,52 +529,6 @@ int main(int argc, char* argv[])
   dlast = std::make_unique<RNode>(dlast->Define("eta", [](RVecD PS){return PS.at(6);}, {"PS"}));
   dlast = std::make_unique<RNode>(dlast->Define("pt_smear",  [](RVecD PS){return PS.at(7);}, {"PS"}));
   dlast = std::make_unique<RNode>(dlast->Define("eta_smear", [](RVecD PS){return PS.at(8);}, {"PS"}));
-
-  
-  /*
-  dlast = std::make_unique<RNode>(dlast->DefineSlot("Q",  [&](unsigned int nslot){ 
-	double Q = TMath::Tan(rans[nslot]->Uniform(-TMath::Pi()*0.5, +TMath::Pi()*0.5))*GW + MW; 
-	while(Q < 50.0){
-	  Q = TMath::Tan(rans[nslot]->Uniform(-TMath::Pi()*0.5, +TMath::Pi()*0.5))*GW + MW; 
-	}
-	return Q;
-      } ));
-  dlast = std::make_unique<RNode>(dlast->DefineSlot("cos",[&](unsigned int nslot){ return rans[nslot]->Uniform(-1.0, 1.0);} ));
-  dlast = std::make_unique<RNode>(dlast->DefineSlot("phi",[&](unsigned int nslot){ return rans[nslot]->Uniform(-TMath::Pi(), +TMath::Pi());} ));
-  dlast = std::make_unique<RNode>(dlast->DefineSlot("x",  [&](unsigned int nslot){ return rans[nslot]->Uniform(0.0, max_x); }));
-  dlast = std::make_unique<RNode>(dlast->DefineSlot("y",  [&](unsigned int nslot){ return rans[nslot]->Uniform(-max_y, max_y);}));
-  dlast = std::make_unique<RNode>(dlast->Define("p4lab",
-						[&](double Q, double cos, double phi, double x, double y)->RVecD {
-						  double qT2 = x*x*Q*Q;
-						  double qT = TMath::Sqrt(qT2);
-						  double XT = TMath::Sqrt(qT2 + Q*Q);
-						  double Q0 = XT*TMath::CosH(y);
-						  double Q3 = XT*TMath::SinH(y);
-						  double sin = TMath::Sqrt(1-cos*cos);
-						  Eigen::Matrix4d A;
-						  A <<      Q0/Q, -qT/Q,   0.0,       -Q3/Q, 
-						      -qT*Q0/Q/XT,  XT/Q,  0.0,  qT*Q3/Q/XT, 
-						              0.0,   0.0,  1.0,         0.0,
-						           -Q3/XT,   0.0,  0.0,       Q0/XT;
-						  Eigen::Vector4d p4_CS;
-						  p4_CS << Q/2, Q/2*sin*TMath::Cos(phi), Q/2*sin*TMath::Sin(phi), Q/2*cos ;
-						  Eigen::Vector4d p4_lab = A.inverse()*p4_CS;
-						  double pt  = TMath::Sqrt(p4_lab(1)*p4_lab(1) + p4_lab(2)*p4_lab(2));
-						  double eta = TMath::ASinH(p4_lab(3)/pt);
-						  RVecD p4lab{pt,eta};
-						  return p4lab;
-						}, {"Q", "cos", "phi", "x", "y"}));
-
-  dlast = std::make_unique<RNode>(dlast->DefineSlot("p4lab_smear",
-						    [&](unsigned int nslot, RVecD p4lab)->RVecD {
-						      double pt_smear  = rans[nslot]->Gaus(p4lab.at(0)*(1.0 + deltakOk), p4lab.at(0)*deltapOp);
-						      double eta_smear = p4lab.at(1) + rans[nslot]->Gaus(0.0, deltah);
-						      RVecD p4lab_smear{pt_smear,eta_smear};
-						      //cout << "Smear: " << p4lab.at(0) << " --> " << pt_smear <<
-						      //", eta: " << p4lab.at(1) << " -->" << eta_smear << endl;
-						      return p4lab_smear;
-						    }, {"p4lab"}));
-  */
   
   dlast = std::make_unique<RNode>(dlast->Define("weights_mass", 
 						[&](double Q)->RVecD{
@@ -586,13 +584,6 @@ int main(int argc, char* argv[])
 						    return out;
 						  }, {"x","y"} ));
   }
-
-  /*
-  dlast = std::make_unique<RNode>(dlast->Define("pt",        [](RVecD p4lab){ return p4lab[0];}, {"p4lab"}));
-  dlast = std::make_unique<RNode>(dlast->Define("pt_smear",  [](RVecD p4lab){ return p4lab[0];}, {"p4lab_smear"}));
-  dlast = std::make_unique<RNode>(dlast->Define("eta",       rap_low>=0. ? [](RVecD p4lab){ return TMath::Abs(p4lab[1]);} : [](RVecD p4lab){ return p4lab[1];}, {"p4lab"}));
-  dlast = std::make_unique<RNode>(dlast->Define("eta_smear", rap_low>=0. ? [](RVecD p4lab){ return TMath::Abs(p4lab[1]);} : [](RVecD p4lab){ return p4lab[1];}, {"p4lab_smear"}));
-  */
   
   std::vector<ROOT::RDF::RResultPtr<TH1D> > histos1D;
   std::vector<ROOT::RDF::RResultPtr<TH2D> > histos2D;
@@ -602,16 +593,24 @@ int main(int argc, char* argv[])
   int poi_cat[NMAX];
   unsigned int poi_idx[NMAX];
   unsigned int poi_counter = 0;
-  unsigned int n_pdfx = degs(pdf_type::corr_x);
-  unsigned int n_pdfy = degs(pdf_type::corr_y)/2 + 1;
   double points_x[ NMAX ];
   double points_y[ NMAX ];
+  unsigned int n_pdfx = 0;
+  unsigned int n_pdfy = 0;
 
-  for(unsigned int i = 0; i<n_pdfx; i++){
-    points_x[i] = (TMath::Cos((degs(pdf_type::corr_x)-(i+1))*TMath::Pi()/degs(pdf_type::corr_x))+1.0)*0.5*max_x;
+  if(run!="grid"){
+    n_pdfx = degs(pdf_type::corr_x);
+    n_pdfy = degs(pdf_type::corr_y)/2 + 1;
+    for(unsigned int i = 0; i<n_pdfx; i++){
+      points_x[i] = (TMath::Cos((degs(pdf_type::corr_x)-(i+1))*TMath::Pi()/degs(pdf_type::corr_x))+1.0)*0.5*max_x;
+    }
+    for(unsigned int j = 0; j<n_pdfy; j++){
+      points_y[j] = TMath::Cos((degs(pdf_type::corr_y)-j)*TMath::Pi()/degs(pdf_type::corr_y))*max_y;
+    }
   }
-  for(unsigned int j = 0; j<n_pdfy; j++){
-    points_y[j] = TMath::Cos((degs(pdf_type::corr_y)-j)*TMath::Pi()/degs(pdf_type::corr_y))*max_y;
+  else{
+    n_pdfx = degs(pdf_type::corr_x);
+    n_pdfy = degs(pdf_type::corr_y);
   }
   
   if(true){
@@ -666,77 +665,151 @@ int main(int argc, char* argv[])
     tree->GetEntry(0);    
     fin->Close();     
 
-    int k0 = do_cheb_as_modifiers ? 0 : 1;
-    int l0 = do_cheb_as_modifiers ? 0 : 1;
-
     RVecD corrxy_in;
-    for(int k = k0; k<=degs(pdf_type::corr_x); k++){
-      for(int l = 0; l<=degs(pdf_type::corr_y)/2; l++){      
-	int idx = (degs(pdf_type::corr_y) + 1)*k + l; 
-	corrxy_in.emplace_back( corr_xy[idx] );
-	poi_val[poi_counter] = corr_xy[idx];
-	poi_cat[poi_counter] = -1;
-	poi_idx[poi_counter] = idx;	
-	poi_counter++;
-      }
-    }
-
     RVecD A0xy_in;
-    for(int k = k0; k<=degs(pdf_type::A0_x); k++){
-      for(int l = 0; l<=degs(pdf_type::A0_y)/2; l++){      
+    RVecD A1xy_in;
+    RVecD A2xy_in;
+    RVecD A3xy_in;
+    RVecD A4xy_in;
+    RVecD points_x_in;
+    RVecD points_y_in;
+
+    if(run!="grid"){
+
+      int k0 = do_cheb_as_modifiers ? 0 : 1;
+      int l0 = do_cheb_as_modifiers ? 0 : 1;
+      
+      for(int k = k0; k<=degs(pdf_type::corr_x); k++){
+	for(int l = 0; l<=degs(pdf_type::corr_y)/2; l++){      
+	  int idx = (degs(pdf_type::corr_y) + 1)*k + l; 
+	  corrxy_in.emplace_back( corr_xy[idx] );
+	  poi_val[poi_counter] = corr_xy[idx];
+	  poi_cat[poi_counter] = -1;
+	  poi_idx[poi_counter] = idx;	
+	  poi_counter++;
+	}
+      }
+            
+      for(int k = k0; k<=degs(pdf_type::A0_x); k++){
+	for(int l = 0; l<=degs(pdf_type::A0_y)/2; l++){      
 	int idx = (degs(pdf_type::A0_y)+1)*k + l; 
 	A0xy_in.emplace_back( A0_xy[idx] );
 	poi_val[poi_counter] = A0_xy[idx];
 	poi_cat[poi_counter] = 0;
 	poi_idx[poi_counter] = idx;	
 	poi_counter++;
+	}
       }
-    }
-    RVecD A1xy_in;
-    for(int k = k0; k<=degs(pdf_type::A1_x); k++){
-      for(int l = l0; l<=degs(pdf_type::A1_y); l++){      
-	int idx = (degs(pdf_type::A1_y)+1)*k + l; 
-	A1xy_in.emplace_back( A1_xy[idx] );
-	poi_val[poi_counter] = A1_xy[idx];
-	poi_cat[poi_counter] = 1;
-	poi_idx[poi_counter] = idx;	
-	poi_counter++;
-      }
-    }
-    RVecD A2xy_in;
-    for(int k = k0; k<=degs(pdf_type::A2_x); k++){
-      for(int l = 0; l<=degs(pdf_type::A2_y)/2; l++){      
-	int idx = (degs(pdf_type::A2_y)+1)*k + l; 
-	A2xy_in.emplace_back( A2_xy[idx] );
-	poi_val[poi_counter] = A2_xy[idx];
-	poi_cat[poi_counter] = 2;
-	poi_idx[poi_counter] = idx;	
-	poi_counter++;
-      }
-    }
-    RVecD A3xy_in;
-    for(int k = k0; k<=degs(pdf_type::A3_x); k++){
-      for(int l = 0; l<=degs(pdf_type::A3_y)/2; l++){      
-	int idx = (degs(pdf_type::A3_y)+1)*k + l; 
-	A3xy_in.emplace_back( A3_xy[idx] );
-	poi_val[poi_counter] = A3_xy[idx];
-	poi_cat[poi_counter] = 3;
-	poi_idx[poi_counter] = idx;	
-	poi_counter++;
-      }
-    }
-    RVecD A4xy_in;
-    for(int k = 0; k<=degs(pdf_type::A4_x); k++){
-      for(int l = l0; l<=degs(pdf_type::A4_y); l++){      
-	int idx = (degs(pdf_type::A4_y)+1)*k + l; 
-	A4xy_in.emplace_back( A4_xy[idx] );
-	poi_val[poi_counter] = A4_xy[idx];
-	poi_cat[poi_counter] = 4;
-	poi_idx[poi_counter] = idx;	
-	poi_counter++;
-      }
-    }
 
+      for(int k = k0; k<=degs(pdf_type::A1_x); k++){
+	for(int l = l0; l<=degs(pdf_type::A1_y); l++){      
+	  int idx = (degs(pdf_type::A1_y)+1)*k + l; 
+	  A1xy_in.emplace_back( A1_xy[idx] );
+	  poi_val[poi_counter] = A1_xy[idx];
+	  poi_cat[poi_counter] = 1;
+	  poi_idx[poi_counter] = idx;	
+	  poi_counter++;
+	}
+      }
+      
+      for(int k = k0; k<=degs(pdf_type::A2_x); k++){
+	for(int l = 0; l<=degs(pdf_type::A2_y)/2; l++){      
+	  int idx = (degs(pdf_type::A2_y)+1)*k + l; 
+	  A2xy_in.emplace_back( A2_xy[idx] );
+	  poi_val[poi_counter] = A2_xy[idx];
+	  poi_cat[poi_counter] = 2;
+	  poi_idx[poi_counter] = idx;	
+	  poi_counter++;
+	}
+      }
+
+      for(int k = k0; k<=degs(pdf_type::A3_x); k++){
+	for(int l = 0; l<=degs(pdf_type::A3_y)/2; l++){      
+	  int idx = (degs(pdf_type::A3_y)+1)*k + l; 
+	  A3xy_in.emplace_back( A3_xy[idx] );
+	  poi_val[poi_counter] = A3_xy[idx];
+	  poi_cat[poi_counter] = 3;
+	  poi_idx[poi_counter] = idx;	
+	  poi_counter++;
+	}
+      }
+      
+      for(int k = 0; k<=degs(pdf_type::A4_x); k++){
+	for(int l = l0; l<=degs(pdf_type::A4_y); l++){      
+	  int idx = (degs(pdf_type::A4_y)+1)*k + l; 
+	  A4xy_in.emplace_back( A4_xy[idx] );
+	  poi_val[poi_counter] = A4_xy[idx];
+	  poi_cat[poi_counter] = 4;
+	  poi_idx[poi_counter] = idx;	
+	  poi_counter++;
+	}
+      }
+    }    
+    else if(run=="grid"){      
+      points_x_in.emplace_back(0.0);
+      points_x[0] = 0.0;
+      for(unsigned int i = 1; i<=n_pdfx; i++){
+	double val = max_x/n_pdfx*i;
+	points_x[i] = val;
+	points_x_in.emplace_back( val );
+      }
+      points_y_in.emplace_back(0.0);
+      points_y[0] = 0.0;
+      for(unsigned int j = 1; j<=n_pdfy; j++){
+	double val = max_y/n_pdfy*j;
+	points_y[j] = val;
+	points_y_in.emplace_back( val );
+      }      
+      // unpol
+      for(int k = 0; k<n_pdfx; k++){
+	for(int l = 0; l<n_pdfy; l++){
+	  poi_cat[poi_counter] = -1;
+	  poi_idx[poi_counter] = n_pdfy*k + l;
+	  poi_counter++;
+	}
+      }
+      // A0
+      for(int k = 0; k<n_pdfx; k++){
+	for(int l = 0; l<n_pdfy; l++){
+	  poi_cat[poi_counter] = 0;
+	  poi_idx[poi_counter] = n_pdfy*k + l;
+	  poi_counter++;
+	}
+      }
+      // A1
+      for(int k = 0; k<n_pdfx; k++){
+	for(int l = 0; l<n_pdfy; l++){
+	  poi_cat[poi_counter] = 1;
+	  poi_idx[poi_counter] = n_pdfy*k + l;	
+	  poi_counter++;
+	}
+      }
+      // A2
+      for(int k = 0; k<n_pdfx; k++){
+	for(int l = 0; l<n_pdfy; l++){
+	  poi_cat[poi_counter] = 2;
+	  poi_idx[poi_counter] = n_pdfy*k + l;
+	  poi_counter++;
+	}
+      }
+      // A3
+      for(int k = 0; k<n_pdfx; k++){
+	for(int l = 0; l<n_pdfy; l++){
+	  poi_cat[poi_counter] = 3;
+	  poi_idx[poi_counter] = n_pdfy*k + l;
+	  poi_counter++;
+	}
+      }
+      // A4
+      for(int k = 0; k<n_pdfx; k++){
+	for(int l = 0; l<n_pdfy; l++){
+	  poi_cat[poi_counter] = 4;
+	  poi_idx[poi_counter] = n_pdfy*k + l;
+	  poi_counter++;
+	}
+      }
+    }
+        
     // mass
     poi_val[poi_counter] = 0.0;
     poi_cat[poi_counter] = 5;
@@ -774,11 +847,11 @@ int main(int argc, char* argv[])
 	  double norm_PiAi = norm*(har.at(0)+A0*har.at(1)+A1*har.at(2)+A2*har.at(3)+A3*har.at(4)+A4*har.at(5));
 	  out.emplace_back( UL*norm_PiAi);       // full weight 
 	  out.emplace_back( norm_PiAi );         // weight for corr 
-	  out.emplace_back( norm_UL*har.at(1) ); // weight for A0
-	  out.emplace_back( norm_UL*har.at(2) ); // weight for A1
-	  out.emplace_back( norm_UL*har.at(3) ); // weight for A2
-	  out.emplace_back( norm_UL*har.at(4) ); // weight for A3
-	  out.emplace_back( norm_UL*har.at(5) ); // weight for A4
+	  out.emplace_back( norm_UL*A0*har.at(1) ); // weight for A0
+	  out.emplace_back( norm_UL*A1*har.at(2) ); // weight for A1
+	  out.emplace_back( norm_UL*A2*har.at(3) ); // weight for A2
+	  out.emplace_back( norm_UL*A3*har.at(4) ); // weight for A3
+	  out.emplace_back( norm_UL*A4*har.at(5) ); // weight for A4
 	  return out;
     }, {"x", "y", "harmonics"} ));        
     
@@ -792,6 +865,12 @@ int main(int argc, char* argv[])
 						   RVecD har )->RVecD {
       RVecD out;
       double norm{3./16/TMath::Pi()};	  
+      cout << corrxy_vec.size() << " -- " << corrxy_in.size() << endl;
+      cout << A0xy_vec.size() << " -- " << A0xy_in.size() << endl;
+      cout << A1xy_vec.size() << " -- " << A1xy_in.size() << endl;
+      cout << A2xy_vec.size() << " -- " << A2xy_in.size() << endl;
+      cout << A3xy_vec.size() << " -- " << A3xy_in.size() << endl;
+      cout << A4xy_vec.size() << " -- " << A4xy_in.size() << endl;
       double UL = ROOT::VecOps::Dot(corrxy_vec,corrxy_in);
       double A0 = ROOT::VecOps::Dot(A0xy_vec,A0xy_in); 
       double A1 = ROOT::VecOps::Dot(A1xy_vec,A1xy_in); 
@@ -816,12 +895,6 @@ int main(int argc, char* argv[])
 	"A4xy_vec",
 	"harmonics"} ));
     
-    dlast = std::make_unique<RNode>(dlast->Define("weight_jacM",[&](RVecD weights, double Q)->double {
-      double w = weights.at(0);
-      w *= TMath::Pi()*toy_mass(Q,MW,GW)*2*(Q-MW)/GW/GW;
-      return w;
-    }, {(do_cheb_as_modifiers ? "weights_mctruth" : "weights_cheb"), "Q"} ));
-    
     dlast = std::make_unique<RNode>(dlast->Define("weights_jac", [&]
 						  (RVecD corrxy_vec,
 						   RVecD A0xy_vec,
@@ -831,49 +904,12 @@ int main(int argc, char* argv[])
 						   RVecD A4xy_vec,
 						   RVecD weights )->RVecD {
       RVecD out;						
-      
-      unsigned int njacs_corrxy = !do_cheb_as_modifiers ?
-	degs(pdf_type::corr_x)*( degs(pdf_type::corr_y)/2 + 1 ) :
-        (degs(pdf_type::corr_x)+1)*( degs(pdf_type::corr_y)/2 + 1 );
-      for(unsigned int i = 0; i<njacs_corrxy; i++){
-	out.emplace_back( weights.at(1)*corrxy_vec.at(i) );
-      }						   
-      
-      unsigned int njacs_A0xy = !do_cheb_as_modifiers ?
-	degs(pdf_type::A0_x)*( degs(pdf_type::A0_y)/2 + 1 ) : 
-	(degs(pdf_type::A0_x)+1)*( degs(pdf_type::A0_y)/2 + 1 );
-      for(unsigned int i = 0; i<njacs_A0xy; i++){
-	out.emplace_back( weights.at(2)*A0xy_vec.at(i));
-      }						   
-      
-      unsigned int njacs_A1xy = !do_cheb_as_modifiers ?
-	degs(pdf_type::A1_x)*degs(pdf_type::A1_y) : 
-	(degs(pdf_type::A1_x)+1)*( degs(pdf_type::A1_y) + 1 );
-      for(unsigned int i = 0; i<njacs_A1xy; i++){
-	out.emplace_back( weights.at(3)*A1xy_vec.at(i));
-      }						   
-      
-      unsigned int njacs_A2xy = !do_cheb_as_modifiers ?
-	degs(pdf_type::A2_x)*( degs(pdf_type::A2_y)/2 + 1 ) :
-	(degs(pdf_type::A2_x)+1)*( degs(pdf_type::A2_y)/2 + 1 );
-      for(unsigned int i = 0; i<njacs_A2xy; i++){
-	out.emplace_back( weights.at(4)*A2xy_vec.at(i));
-      }						   
-
-      unsigned int njacs_A3xy = !do_cheb_as_modifiers ?
-	degs(pdf_type::A3_x)*( degs(pdf_type::A3_y)/2 + 1 ) : 
-	(degs(pdf_type::A3_x)+1)*( degs(pdf_type::A3_y)/2 + 1 );
-      for(unsigned int i = 0; i<njacs_A3xy; i++){
-	out.emplace_back( weights.at(5)*A3xy_vec.at(i));
-      }
-      
-      unsigned int njacs_A4xy = !do_cheb_as_modifiers ?
-	(degs(pdf_type::A4_x)+1)*degs(pdf_type::A4_y) :
-	(degs(pdf_type::A4_x)+1)*( degs(pdf_type::A4_y) + 1 );
-      for(unsigned int i = 0; i<njacs_A4xy; i++){
-	out.emplace_back( weights.at(6)*A4xy_vec.at(i));
-      }						   
-      
+      for(unsigned int i = 0; i<njacs_corrxy; i++) out.emplace_back( weights.at(1)*corrxy_vec.at(i) );
+      for(unsigned int i = 0; i<njacs_A0xy; i++)   out.emplace_back( weights.at(2)*A0xy_vec.at(i));
+      for(unsigned int i = 0; i<njacs_A1xy; i++)   out.emplace_back( weights.at(3)*A1xy_vec.at(i));
+      for(unsigned int i = 0; i<njacs_A2xy; i++)   out.emplace_back( weights.at(4)*A2xy_vec.at(i));
+      for(unsigned int i = 0; i<njacs_A3xy; i++)   out.emplace_back( weights.at(5)*A3xy_vec.at(i));
+      for(unsigned int i = 0; i<njacs_A4xy; i++)   out.emplace_back( weights.at(6)*A4xy_vec.at(i));      
       return out;
     }, {"corrxy_vec",
 	"A0xy_vec",
@@ -882,6 +918,44 @@ int main(int argc, char* argv[])
 	"A3xy_vec",
 	"A4xy_vec",
 	(do_cheb_as_modifiers ? "weights_mctruth" : "weights_cheb")} ));
+
+
+    dlast = std::make_unique<RNode>(dlast->Define("weights_jac_grid", [&,points_x_in,points_y_in]
+						  (double x, double y, 						   
+						   RVecD weights)->RVecD {      
+      RVecD out(njacs);						
+      double absy = TMath::Abs(y);
+      int ijac = -1; 
+      if(x==max_x)    x -= 1e-04;
+      if(absy==max_y) y -= 1e-04;
+      unsigned int counter = 0;
+      for(unsigned int i = 0; i<degs(pdf_type::corr_x); i++){
+	for(unsigned int j = 0; j<degs(pdf_type::corr_y); j++){
+	  bool is_in_bin =  x>=points_x_in.at(i) && x<points_x_in.at(i+1) && absy>=points_y_in.at(j) && absy<points_y_in.at(j+1);
+	  if( is_in_bin ) ijac = counter;
+	  counter++;
+	}
+      }
+      //cout << ijac << endl;
+      if(ijac<0) return out;
+      for(unsigned int k=0; k<6; k++){
+	double val = 0.0;
+	if(k==0)
+	  val = (weights.at(0) - weights.at(2) - weights.at(3) - weights.at(4) - weights.at(5) - weights.at(6));
+	else
+	  val = weights.at(k+1);
+	//cout << "out[" << (k+1)*ijac << "]=" << val << endl;
+	out[njacs/6*k + ijac] = val;
+      }
+      return out;    
+    }, {"x", "y", "weights_mctruth"} ));
+
+    dlast = std::make_unique<RNode>(dlast->Define("weight_jacM",[&](RVecD weights, double Q)->double {
+      double w = weights.at(0);
+      w *= TMath::Pi()*toy_mass(Q,MW,GW)*2*(Q-MW)/GW/GW;
+      return w;
+    }, {(run=="full_cheb" ? "weights_cheb" : "weights_mctruth"), "Q"} ));
+    
     
     dlast = std::make_unique<RNode>(dlast->Define("w", [](RVecD weights, RVecD weights_mass){ return weights.at(0)*weights_mass.at(0);}, {"weights_cheb", "weights_mass"} ));
     if(do_jac_vs_mass){
@@ -898,21 +972,25 @@ int main(int argc, char* argv[])
     for(unsigned int i = 0; i < njacs; i++){
       if(do_jac_vs_mass){
 	for(unsigned int j = 0; j < 3; j++){
-	  dlast = std::make_unique<RNode>(dlast->Define(Form("jac%d_%d", j, i), [i,j](RVecD weights, RVecD weights_mass){ return weights.at(i)*weights_mass.at(j);}, {"weights_jac", "weights_mass"} ));
+	  dlast = std::make_unique<RNode>(dlast->Define(Form("jac%d_%d", j, i), [i,j](RVecD weights, RVecD weights_mass){ return weights.at(i)*weights_mass.at(j);},
+							{(run=="grid" ? "weights_jac_grid" : "weights_jac"), "weights_mass"} ));
 	}
       }
       else{
-	dlast = std::make_unique<RNode>(dlast->Define(Form("jac_%d",i), [i](RVecD weights, RVecD weights_mass){ return weights.at(i)*weights_mass.at(0);}, {"weights_jac", "weights_mass"} ));
+	dlast = std::make_unique<RNode>(dlast->Define(Form("jac_%d",i), [i](RVecD weights, RVecD weights_mass){ return weights.at(i)*weights_mass.at(0);},
+						      {(run=="grid" ? "weights_jac_grid" : "weights_jac"), "weights_mass"} ));
       }
     }
     
-    if(!do_cheb_as_modifiers) sums.emplace_back( dlast->Sum<double>("w") );
-    //sums.emplace_back( dlast->Sum<double>("wMC") );
-
+    if(run=="full_cheb"){
+      sums.emplace_back( dlast->Sum<double>("w") );
+      sums.emplace_back( dlast->Sum<double>("wMC") );
+    }
+    
     string varx = fit_qt_y ? "y" : "eta";
     string vary = fit_qt_y ? "x" : "pt";
 
-    if(!do_cheb_as_modifiers){
+    if(run=="full_cheb"){
       histos2D.emplace_back(dlast->Histo2D({"h",       "", nbins_rap, rap_low, rap_high, nbins_pt, pt_low, pt_high}, varx, vary, "w"));
       if(do_jac_vs_mass){
 	histos2D.emplace_back(dlast->Histo2D({"h_up",    "", nbins_rap, rap_low, rap_high, nbins_pt, pt_low, pt_high}, varx, vary, "w_up"));
@@ -929,44 +1007,43 @@ int main(int argc, char* argv[])
     for(unsigned int i = 0; i < njacs; i++){
       std::string hname = "";
       if(i>=first_jac_corrxy && i<first_jac_A0xy){
-	unsigned int idx_x = (i-first_jac_corrxy) / (degs(pdf_type::corr_y)/2 +1) + 1;
-	unsigned int idx_y = (i-first_jac_corrxy) % (degs(pdf_type::corr_y)/2 +1);
-	if(do_cheb_as_modifiers) idx_x--;	  
+	unsigned int idx_x = (i-first_jac_corrxy) / njacs_corrxy_y;
+	unsigned int idx_y = (i-first_jac_corrxy) % njacs_corrxy_y;
+	if(run=="full_cheb") idx_x++;	  
 	hname = std::string(Form("jac_%d: d(pdf) / d(corrxy_in[%d][%d])", i, idx_x, idx_y));	
       }
       else if(i>=first_jac_A0xy && i<first_jac_A1xy){
-	unsigned int idx_x = (i-first_jac_A0xy) / (degs(pdf_type::A0_y)/2 +1) + 1;
-	unsigned int idx_y = (i-first_jac_A0xy) % (degs(pdf_type::A0_y)/2 +1);
-	if(do_cheb_as_modifiers) idx_x--;	  
+	unsigned int idx_x = (i-first_jac_A0xy) / njacs_A0_y;
+	unsigned int idx_y = (i-first_jac_A0xy) % njacs_A0_y;
+	if(run=="full_cheb") idx_x++;	  
 	hname = std::string(Form("jac_%d: d(pdf) / d(A0xy_in[%d][%d])", i, idx_x, idx_y));	
       }
       else if(i>=first_jac_A1xy && i<first_jac_A2xy){
-	unsigned int idx_x = (i-first_jac_A1xy) / degs(pdf_type::A1_y) + 1;
-	unsigned int idx_y = (i-first_jac_A1xy) % degs(pdf_type::A1_y) + 1;
-	if(do_cheb_as_modifiers){
-	  idx_x = (i-first_jac_A1xy) / (degs(pdf_type::A1_y) + 1);
- 	  idx_y = (i-first_jac_A1xy) % (degs(pdf_type::A1_y) + 1);
+	unsigned int idx_x = (i-first_jac_A1xy) / njacs_A1_y;
+	unsigned int idx_y = (i-first_jac_A1xy) % njacs_A1_y;
+	if(run=="full_cheb"){
+	  idx_x++;
+ 	  idx_y++;
 	}
 	hname = std::string(Form("jac_%d: d(pdf) / d(A1xy_in[%d][%d])", i, idx_x, idx_y));	
       }
       else if(i>=first_jac_A2xy && i<first_jac_A3xy){
-	unsigned int idx_x = (i-first_jac_A2xy) / (degs(pdf_type::A2_y)/2 +1) + 1;
-	unsigned int idx_y = (i-first_jac_A2xy) % (degs(pdf_type::A2_y)/2 +1);
-	if(do_cheb_as_modifiers) idx_x--;	  
+	unsigned int idx_x = (i-first_jac_A2xy) / njacs_A2_y;
+	unsigned int idx_y = (i-first_jac_A2xy) % njacs_A2_y;
+	if(run=="full_cheb") idx_x++;	  
 	hname = std::string(Form("jac_%d: d(pdf) / d(A2xy_in[%d][%d])", i, idx_x, idx_y));	
       }
       else if(i>=first_jac_A3xy && i<first_jac_A4xy){
-	unsigned int idx_x = (i-first_jac_A3xy) / (degs(pdf_type::A3_y)/2 +1) + 1;
-	unsigned int idx_y = (i-first_jac_A3xy) % (degs(pdf_type::A3_y)/2 +1);
-	if(do_cheb_as_modifiers) idx_x--;	  
+	unsigned int idx_x = (i-first_jac_A3xy) / njacs_A3_y;
+	unsigned int idx_y = (i-first_jac_A3xy) % njacs_A3_y;
+	if(run=="full_cheb") idx_x++;	  
 	hname = std::string(Form("jac_%d: d(pdf) / d(A3xy_in[%d][%d])", i, idx_x, idx_y));	
       }
       else if(i>=first_jac_A4xy){
-	unsigned int idx_x = (i-first_jac_A4xy) / degs(pdf_type::A4_y);
-	unsigned int idx_y = (i-first_jac_A4xy) % degs(pdf_type::A4_y) + 1;
-	if(do_cheb_as_modifiers){
-	  idx_x = (i-first_jac_A4xy) / (degs(pdf_type::A4_y) + 1);
- 	  idx_y = (i-first_jac_A4xy) % (degs(pdf_type::A4_y) + 1);
+	unsigned int idx_x = (i-first_jac_A4xy) / njacs_A4_y;
+	unsigned int idx_y = (i-first_jac_A4xy) % njacs_A4_y;
+	if(run=="full_cheb"){
+ 	  idx_y++;
 	}
 	hname = std::string(Form("jac_%d: d(pdf) / d(A4xy_in[%d][%d])", i, idx_x, idx_y));	
       }
