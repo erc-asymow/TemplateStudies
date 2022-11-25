@@ -75,7 +75,7 @@ int main(int argc, char* argv[])
   TStopwatch sw;
   sw.Start();
 
-  //ROOT::EnableImplicitMT();
+  ROOT::EnableImplicitMT();
 
   variables_map vm;
   try
@@ -172,7 +172,7 @@ int main(int argc, char* argv[])
   double max_y = vm["max_y"].as<double>();
 
   bool do_cheb_as_modifiers = false;
-  if(run=="corr_cheb") do_cheb_as_modifiers = true;
+  if(run=="corr") do_cheb_as_modifiers = true;
   
   int nbins_rap   = 25; 
   double rap_low  = 0.0;
@@ -256,7 +256,7 @@ int main(int argc, char* argv[])
 
   //A1(.,0)=0
   //A4(.,0)=0, but A4(0,.)!=0
-  if(run=="full_cheb"){
+  if(run=="full"){
     njacs_corrxy_x = degs(pdf_type::corr_x);
     njacs_corrxy_y = degs(pdf_type::corr_y)/2 + 1;
     njacs_A0_x     = degs(pdf_type::A0_x) ;
@@ -270,7 +270,7 @@ int main(int argc, char* argv[])
     njacs_A4_x     = degs(pdf_type::A4_x) + 1;
     njacs_A4_y     = degs(pdf_type::A4_y);
   }
-  else if(run=="corr_cheb"){
+  else if(run=="corr"){
     njacs_corrxy_x = degs(pdf_type::corr_x) + 1;
     njacs_corrxy_y = degs(pdf_type::corr_y)/2 + 1;
     njacs_A0_x     = degs(pdf_type::A0_x) + 1;
@@ -332,7 +332,7 @@ int main(int argc, char* argv[])
   };
   
   TF1* tf1toy_y = new TF1("toy_y", "[2]/TMath::Sqrt(2*TMath::Pi()*[1])*TMath::Exp(-0.5*(x-[0])*(x-[0])/[1])", -max_y, max_y);
-  double sigma2_y = 5.0*5.0;
+  double sigma2_y = 4.0*4.0;
   tf1toy_y->SetParameter(0, 0.0);
   tf1toy_y->SetParameter(1, sigma2_y);
   tf1toy_y->SetParameter(2, 1.0);
@@ -865,12 +865,12 @@ int main(int argc, char* argv[])
 						   RVecD har )->RVecD {
       RVecD out;
       double norm{3./16/TMath::Pi()};	  
-      cout << corrxy_vec.size() << " -- " << corrxy_in.size() << endl;
-      cout << A0xy_vec.size() << " -- " << A0xy_in.size() << endl;
-      cout << A1xy_vec.size() << " -- " << A1xy_in.size() << endl;
-      cout << A2xy_vec.size() << " -- " << A2xy_in.size() << endl;
-      cout << A3xy_vec.size() << " -- " << A3xy_in.size() << endl;
-      cout << A4xy_vec.size() << " -- " << A4xy_in.size() << endl;
+      //cout << corrxy_vec.size() << " -- " << corrxy_in.size() << endl;
+      //cout << A0xy_vec.size() << " -- " << A0xy_in.size() << endl;
+      //cout << A1xy_vec.size() << " -- " << A1xy_in.size() << endl;
+      //cout << A2xy_vec.size() << " -- " << A2xy_in.size() << endl;
+      //cout << A3xy_vec.size() << " -- " << A3xy_in.size() << endl;
+      //cout << A4xy_vec.size() << " -- " << A4xy_in.size() << endl;
       double UL = ROOT::VecOps::Dot(corrxy_vec,corrxy_in);
       double A0 = ROOT::VecOps::Dot(A0xy_vec,A0xy_in); 
       double A1 = ROOT::VecOps::Dot(A1xy_vec,A1xy_in); 
@@ -954,7 +954,7 @@ int main(int argc, char* argv[])
       double w = weights.at(0);
       w *= TMath::Pi()*toy_mass(Q,MW,GW)*2*(Q-MW)/GW/GW;
       return w;
-    }, {(run=="full_cheb" ? "weights_cheb" : "weights_mctruth"), "Q"} ));
+    }, {(run=="full" ? "weights_cheb" : "weights_mctruth"), "Q"} ));
     
     
     dlast = std::make_unique<RNode>(dlast->Define("w", [](RVecD weights, RVecD weights_mass){ return weights.at(0)*weights_mass.at(0);}, {"weights_cheb", "weights_mass"} ));
@@ -982,7 +982,7 @@ int main(int argc, char* argv[])
       }
     }
     
-    if(run=="full_cheb"){
+    if(run=="full"){
       sums.emplace_back( dlast->Sum<double>("w") );
       sums.emplace_back( dlast->Sum<double>("wMC") );
     }
@@ -990,7 +990,7 @@ int main(int argc, char* argv[])
     string varx = fit_qt_y ? "y" : "eta";
     string vary = fit_qt_y ? "x" : "pt";
 
-    if(run=="full_cheb"){
+    if(run=="full"){
       histos2D.emplace_back(dlast->Histo2D({"h",       "", nbins_rap, rap_low, rap_high, nbins_pt, pt_low, pt_high}, varx, vary, "w"));
       if(do_jac_vs_mass){
 	histos2D.emplace_back(dlast->Histo2D({"h_up",    "", nbins_rap, rap_low, rap_high, nbins_pt, pt_low, pt_high}, varx, vary, "w_up"));
@@ -1009,19 +1009,19 @@ int main(int argc, char* argv[])
       if(i>=first_jac_corrxy && i<first_jac_A0xy){
 	unsigned int idx_x = (i-first_jac_corrxy) / njacs_corrxy_y;
 	unsigned int idx_y = (i-first_jac_corrxy) % njacs_corrxy_y;
-	if(run=="full_cheb") idx_x++;	  
+	if(run=="full") idx_x++;	  
 	hname = std::string(Form("jac_%d: d(pdf) / d(corrxy_in[%d][%d])", i, idx_x, idx_y));	
       }
       else if(i>=first_jac_A0xy && i<first_jac_A1xy){
 	unsigned int idx_x = (i-first_jac_A0xy) / njacs_A0_y;
 	unsigned int idx_y = (i-first_jac_A0xy) % njacs_A0_y;
-	if(run=="full_cheb") idx_x++;	  
+	if(run=="full") idx_x++;	  
 	hname = std::string(Form("jac_%d: d(pdf) / d(A0xy_in[%d][%d])", i, idx_x, idx_y));	
       }
       else if(i>=first_jac_A1xy && i<first_jac_A2xy){
 	unsigned int idx_x = (i-first_jac_A1xy) / njacs_A1_y;
 	unsigned int idx_y = (i-first_jac_A1xy) % njacs_A1_y;
-	if(run=="full_cheb"){
+	if(run=="full"){
 	  idx_x++;
  	  idx_y++;
 	}
@@ -1030,19 +1030,19 @@ int main(int argc, char* argv[])
       else if(i>=first_jac_A2xy && i<first_jac_A3xy){
 	unsigned int idx_x = (i-first_jac_A2xy) / njacs_A2_y;
 	unsigned int idx_y = (i-first_jac_A2xy) % njacs_A2_y;
-	if(run=="full_cheb") idx_x++;	  
+	if(run=="full") idx_x++;	  
 	hname = std::string(Form("jac_%d: d(pdf) / d(A2xy_in[%d][%d])", i, idx_x, idx_y));	
       }
       else if(i>=first_jac_A3xy && i<first_jac_A4xy){
 	unsigned int idx_x = (i-first_jac_A3xy) / njacs_A3_y;
 	unsigned int idx_y = (i-first_jac_A3xy) % njacs_A3_y;
-	if(run=="full_cheb") idx_x++;	  
+	if(run=="full") idx_x++;	  
 	hname = std::string(Form("jac_%d: d(pdf) / d(A3xy_in[%d][%d])", i, idx_x, idx_y));	
       }
       else if(i>=first_jac_A4xy){
 	unsigned int idx_x = (i-first_jac_A4xy) / njacs_A4_y;
 	unsigned int idx_y = (i-first_jac_A4xy) % njacs_A4_y;
-	if(run=="full_cheb"){
+	if(run=="full"){
  	  idx_y++;
 	}
 	hname = std::string(Form("jac_%d: d(pdf) / d(A4xy_in[%d][%d])", i, idx_x, idx_y));	
@@ -1110,7 +1110,7 @@ int main(int argc, char* argv[])
   }
 
   //clone existing histos (for consistency)
-  if(do_cheb_as_modifiers){
+  if(run!="full"){
     for(auto h : histos2D){
       if( std::string(h->GetName())=="hMC" )      ((TH2D*)h->Clone("h"))->Write();
       if( std::string(h->GetName())=="hMC_up" )   ((TH2D*)h->Clone("h_up"))->Write();

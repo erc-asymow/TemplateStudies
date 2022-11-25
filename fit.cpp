@@ -76,7 +76,6 @@ int main(int argc, char* argv[])
 	("scale4",bool_switch()->default_value(false), "")
 	("jacmass", value<int>()->default_value(-1), "")
 	("add_MC_uncert", bool_switch()->default_value(false), "")
-	("do_cheb_as_modifiers", bool_switch()->default_value(false), "")
 	("X_max", value<float>()->default_value(99.), "")
 	("X_min", value<float>()->default_value(-99.), "")
 	("Y_max", value<float>()->default_value(99.), "")
@@ -133,7 +132,6 @@ int main(int argc, char* argv[])
   int j4   = vm["j4"].as<bool>();
   int jM   = vm["jM"].as<bool>();
   bool add_MC_uncert = vm["add_MC_uncert"].as<bool>();
-  bool do_cheb_as_modifiers = vm["do_cheb_as_modifiers"].as<bool>();
   int verbose = vm["verbose"].as<bool>();
   int debug = vm["debug"].as<bool>();
 
@@ -282,9 +280,7 @@ int main(int argc, char* argv[])
   cout << "Starting template is histo=" << hw_name << endl;
 
   TH2D* hwMC = fin->Get<TH2D>("hMC");
-  TH2D* hw   = 0;
-  if(!do_cheb_as_modifiers) hw = fin->Get<TH2D>( hw_name );
-  else hw = (TH2D*)hwMC->Clone("h");
+  TH2D* hw   = fin->Get<TH2D>( hw_name );
   vector<TH2D*> all_histos = { hw, hwMC };
   for(unsigned int i=0; i<NMASS; i++) all_histos.push_back( fin->Get<TH2D>(Form("hMC_mass%d",i)) );
   if(rebinX>0 || rebinY>0){
@@ -527,58 +523,62 @@ int main(int argc, char* argv[])
       }
       if(verbose && m<0) std::cout << "The eigenvalues of C are:\n" << eigensolver.eigenvalues() << std::endl;
       //eigensolver.eigenvectors();
-      
-      int degs_xy = n_pdfx*n_pdfy;
-      MatrixXd C_xy = C.block(0,0,degs_xy,degs_xy);
-      //cout << C_xy << endl;
-      VectorXd x_xy = x(Eigen::seqN(0,degs_xy));
-      VectorXd xMC_xy(degs_xy);
-      for(unsigned int i=0; i<degs_xy; i++ ) xMC_xy(i) = poi_val[ active_pois[i] ];
-      MatrixXd D(n_pdfx, degs_xy);
-      for(unsigned int i = 0 ; i<D.rows(); i++){
-	unsigned int j_first = i*n_pdfy; 
-	unsigned int j_last  = (i+1)*n_pdfy; 
-	for(unsigned int j = 0 ; j < D.cols() ; j++){
-	  if(j>=j_first && j<j_last){ 
-	    if(degs_corr_y==4)
-	      D(i,j) = norms_cheb4(j-j_first)*( j==(j_last-1) ? 1.0 : 2.0);
-	    else if(degs_corr_y==6)
-	      D(i,j) = norms_cheb6(j-j_first)*( j==(j_last-1) ? 1.0 : 2.0);
-	    else if(degs_corr_y==8)
-	      D(i,j) = norms_cheb8(j-j_first)*( j==(j_last-1) ? 1.0 : 2.0);
-	    else
-	      D(i,j) = norms_chebDummy(j-j_first)*( j==(j_last-1) ? 1.0 : 2.0);
-	  }
-	  else 
-	    D(i,j) = 0.0;
-	}
-      }
-      VectorXd x_int   = D*x_xy;
-      VectorXd xMC_int = D*xMC_xy;
-      MatrixXd Cx_int  = D*C_xy*D.transpose();
 
-      MatrixXd rhox_int(Cx_int.rows(), Cx_int.cols());
-      for(unsigned int i = 0 ; i<rhox_int.rows(); i++){
-	for(unsigned int j = 0 ; j < rhox_int.cols() ; j++){
-	  rhox_int(i,j) = Cx_int(i,j)/TMath::Sqrt(Cx_int(i,i)*Cx_int(j,j));
-	}
-      }
-      if(m<0 && verbose){
-	cout << "Correlation matrix rhox_int:" << endl;
-	cout << rhox_int << endl;
-      }
-      
       TH2D* rhox_int_th2 = 0;
-      if(m<0){
-	rhox_int_th2 = new TH2D("rhox_int_th2"+toy_tag, ";POI;POI", rhox_int.rows(), 0, rhox_int.rows(), rhox_int.cols(), 0, rhox_int.cols());
-	for(unsigned int i=0; i<rhox_int.rows(); i++){
-	  for(unsigned int j=0; j<rhox_int.rows(); j++){
-	    rhox_int_th2->SetBinContent(i+1,j+1, rhox_int(i,j));
+      VectorXd x_int;
+      VectorXd xMC_int;
+      MatrixXd Cx_int;
+      if(run=="full"){
+	int degs_xy = n_pdfx*n_pdfy;
+	MatrixXd C_xy = C.block(0,0,degs_xy,degs_xy);
+	//cout << C_xy << endl;
+	VectorXd x_xy = x(Eigen::seqN(0,degs_xy));
+	VectorXd xMC_xy(degs_xy);
+	for(unsigned int i=0; i<degs_xy; i++ ) xMC_xy(i) = poi_val[ active_pois[i] ];
+	MatrixXd D(n_pdfx, degs_xy);
+	for(unsigned int i = 0 ; i<D.rows(); i++){
+	  unsigned int j_first = i*n_pdfy; 
+	  unsigned int j_last  = (i+1)*n_pdfy; 
+	  for(unsigned int j = 0 ; j < D.cols() ; j++){
+	    if(j>=j_first && j<j_last){ 
+	      if(degs_corr_y==4)
+		D(i,j) = norms_cheb4(j-j_first)*( j==(j_last-1) ? 1.0 : 2.0);
+	      else if(degs_corr_y==6)
+		D(i,j) = norms_cheb6(j-j_first)*( j==(j_last-1) ? 1.0 : 2.0);
+	      else if(degs_corr_y==8)
+		D(i,j) = norms_cheb8(j-j_first)*( j==(j_last-1) ? 1.0 : 2.0);
+	      else
+		D(i,j) = norms_chebDummy(j-j_first)*( j==(j_last-1) ? 1.0 : 2.0);
+	    }
+	    else 
+	      D(i,j) = 0.0;
+	  }
+	}
+	x_int   = D*x_xy;
+	xMC_int = D*xMC_xy;
+	Cx_int  = D*C_xy*D.transpose();
+	
+	MatrixXd rhox_int(Cx_int.rows(), Cx_int.cols());
+	for(unsigned int i = 0 ; i<rhox_int.rows(); i++){
+	  for(unsigned int j = 0 ; j < rhox_int.cols() ; j++){
+	    rhox_int(i,j) = Cx_int(i,j)/TMath::Sqrt(Cx_int(i,i)*Cx_int(j,j));
+	  }
+	}
+	if(m<0 && verbose){
+	  cout << "Correlation matrix rhox_int:" << endl;
+	  cout << rhox_int << endl;
+	}
+	
+	if(m<0){
+	  rhox_int_th2 = new TH2D("rhox_int_th2"+toy_tag, ";POI;POI", rhox_int.rows(), 0, rhox_int.rows(), rhox_int.cols(), 0, rhox_int.cols());
+	  for(unsigned int i=0; i<rhox_int.rows(); i++){
+	    for(unsigned int j=0; j<rhox_int.rows(); j++){
+	      rhox_int_th2->SetBinContent(i+1,j+1, rhox_int(i,j));
+	    }
 	  }
 	}
       }
       
-
       //cout << D << endl;
       //cout << xMC_int << endl;
       //cout << Cx_int << endl;
@@ -624,7 +624,7 @@ int main(int argc, char* argv[])
       fout->cd();
       if(m<0){
 	rho_th2->Write();
-	rhox_int_th2->Write();
+	if(run=="full") rhox_int_th2->Write();
 	A_th2->Write();
 	b_th1->Write();
       }
@@ -677,7 +677,7 @@ int main(int argc, char* argv[])
 	if(m<0) fit->Write(("fit_"+name).c_str());
 	if(m<0) fitMC->Write(("fitMC_"+name).c_str());
 	
-	if(hel==-1){
+	if(run=="full" && hel==-1){
 	  n = n_pdfx;
 	  double xx[n], yy[n], yyMC[n], exx[n], eyy[n];
 	  for(unsigned int i = 0; i < n_pdfx; i++){
