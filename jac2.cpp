@@ -101,7 +101,7 @@ int main(int argc, char* argv[])
 	("tag", value<std::string>()->default_value(""), "tag name")
 	("run", value<std::string>()->default_value("closure"), "run type")
 	("do_jac_vs_mass",    bool_switch()->default_value(false), "compute jacobians for three mass values")
-	("do_grid",  bool_switch()->default_value(false), "do grid")
+	("smear",  bool_switch()->default_value(false), "smear")
 	("getbin_extTH2_corr",  bool_switch()->default_value(false), "get bin corr(x,y)")
 	("inter_extTH2_corr",  bool_switch()->default_value(false), "interpol corr(x,y)")
 	("toyTF2_corr",  bool_switch()->default_value(false), "toy TF2 corr(x,y)")
@@ -145,6 +145,7 @@ int main(int argc, char* argv[])
   int degs_A4_x   = vm["degs_A4_x"].as<int>();
   int degs_A4_y   = vm["degs_A4_y"].as<int>();
   bool do_jac_vs_mass     = vm["do_jac_vs_mass"].as<bool>();
+  bool smear      = vm["smear"].as<bool>();
   bool getbin_extTH2_corr = vm["getbin_extTH2_corr"].as<bool>();
   bool inter_extTH2_corr  = vm["inter_extTH2_corr"].as<bool>();
   bool toyTF2_corr        = vm["toyTF2_corr"].as<bool>();
@@ -983,7 +984,11 @@ int main(int argc, char* argv[])
     
     string varx = fit_qt_y ? "y" : "eta";
     string vary = fit_qt_y ? "x" : "pt";
-
+    if(fit_qt_y==false && smear){
+      varx = "eta_smear";
+      vary = "pt_smear"; 
+    }
+    
     if(run=="full"){
       histos2D.emplace_back(dlast->Histo2D({"h",       "", nbins_rap, rap_low, rap_high, nbins_pt, pt_low, pt_high}, varx, vary, "w"));
       if(do_jac_vs_mass){
