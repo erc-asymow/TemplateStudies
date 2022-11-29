@@ -76,6 +76,7 @@ int main(int argc, char* argv[])
 	("scale4",bool_switch()->default_value(false), "")
 	("jacmass", value<int>()->default_value(-1), "")
 	("add_MC_uncert", bool_switch()->default_value(false), "")
+	("jacobians_from_external", bool_switch()->default_value(false), "")
 	("X_max", value<float>()->default_value(99.), "")
 	("X_min", value<float>()->default_value(-99.), "")
 	("Y_max", value<float>()->default_value(99.), "")
@@ -132,9 +133,17 @@ int main(int argc, char* argv[])
   int j4   = vm["j4"].as<bool>();
   int jM   = vm["jM"].as<bool>();
   bool add_MC_uncert = vm["add_MC_uncert"].as<bool>();
+  bool jacobians_from_external = vm["jacobians_from_external"].as<bool>();
   int verbose = vm["verbose"].as<bool>();
   int debug = vm["debug"].as<bool>();
 
+  TFile* f_external = 0;
+  if(jacobians_from_external){
+    TString external_jacobians_fname = "./root/histos_DEVFIX_10G_UL_8_6_A0_1_1_A1_1_1_A2_1_1_A3_1_1_A4_1_1_grid.root";
+    //"./root/histos_DEVFIX_40G_UL_3_2_A0_1_2_A1_1_1_A2_1_2_A3_1_2_A4_1_1_corr.root"; 
+    f_external = TFile::Open(external_jacobians_fname, "READ");
+  }
+  
   if(vm.count("degs_corr_x")) tag += std::string(Form("_UL_%d", degs_corr_x));
   if(vm.count("degs_corr_y")) tag += std::string(Form("_%d", degs_corr_y));
   if(vm.count("degs_A0_x"))   tag += std::string(Form("_A0_%d", degs_A0_x));
@@ -245,12 +254,14 @@ int main(int argc, char* argv[])
       else if( poi_cat[p]==hel && vm[std::string(Form("scale%d", hel))].as<bool>()  ){
 	if(hjac_first==0){
 	  hjac_first = fin->Get<TH2D>(Form("jac_%d", p));
+	  if(jacobians_from_external) hjac_first = f_external->Get<TH2D>(Form("jac_%d", p));
 	  hjac_first->Scale( poi_val[p] );
 	  if(verbose) cout << "Found first jacobian of A" << hel << ", scaled by initial value " << poi_val[p] << endl;
 	  cleaned_active_pois.emplace_back(p);
 	}
 	else{
 	  TH2D* hjac_next = fin->Get<TH2D>(Form("jac_%d", p));
+	  if(jacobians_from_external) hjac_next = f_external->Get<TH2D>(Form("jac_%d", p));
 	  hjac_next->Scale( poi_val[p]);
 	  hjac_first->Add( hjac_next );
 	  if(verbose) cout << "Found another jacobian of A" << hel << ", scaled by initial value " << poi_val[p] << ": adding up..." << endl;
@@ -313,6 +324,10 @@ int main(int argc, char* argv[])
     else if(jacmass==1) jac_name = TString(Form("jac1_%d", idx));
     else if(jacmass==2) jac_name = TString(Form("jac2_%d", idx));
     TH2D* hjac = fin->Get<TH2D>( jac_name );
+    if(jacobians_from_external){
+      cout << "Using jacobian from external file!" << endl;
+      hjac = f_external->Get<TH2D>( jac_name );
+    }
     // fall-back for consistency
     if( jacmass<0 && (hjac==0 || hjac==nullptr) ){
       hjac = fin->Get<TH2D>( TString(Form("jac0_%d", idx)) );
