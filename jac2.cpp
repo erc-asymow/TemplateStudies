@@ -865,12 +865,6 @@ int main(int argc, char* argv[])
 						   RVecD har )->RVecD {
       RVecD out;
       double norm{3./16/TMath::Pi()};	  
-      //cout << corrxy_vec.size() << " -- " << corrxy_in.size() << endl;
-      //cout << A0xy_vec.size() << " -- " << A0xy_in.size() << endl;
-      //cout << A1xy_vec.size() << " -- " << A1xy_in.size() << endl;
-      //cout << A2xy_vec.size() << " -- " << A2xy_in.size() << endl;
-      //cout << A3xy_vec.size() << " -- " << A3xy_in.size() << endl;
-      //cout << A4xy_vec.size() << " -- " << A4xy_in.size() << endl;
       double UL = ROOT::VecOps::Dot(corrxy_vec,corrxy_in);
       double A0 = ROOT::VecOps::Dot(A0xy_vec,A0xy_in); 
       double A1 = ROOT::VecOps::Dot(A1xy_vec,A1xy_in); 
