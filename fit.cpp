@@ -139,9 +139,10 @@ int main(int argc, char* argv[])
 
   TFile* f_external = 0;
   if(jacobians_from_external){
-    TString external_jacobians_fname = "./root/histos_DEVFIX_10G_UL_8_6_A0_1_1_A1_1_1_A2_1_1_A3_1_1_A4_1_1_grid.root";
-    //"./root/histos_DEVFIX_40G_UL_3_2_A0_1_2_A1_1_1_A2_1_2_A3_1_2_A4_1_1_corr.root"; 
+    TString external_jacobians_fname = //"./root/histos_DEVFIX_10G_UL_8_6_A0_1_1_A1_1_1_A2_1_1_A3_1_1_A4_1_1_grid.root";
+      "./root/histos_DEVFIX_40G_UL_3_2_A0_1_2_A1_1_1_A2_1_2_A3_1_2_A4_1_1_corr.root"; 
     f_external = TFile::Open(external_jacobians_fname, "READ");
+    cout << "Using jacobians from external file " << external_jacobians_fname << endl; 
   }
   
   if(vm.count("degs_corr_x")) tag += std::string(Form("_UL_%d", degs_corr_x));
@@ -325,7 +326,6 @@ int main(int argc, char* argv[])
     else if(jacmass==2) jac_name = TString(Form("jac2_%d", idx));
     TH2D* hjac = fin->Get<TH2D>( jac_name );
     if(jacobians_from_external){
-      cout << "Using jacobian from external file!" << endl;
       hjac = f_external->Get<TH2D>( jac_name );
     }
     // fall-back for consistency
@@ -422,6 +422,7 @@ int main(int argc, char* argv[])
 	for(unsigned int iy = 1; iy<=ny; iy++ ){
 	  if(!accept_bin(all_histos[0],ix,iy)) continue;
 	  double mu = all_histos[0]->GetBinContent(ix,iy);
+	  if(add_MC_uncert) mu = ran->Gaus(mu, all_histos[0]->GetBinError(ix,iy) );
 	  mu_ran(bin_counter) = ran->PoissonD(mu);  
 	  bin_counter++;
 	}
