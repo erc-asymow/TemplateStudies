@@ -102,9 +102,9 @@ int main(int argc, char* argv[])
 	("run", value<std::string>()->default_value("closure"), "run type")
 	("do_jac_vs_mass",    bool_switch()->default_value(false), "compute jacobians for three mass values")
 	("smear",  bool_switch()->default_value(false), "smear")
-	("getbin_extTH2_corr",  bool_switch()->default_value(false), "get bin corr(x,y)")
-	("inter_extTH2_corr",  bool_switch()->default_value(false), "interpol corr(x,y)")
-	("toyTF2_corr",  bool_switch()->default_value(false), "toy TF2 corr(x,y)")
+	//("getbin_extTH2_corr",  bool_switch()->default_value(false), "get bin corr(x,y)")
+	//("inter_extTH2_corr",  bool_switch()->default_value(false), "interpol corr(x,y)")
+	//("toyTF2_corr",  bool_switch()->default_value(false), "toy TF2 corr(x,y)")
 	("seed", value<int>()->default_value(4357), "seed")
 	("fit_qt_y",  bool_switch()->default_value(false), "fit qt vs y");
 
@@ -146,9 +146,9 @@ int main(int argc, char* argv[])
   int degs_A4_y   = vm["degs_A4_y"].as<int>();
   bool do_jac_vs_mass     = vm["do_jac_vs_mass"].as<bool>();
   bool smear      = vm["smear"].as<bool>();
-  bool getbin_extTH2_corr = vm["getbin_extTH2_corr"].as<bool>();
-  bool inter_extTH2_corr  = vm["inter_extTH2_corr"].as<bool>();
-  bool toyTF2_corr        = vm["toyTF2_corr"].as<bool>();
+  //bool getbin_extTH2_corr = vm["getbin_extTH2_corr"].as<bool>();
+  //bool inter_extTH2_corr  = vm["inter_extTH2_corr"].as<bool>();
+  //bool toyTF2_corr        = vm["toyTF2_corr"].as<bool>();
   bool fit_qt_y           = vm["fit_qt_y"].as<bool>();
   int seed = vm["seed"].as<int>();
 
@@ -176,7 +176,7 @@ int main(int argc, char* argv[])
   if(run=="corr") do_cheb_as_modifiers = true;
   
   int nbins_rap   = 25; 
-  double rap_low  = 0.0;
+  double rap_low  = -2.5;
   double rap_high = +2.5;
   int nbins_pt    = 35; 
   double pt_low   = 25.;
@@ -263,13 +263,13 @@ int main(int argc, char* argv[])
     njacs_A0_x     = degs(pdf_type::A0_x) ;
     njacs_A0_y     = degs(pdf_type::A0_y)/2 + 1;
     njacs_A1_x     = degs(pdf_type::A1_x);
-    njacs_A1_y     = degs(pdf_type::A1_y);
+    njacs_A1_y     = (degs(pdf_type::A1_y)+1)/2;
     njacs_A2_x     = degs(pdf_type::A2_x);
     njacs_A2_y     = degs(pdf_type::A2_y)/2 + 1;
     njacs_A3_x     = degs(pdf_type::A3_x);
     njacs_A3_y     = degs(pdf_type::A3_y)/2 + 1;
     njacs_A4_x     = degs(pdf_type::A4_x) + 1;
-    njacs_A4_y     = degs(pdf_type::A4_y);
+    njacs_A4_y     = (degs(pdf_type::A4_y)+1)/2;
   }
   else if(run=="corr"){
     njacs_corrxy_x = degs(pdf_type::corr_x) + 1;
@@ -277,13 +277,13 @@ int main(int argc, char* argv[])
     njacs_A0_x     = degs(pdf_type::A0_x) + 1;
     njacs_A0_y     = degs(pdf_type::A0_y)/2 + 1;
     njacs_A1_x     = degs(pdf_type::A1_x) + 1;
-    njacs_A1_y     = degs(pdf_type::A1_y) + 1;
+    njacs_A1_y     = degs(pdf_type::A1_y)/2 + 1;
     njacs_A2_x     = degs(pdf_type::A2_x) + 1;
     njacs_A2_y     = degs(pdf_type::A2_y)/2 + 1;
     njacs_A3_x     = degs(pdf_type::A3_x) + 1;
     njacs_A3_y     = degs(pdf_type::A3_y)/2 + 1;
     njacs_A4_x     = degs(pdf_type::A4_x) + 1;
-    njacs_A4_y     = degs(pdf_type::A4_y) + 1;
+    njacs_A4_y     = degs(pdf_type::A4_y)/2 + 1;
   }
   else if(run=="grid"){
     njacs_corrxy_x = degs(pdf_type::corr_x);
@@ -342,30 +342,33 @@ int main(int argc, char* argv[])
   auto toy_y = [&](double y)->double{
     return 1.0/int_toy_y/TMath::Sqrt(2*TMath::Pi()*sigma2_y)*TMath::Exp(-0.5*y*y/sigma2_y);
   };
-  
+
+  /*
   TFile* fWJets = TFile::Open("WJets.root","READ");
   TH2F* th2_corrxy = 0;
-  TF2* tf2toy_corrxy = new TF2("toy_corrxy","0.1*(1.0 - 0.3*x*x)*TMath::Erf(5.0*y) + 1.0", 0., max_y, 0., max_x);
+  */
+  TF2* tf2toy_corrxy = new TF2("toy_corrxy","0.1*(1.0 - 0.3*y*y)*TMath::Erf(5.0*x) + 1.0", 0., max_x, -max_y, +max_y);
   auto toy_corrxy = [](double x, double y)->double{
-    return 0.1*(1.0 - 0.3*x*x)*TMath::Erf(5.0*y) + 1.0;
+    return 0.1*(1.0 - 0.3*y*y)*TMath::Erf(5.0*x) + 1.0;
   };
-  if(fWJets!=nullptr && !fWJets->IsZombie()){
-    std::cout << "WJets file found! Taking h2 as corrxy" << std::endl;
-    th2_corrxy = fWJets->Get<TH2F>("h2");
-  }
+  //if(fWJets!=nullptr && !fWJets->IsZombie()){
+  //  std::cout << "WJets file found! Taking h2 as corrxy" << std::endl;
+  //  th2_corrxy = fWJets->Get<TH2F>("h2");
+  //}
 
-  TF2* tf2toy_A0 = new TF2("toy_A0", "2*y*y*(1 - 0.01*x*x)", 0., max_y, 0., max_x);  
-  TF2* tf2toy_A1 = new TF2("toy_A1", "(0.5*y + 2*y*y)*( 0.05*x + 0.01*x*x)", 0., max_y, 0., max_x);
-  TF2* tf2toy_A2 = new TF2("toy_A2", "2*y*y*(1 - 0.01*x*x)", 0., max_y, 0., max_x);
-  TF2* tf2toy_A3 = new TF2("toy_A3", "(y + y*y + y*y*y)*(1 - 0.01*x*x)", 0., max_y, 0., max_x);
-  //TF2* tf2toy_A4 = new TF2("toy_A4", "(y+1)*(0.5*x + x*x)/6.0", 0., max_y, 0., max_x);
-  TF2* tf2toy_A4 = new TF2("toy_A4", "(-y/3+2.0)*TMath::TanH(x/2.5)", 0., max_y, 0., max_x);
+  TF2* tf2toy_A0 = new TF2("toy_A0", "2*x*x*(1 - 0.01*y*y)",                    0., max_x, -max_y, max_y);  
+  TF2* tf2toy_A1 = new TF2("toy_A1", "(0.5*x + 2*x*x)*( 0.05*y + 0.002*y*y*y)", 0., max_x, -max_y, max_y);
+  TF2* tf2toy_A2 = new TF2("toy_A2", "2*x*x*(1 - 0.01*y*y)",                    0., max_x, -max_y, max_y);
+  TF2* tf2toy_A3 = new TF2("toy_A3", "(x + x*x + x*x*x)*(1 - 0.01*y*y)",        0., max_x, -max_y, max_y);
+  TF2* tf2toy_A4 = new TF2("toy_A4", "(1-x)*(y + y*y*y/10.)/5",                 0., max_x, -max_y, max_y);
+  //TF2* tf2toy_A4 = new TF2("toy_A4", "(-y/3+2.0)*TMath::TanH(x/2.5)", 0., max_y, 0., max_x);
 
-  auto toy_A0 = [](double x, double y)->double{ return 2*y*y*(1 - 0.01*x*x); };
-  auto toy_A1 = [](double x, double y)->double{ return (0.5*y + 2*y*y)*( 0.05*x + 0.01*x*x); };
-  auto toy_A2 = [](double x, double y)->double{ return 2*y*y*(1 - 0.01*x*x); };
-  auto toy_A3 = [](double x, double y)->double{ return (y + y*y + y*y*y)*(1 - 0.01*x*x); };
-  auto toy_A4 = [](double x, double y)->double{ return (-y/3+2.0)*TMath::TanH(x/2.5); };
+  auto toy_A0 = [](double x, double y)->double{ return 2*x*x*(1 - 0.01*y*y); };
+  auto toy_A1 = [](double x, double y)->double{ return (0.5*x + 2*x*x)*(0.05*y + 0.002*y*y*y); };
+  auto toy_A2 = [](double x, double y)->double{ return 2*x*x*(1 - 0.01*y*y); };
+  auto toy_A3 = [](double x, double y)->double{ return (x + x*x + x*x*x)*(1 - 0.01*y*y); };
+  //auto toy_A4 = [](double x, double y)->double{ return (-y/3+2.0)*TMath::TanH(x/2.5); };
+  auto toy_A4 = [](double x, double y)->double{ return (1-x)*(y + y*y*y/10.)/5; };
   
   
   // preprare inputs
@@ -382,9 +385,10 @@ int main(int argc, char* argv[])
 	tree->Branch(Form("corrxy_%d_%d", k,l), &(corr_xy[idx]), Form("corrxy_%d_%d/D", k,l));
 	double y = TMath::Cos((degs(pdf_type::corr_y)-l)*TMath::Pi()/degs(pdf_type::corr_y))*max_y;
 	corr_xy[idx] = toy_x(x)*toy_y(y);
-	if(getbin_extTH2_corr)     corr_xy[idx] *= th2_corrxy->GetBinContent( th2_corrxy->FindBin(TMath::Abs(y), x) );
-	else if(inter_extTH2_corr) corr_xy[idx] *= th2_corrxy->Interpolate(TMath::Abs(y),x);
-	else if(toyTF2_corr)       corr_xy[idx] *= toy_corrxy(TMath::Abs(y),x);
+	//if(getbin_extTH2_corr)     corr_xy[idx] *= th2_corrxy->GetBinContent( th2_corrxy->FindBin(TMath::Abs(y), x) );
+	//else if(inter_extTH2_corr) corr_xy[idx] *= th2_corrxy->Interpolate(TMath::Abs(y),x);
+	//else if(toyTF2_corr)
+	corr_xy[idx] *= toy_corrxy(x,y);
       }
     }
 
@@ -396,7 +400,7 @@ int main(int argc, char* argv[])
 	int idx = (degs(pdf_type::A0_y)+1)*m + n; 
 	tree->Branch(Form("A0_xy_%d_%d", m,n), &(A0_xy[idx]), Form("A0_xy_%d_%d/D", m,n));
 	double y = TMath::Cos((degs(pdf_type::A0_y)-n)*TMath::Pi()/degs(pdf_type::A0_y))*max_y;
-	A0_xy[idx] = toy_A0(TMath::Abs(y),x);
+	A0_xy[idx] = toy_A0(x,y);
       }
     }
 
@@ -407,8 +411,8 @@ int main(int argc, char* argv[])
       for(int n = 0; n<=degs(pdf_type::A1_y); n++){
 	int idx = (degs(pdf_type::A1_y)+1)*m + n; 
 	tree->Branch(Form("A1_xy_%d_%d", m,n), &(A1_xy[idx]), Form("A1_xy_%d_%d/D", m,n));
-	double y = (TMath::Cos((degs(pdf_type::A1_y)-n)*TMath::Pi()/degs(pdf_type::A1_y))+1.0)*0.5*max_y; 
-	A1_xy[idx] = toy_A1(TMath::Abs(y),x);
+	double y = TMath::Cos((degs(pdf_type::A1_y)-n)*TMath::Pi()/degs(pdf_type::A1_y))*max_y; 
+	A1_xy[idx] = toy_A1(x,y);
       }
     }
 
@@ -420,7 +424,7 @@ int main(int argc, char* argv[])
 	int idx = (degs(pdf_type::A2_y)+1)*m + n; 
 	tree->Branch(Form("A2_xy_%d_%d", m,n), &(A2_xy[idx]), Form("A2_xy_%d_%d/D", m,n));
 	double y = TMath::Cos((degs(pdf_type::A2_y)-n)*TMath::Pi()/degs(pdf_type::A2_y))*max_y;
-	A2_xy[idx] = toy_A2(TMath::Abs(y),x);
+	A2_xy[idx] = toy_A2(x,y);
       }
     }
 
@@ -432,7 +436,7 @@ int main(int argc, char* argv[])
 	int idx = (degs(pdf_type::A3_y)+1)*m + n; 
 	tree->Branch(Form("A3_xy_%d_%d", m,n), &(A3_xy[idx]), Form("A3_xy_%d_%d/D", m,n));
 	double y = TMath::Cos((degs(pdf_type::A3_y)-n)*TMath::Pi()/degs(pdf_type::A3_y))*max_y;
-	A3_xy[idx] = toy_A3(TMath::Abs(y),x);
+	A3_xy[idx] = toy_A3(x,y);
       }
     }
 
@@ -443,8 +447,8 @@ int main(int argc, char* argv[])
       for(int n = 0; n<=degs(pdf_type::A4_y); n++){
 	int idx = (degs(pdf_type::A4_y)+1)*m + n; 
 	tree->Branch(Form("A4_xy_%d_%d", m,n), &(A4_xy[idx]), Form("A4_xy_%d_%d/D", m,n));
-	double y = (TMath::Cos((degs(pdf_type::A4_y)-n)*TMath::Pi()/degs(pdf_type::A4_y))+1.0)*0.5*max_y;
-	A4_xy[idx] = toy_A4(TMath::Abs(y),x);
+	double y = TMath::Cos((degs(pdf_type::A4_y)-n)*TMath::Pi()/degs(pdf_type::A4_y))*max_y;
+	A4_xy[idx] = toy_A4(x,y);
       }
     }
 
@@ -513,7 +517,7 @@ int main(int argc, char* argv[])
     out.emplace_back( x );
     out.emplace_back( y );
     out.emplace_back( pt );		
-    out.emplace_back( TMath::Abs(eta) );
+    out.emplace_back( eta /*TMath::Abs(eta)*/ );
     double pt_smear  = rans[nslot]->Gaus(pt*(1.0 + deltakOk), pt*deltapOp);
     double eta_smear = eta + rans[nslot]->Gaus(0.0, deltah);
     out.emplace_back( pt_smear );		
@@ -562,25 +566,17 @@ int main(int argc, char* argv[])
     dlast = std::make_unique<RNode>(dlast->Define(hel+"xy_vec", 
 						  [&,hel](double x, double y)->RVecD{
 						    RVecD out;
+						    bool is_odd = !do_cheb_as_modifiers && (hel=="A1" || hel=="A4");
 						    unsigned int k0 = (do_cheb_as_modifiers || hel=="A4") ? 0 : 1;
 						    for(unsigned int k = k0; k<=degs(get_pdf_type(hel+"_x")); k++){
 						      double Ax = cheb(x, 0.5*max_x, 1.0, degs(get_pdf_type(hel+"_x")), k);
-						      if(hel=="A1" || hel=="A4"){
-							unsigned int l0 = do_cheb_as_modifiers ? 0 : 1;
-							for(unsigned int l = l0; l<=degs(get_pdf_type(hel+"_y")); l++){
-							  double Ay = cheb(TMath::Abs(y), 0.5*max_y, 1.0, degs(get_pdf_type(hel+"_y")), l);
-							  out.emplace_back( Ax*Ay );
-							}
-						      }
-						      else{
-							unsigned int deg = degs(get_pdf_type(hel+"_y"));
-							unsigned int mid_deg = deg/2;
-							for(unsigned int l = 0; l<=mid_deg; l++){
-							  double cheb_l = (cheb(y, max_y, 0.0, deg, l) + cheb(y, max_y, 0.0, deg, deg-l)) ;
-							  double alpha_l = l<mid_deg ? 1.0 : (deg%2==0 ? 0.5 : 1.0);
-							  out.emplace_back( Ax*(cheb_l*alpha_l) );
-							}
-						      }
+						      unsigned int deg = degs(get_pdf_type(hel+"_y"));
+						      unsigned int up_deg = is_odd ? (deg+1)/2 : deg/2+1 ;
+						      for(unsigned int l = 0; l<up_deg; l++){
+							double cheb_l = (cheb(y, max_y, 0.0, deg, l) + (is_odd? -1 : +1)*cheb(y, max_y, 0.0, deg, deg-l)) ;
+							double alpha_l = (!is_odd && l==(up_deg-1) && deg%2==0) ? 0.5 : 1.0;;
+							out.emplace_back( Ax*(cheb_l*alpha_l) );
+						      }						      
 						    }
 						    return out;
 						  }, {"x","y"} ));
@@ -678,10 +674,10 @@ int main(int argc, char* argv[])
     if(run!="grid"){
 
       int k0 = do_cheb_as_modifiers ? 0 : 1;
-      int l0 = do_cheb_as_modifiers ? 0 : 1;
+      //int l0 = do_cheb_as_modifiers ? 0 : 1;
       
-      for(int k = k0; k<=degs(pdf_type::corr_x); k++){
-	for(int l = 0; l<=degs(pdf_type::corr_y)/2; l++){      
+      for(int k = k0; k<(njacs_corrxy_x+k0); k++){
+	for(int l = 0; l<njacs_corrxy_y; l++){      
 	  int idx = (degs(pdf_type::corr_y) + 1)*k + l; 
 	  corrxy_in.emplace_back( corr_xy[idx] );
 	  poi_val[poi_counter] = corr_xy[idx];
@@ -691,8 +687,8 @@ int main(int argc, char* argv[])
 	}
       }
             
-      for(int k = k0; k<=degs(pdf_type::A0_x); k++){
-	for(int l = 0; l<=degs(pdf_type::A0_y)/2; l++){      
+      for(int k = k0; k<(njacs_A0_x+k0); k++){
+	for(int l = 0; l<njacs_A0_y; l++){      
 	int idx = (degs(pdf_type::A0_y)+1)*k + l; 
 	A0xy_in.emplace_back( A0_xy[idx] );
 	poi_val[poi_counter] = A0_xy[idx];
@@ -702,8 +698,8 @@ int main(int argc, char* argv[])
 	}
       }
 
-      for(int k = k0; k<=degs(pdf_type::A1_x); k++){
-	for(int l = l0; l<=degs(pdf_type::A1_y); l++){      
+      for(int k = k0; k<(njacs_A1_x+k0); k++){
+	for(int l = 0; l<njacs_A1_y; l++){      
 	  int idx = (degs(pdf_type::A1_y)+1)*k + l; 
 	  A1xy_in.emplace_back( A1_xy[idx] );
 	  poi_val[poi_counter] = A1_xy[idx];
@@ -713,8 +709,8 @@ int main(int argc, char* argv[])
 	}
       }
       
-      for(int k = k0; k<=degs(pdf_type::A2_x); k++){
-	for(int l = 0; l<=degs(pdf_type::A2_y)/2; l++){      
+      for(int k = k0; k<(njacs_A2_x+k0); k++){
+	for(int l = 0; l<njacs_A2_y; l++){      
 	  int idx = (degs(pdf_type::A2_y)+1)*k + l; 
 	  A2xy_in.emplace_back( A2_xy[idx] );
 	  poi_val[poi_counter] = A2_xy[idx];
@@ -724,8 +720,8 @@ int main(int argc, char* argv[])
 	}
       }
 
-      for(int k = k0; k<=degs(pdf_type::A3_x); k++){
-	for(int l = 0; l<=degs(pdf_type::A3_y)/2; l++){      
+      for(int k = k0; k<(njacs_A3_x+k0); k++){
+	for(int l = 0; l<njacs_A3_y; l++){      
 	  int idx = (degs(pdf_type::A3_y)+1)*k + l; 
 	  A3xy_in.emplace_back( A3_xy[idx] );
 	  poi_val[poi_counter] = A3_xy[idx];
@@ -735,8 +731,8 @@ int main(int argc, char* argv[])
 	}
       }
       
-      for(int k = 0; k<=degs(pdf_type::A4_x); k++){
-	for(int l = l0; l<=degs(pdf_type::A4_y); l++){      
+      for(int k = 0; k<njacs_A4_x; k++){
+	for(int l = 0; l<njacs_A4_y; l++){      
 	  int idx = (degs(pdf_type::A4_y)+1)*k + l; 
 	  A4xy_in.emplace_back( A4_xy[idx] );
 	  poi_val[poi_counter] = A4_xy[idx];
@@ -819,8 +815,8 @@ int main(int argc, char* argv[])
     
     dlast = std::make_unique<RNode>(dlast->Define("harmonics", [&](double x, double y, double cos, double phi) -> RVecD{
 	  RVecD out;
-	  double cosS = y>0 ? cos : -cos;
-	  double phiS = y>0 ? phi : -phi;
+	  double cosS = cos;//y>0 ? cos : -cos;
+	  double phiS = phi;//y>0 ? phi : -phi;
 	  double sinS = TMath::Sqrt(1-cosS*cosS);
 	  out.emplace_back( 1.0 + cosS*cosS );
 	  out.emplace_back( 0.5*(1-3*cosS*cosS) );
@@ -836,14 +832,21 @@ int main(int argc, char* argv[])
 	  RVecD out;
 	  double norm{3./16/TMath::Pi()};
 	  double UL = toy_x(x)*toy_y(y);
-	  if(getbin_extTH2_corr)     UL *= th2_corrxy->GetBinContent( th2_corrxy->FindBin(TMath::Abs(y),x) );
-	  else if(inter_extTH2_corr) UL *= th2_corrxy->Interpolate(TMath::Abs(y),x);
-	  else if(toyTF2_corr)       UL *= toy_corrxy(TMath::Abs(y),x);	   
-	  double A0 = toy_A0(TMath::Abs(y),x);
-	  double A1 = toy_A1(TMath::Abs(y),x);
-	  double A2 = toy_A2(TMath::Abs(y),x);
-	  double A3 = toy_A3(TMath::Abs(y),x);
-	  double A4 = toy_A4(TMath::Abs(y),x);
+	  //if(getbin_extTH2_corr)     UL *= th2_corrxy->GetBinContent( th2_corrxy->FindBin(TMath::Abs(y),x) );
+	  //else if(inter_extTH2_corr) UL *= th2_corrxy->Interpolate(TMath::Abs(y),x);
+	  //else if(toyTF2_corr)
+	  UL *= toy_corrxy(x,y);	   
+	  double A0 = toy_A0(x,y);
+	  double A1 = toy_A1(x,y);
+	  double A2 = toy_A2(x,y);
+	  double A3 = toy_A3(x,y);
+	  double A4 = toy_A4(x,y);
+	  //cout << "\tULtoy =" << UL << endl;
+	  //cout << "\tA0toy =" << A0 << endl;
+	  //cout << "\tA1toy =" << A1 << endl;
+	  //cout << "\tA2toy =" << A2 << endl;
+	  //cout << "\tA3toy =" << A3 << endl;
+	  //cout << "\tA4toy =" << A4 << endl;
 	  double norm_UL   = norm*UL;
 	  double norm_PiAi = norm*(har.at(0)+A0*har.at(1)+A1*har.at(2)+A2*har.at(3)+A3*har.at(4)+A4*har.at(5));
 	  out.emplace_back( UL*norm_PiAi);       // full weight 
@@ -864,6 +867,14 @@ int main(int argc, char* argv[])
 						   RVecD A3xy_vec,
 						   RVecD A4xy_vec,
 						   RVecD har )->RVecD {
+      /*
+      cout << corrxy_vec.size() << ", " << corrxy_in.size() << endl;
+      cout << A0xy_vec.size() << ", " << A0xy_in.size() << endl;
+      cout << A1xy_vec.size() << ", " << A1xy_in.size() << endl;
+      cout << A2xy_vec.size() << ", " << A2xy_in.size() << endl;
+      cout << A3xy_vec.size() << ", " << A3xy_in.size() << endl;
+      cout << A4xy_vec.size() << ", " << A4xy_in.size() << endl;
+      */
       RVecD out;
       double norm{3./16/TMath::Pi()};	  
       double UL = ROOT::VecOps::Dot(corrxy_vec,corrxy_in);
@@ -872,6 +883,12 @@ int main(int argc, char* argv[])
       double A2 = ROOT::VecOps::Dot(A2xy_vec,A2xy_in); 
       double A3 = ROOT::VecOps::Dot(A3xy_vec,A3xy_in);
       double A4 = ROOT::VecOps::Dot(A4xy_vec,A4xy_in);  
+      //cout << "\tULchb =" << UL << endl;
+      //cout << "\tA0chb =" << A0 << endl;
+      //cout << "\tA1chb =" << A1 << endl;
+      //cout << "\tA2chb =" << A2 << endl;
+      //cout << "\tA3chb =" << A3 << endl;
+      //cout << "\tA4chb =" << A4 << endl;
       double norm_UL   = norm*UL;      
       double norm_PiAi = norm*(har.at(0)+A0*har.at(1)+A1*har.at(2)+A2*har.at(3)+A3*har.at(4)+A4*har.at(5));
       out.emplace_back( UL*norm_PiAi);       // full weight 
@@ -1020,10 +1037,7 @@ int main(int argc, char* argv[])
       else if(i>=first_jac_A1xy && i<first_jac_A2xy){
 	unsigned int idx_x = (i-first_jac_A1xy) / njacs_A1_y;
 	unsigned int idx_y = (i-first_jac_A1xy) % njacs_A1_y;
-	if(run=="full"){
-	  idx_x++;
- 	  idx_y++;
-	}
+	if(run=="full") idx_x++;
 	hname = std::string(Form("jac_%d: d(pdf) / d(A1xy_in[%d][%d])", i, idx_x, idx_y));	
       }
       else if(i>=first_jac_A2xy && i<first_jac_A3xy){
@@ -1041,9 +1055,7 @@ int main(int argc, char* argv[])
       else if(i>=first_jac_A4xy){
 	unsigned int idx_x = (i-first_jac_A4xy) / njacs_A4_y;
 	unsigned int idx_y = (i-first_jac_A4xy) % njacs_A4_y;
-	if(run=="full"){
- 	  idx_y++;
-	}
+	//if(run=="full") idx_y++;
 	hname = std::string(Form("jac_%d: d(pdf) / d(A4xy_in[%d][%d])", i, idx_x, idx_y));	
       }
       
