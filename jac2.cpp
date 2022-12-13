@@ -176,7 +176,7 @@ int main(int argc, char* argv[])
   if(run=="corr") do_cheb_as_modifiers = true;
   
   int nbins_rap   = 25; 
-  double rap_low  = -2.5;
+  double rap_low  = 0.0;
   double rap_high = +2.5;
   int nbins_pt    = 35; 
   double pt_low   = 25.;
@@ -517,7 +517,7 @@ int main(int argc, char* argv[])
     out.emplace_back( x );
     out.emplace_back( y );
     out.emplace_back( pt );		
-    out.emplace_back( eta /*TMath::Abs(eta)*/ );
+    out.emplace_back( TMath::Abs(eta) );
     double pt_smear  = rans[nslot]->Gaus(pt*(1.0 + deltakOk), pt*deltapOp);
     double eta_smear = eta + rans[nslot]->Gaus(0.0, deltah);
     out.emplace_back( pt_smear );		
@@ -850,7 +850,8 @@ int main(int argc, char* argv[])
 	  double norm_UL   = norm*UL;
 	  double norm_PiAi = norm*(har.at(0)+A0*har.at(1)+A1*har.at(2)+A2*har.at(3)+A3*har.at(4)+A4*har.at(5));
 	  out.emplace_back( UL*norm_PiAi);       // full weight 
-	  out.emplace_back( norm_PiAi );         // weight for corr 
+	  //out.emplace_back( norm_PiAi );         // weight for corr
+	  out.emplace_back( UL*norm_PiAi);         // weight for corr FIX!!!
 	  out.emplace_back( norm_UL*A0*har.at(1) ); // weight for A0
 	  out.emplace_back( norm_UL*A1*har.at(2) ); // weight for A1
 	  out.emplace_back( norm_UL*A2*har.at(3) ); // weight for A2
