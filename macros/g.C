@@ -1,7 +1,7 @@
 {
 
   bool logy = true;
-  float norm_lumi = (0.1/0.785);
+  float norm_lumi = (0.100/0.785);
     
   TCanvas* c = new TCanvas("c", "canvas", 1000, 600);
   c->SetGridy();
@@ -13,9 +13,9 @@
   leg1->SetTextSize(0.025);
   leg1->SetFillColor(10);
   leg1->SetNColumns(2);
-  leg1->SetHeader("(L#times#sigma#times#epsilon#timesA) = 1.0#times10^{8} events, p_{T}/GeV#in[25,60], |#eta|<2.5");
+  leg1->SetHeader("Norm. = 1.0#times10^{8} events, p_{T}/GeV#in[25,60], |#eta|<2.5, no A_{4}");
 
-  TString image_name = "deltaM_vs_y_symfix_noA4.png";
+  TString image_name = "deltaM_vs_N_paper_noA4.eps";
   
   vector<TString> posttags = {
     "jUL_j0_j1_j2_j3_DEBUG_ADDMC_ULA0A1A2A3",
