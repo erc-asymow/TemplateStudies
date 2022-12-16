@@ -7,6 +7,7 @@ parser = argparse.ArgumentParser(description='run')
 
 parser.add_argument('--none', action='store_true'  , help = 'none')
 parser.add_argument('--dryrun', action='store_true'  , help = 'dry run')
+parser.add_argument('--smear', action='store_true'  , help = 'smear')
 parser.add_argument('--tag',  default='test'       , help = 'tag')
 parser.add_argument('--post_tag',  default='test'  , help = 'post tag')
 parser.add_argument('--algo',   default='all'        , help = 'algo')
@@ -22,6 +23,23 @@ parser.add_argument('--scale4', action='store_true'  , help = 'scale A4(x,y)')
 parser.add_argument('--jacmass', dest = 'jacmass'  , type = int,  default=-1, help='')
 
 args = parser.parse_args()
+
+sample_sizes = {
+    '10M':     10000000,
+    '100M':   100000000,
+    '1G':    1000000000,
+    '4G':    4000000000,
+    '10G':  10000000000,
+}
+
+fit_opts = {
+    'ADDMC_ULA0A1A2A3A4' : ' --jUL --j1 --j2 --j3 --j4 --add_MC_uncert',
+    'ULA0A1A2A3A4' :       ' --jUL --j1 --j2 --j3 --j4',
+    'ADDMC_ULA0A1A2A4':    ' --jUL --j1 --j2 --j4 --add_MC_uncert',
+    'ULA0A1A2A4' :         ' --jUL --j1 --j2 --j4',
+    'ADDMC_ULA0A1A2A3':    ' --jUL --j1 --j2 --j3 --add_MC_uncert',
+    'ULA0A1A2A3' :         ' --jUL --j1 --j2 --j3',
+}
 
 pol_default = {
     'run'    : "full",
@@ -125,8 +143,11 @@ if args.algo=='jac2':
     for k in pol_default.keys():
         if k=='run': continue
         command += ' --degs_'+k+'_x='+str(pol_default[k][0])+' --degs_'+k+'_y='+str(pol_default[k][1])
+    if args.smear:
+        command += ' --smear'
     print(command)
-    os.system(command)   
+    if not args.dryrun:
+        os.system(command)   
 
 elif args.algo=='jac2_systs':
     count = 0
@@ -137,6 +158,8 @@ elif args.algo=='jac2_systs':
                 command += ' --run='+syst[k]
             else:
                 command += ' --degs_'+k+'_x='+str(syst[k][0])+' --degs_'+k+'_y='+str(syst[k][1])
+        if args.smear:
+            command += ' --smear'
         print(command)
         if not args.dryrun:
             os.system(command)
@@ -146,50 +169,79 @@ elif args.algo=='jac2_systs':
 elif args.algo=='jac2_systs_vsN':
     count = 0
     for syst in pol_systs:
-        for n in [10000000,
-                  100000000,
-                  1000000000,
-                  4000000000,
-                  10000000000,
-                  ]:            
-            command  = './jac2 --nevents='+str(n) +' --tag='+args.tag
+        for size in sample_sizes.keys():
+            command  = './jac2 --nevents='+str(sample_sizes[size]) +' --tag='+args.tag+'_'+size
             for k in syst.keys():
                 if k=='run':
                     command += ' --run='+syst[k]
                 else:
                     command += ' --degs_'+k+'_x='+str(syst[k][0])+' --degs_'+k+'_y='+str(syst[k][1])
+            if args.smear:
+                command += ' --smear'
             print(command)
             if not args.dryrun:
                 os.system(command)   
-            count += 1
-            
+            count += 1            
     print('%.0f jobs will be submitted' % count)
-            
-elif args.algo=='fit':
-    command  = './fit --nevents='+str(args.nevents) +' --tag='+args.tag+' --run=closure --post_tag='+args.post_tag
-    for k in pol_default.keys():
-        command += ' --degs_'+k+'_x='+str(pol_default[k][0])+' --degs_'+k+'_y='+str(pol_default[k][1])
-    if (args.rebinX>0 or args.rebinY>0):
-        command += ' --rebinX='+str(args.rebinX)+' --rebinY='+str(args.rebinY)
-    for hel in ['0','1','2','3','4']:
-        if ( hasattr(args,"scale"+hel) and getattr(args,"scale"+hel) ):
-            command += (' --scale'+hel)
-    if args.jacmass>-1:
-        command += (' --jacmass='+str(args.jacmass))
-            
-    fit_opts = [' --jUL', 
-                ' --jUL --j0', 
-                ' --jUL --j0 --j1', 
-                ' --jUL --j0 --j1 --j2',
-                ' --jUL --j0 --j1 --j2 --j3',
-                ' --jUL --j0 --j1 --j2 --j4',
-                ' --jUL --j0 --j1 --j2 --j3 --j4',
-            ]
-    for i in fit_opts:
-        new_command = command+i
-        print(new_command)
-        os.system(new_command) 
 
+elif args.algo=='fit':
+    count = 0
+    for opt in fit_opts.keys():
+        command  = './fit --nevents='+str(args.nevents)+' --tag='+args.tag
+        for k in pol_default.keys():
+            if k=='run':
+                command += ' --run='+pol_default[k]
+            else:
+                command += ' --degs_'+k+'_x='+str(pol_default[k][0])+' --degs_'+k+'_y='+str(pol_default[k][1])
+        if (args.rebinX>0 or args.rebinY>0):
+            command += ' --rebinX='+str(args.rebinX)+' --rebinY='+str(args.rebinY)
+        command += fit_opts[opt]+' --post_tag='+args.post_tag+'_'+opt            
+        print(command)
+        if not args.dryrun:
+            os.system(command)   
+        count += 1            
+    print('%.0f jobs will be submitted' % count)
+
+elif args.algo=='fit_systs':
+    count = 0
+    for syst in pol_systs:
+        for opt in fit_opts.keys():
+            command  = './fit --nevents='+str(args.nevents)+' --tag='+args.tag
+            for k in syst.keys():
+                if k=='run':
+                    command += ' --run='+syst[k]
+                else:
+                    command += ' --degs_'+k+'_x='+str(syst[k][0])+' --degs_'+k+'_y='+str(syst[k][1])
+            if (args.rebinX>0 or args.rebinY>0):
+                command += ' --rebinX='+str(args.rebinX)+' --rebinY='+str(args.rebinY)
+            command += fit_opts[opt]+' --post_tag='+args.post_tag+'_'+opt            
+            print(command)
+            if not args.dryrun:
+                os.system(command)   
+            count += 1            
+    print('%.0f jobs will be submitted' % count)
+
+elif args.algo=='fit_systs_vsN':
+    count = 0
+    for syst in pol_systs:
+        for size in sample_sizes.keys():
+            for opt in fit_opts.keys():
+                command  = './fit --nevents='+str(args.nevents)+' --tag='+args.tag+'_'+size
+                for k in syst.keys():
+                    if k=='run':
+                        command += ' --run='+syst[k]
+                    else:
+                        command += ' --degs_'+k+'_x='+str(syst[k][0])+' --degs_'+k+'_y='+str(syst[k][1])
+                if (args.rebinX>0 or args.rebinY>0):
+                    command += ' --rebinX='+str(args.rebinX)+' --rebinY='+str(args.rebinY)
+                command += fit_opts[opt]+' --post_tag='+args.post_tag+'_'+opt            
+                print(command)
+                if not args.dryrun:
+                    os.system(command)   
+                count += 1            
+    print('%.0f jobs will be submitted' % count)
+
+    
 elif args.algo=='fit_systs':
     for syst in pol_systs:
         command  = './fit --nevents='+str(args.nevents) +' --tag='+args.tag+' --run=closure --post_tag='+args.post_tag
@@ -215,7 +267,9 @@ elif args.algo=='fit_systs':
             new_command = command+i
             print(new_command)
             os.system(new_command) 
-        
+
+
+            
 elif args.algo=='fit_fast':
     command  = './fit --nevents='+str(args.nevents) +' --tag='+args.tag+' --run=closure --post_tag='+args.post_tag
     for k in pol_default.keys():
