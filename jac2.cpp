@@ -255,9 +255,13 @@ int main(int argc, char* argv[])
   unsigned int njacs_A4_x = 0;
   unsigned int njacs_A4_y = 0;
 
-  //A1(.,0)=0
-  //A4(.,0)=0, but A4(0,.)!=0
+  //A1(.,0)=0 & odd
+  //A3(.,0)=0 & even
+  //A4(.,0)=0 & odd + A4(0,.)!=0
   if(run=="full"){
+
+    assert( degs(pdf_type::A3_y)%2 == 0 );
+    
     njacs_corrxy_x = degs(pdf_type::corr_x);
     njacs_corrxy_y = degs(pdf_type::corr_y)/2 + 1;
     njacs_A0_x     = degs(pdf_type::A0_x) ;
@@ -267,7 +271,7 @@ int main(int argc, char* argv[])
     njacs_A2_x     = degs(pdf_type::A2_x);
     njacs_A2_y     = degs(pdf_type::A2_y)/2 + 1;
     njacs_A3_x     = degs(pdf_type::A3_x);
-    njacs_A3_y     = degs(pdf_type::A3_y)/2 + 1;
+    njacs_A3_y     = degs(pdf_type::A3_y)/2;
     njacs_A4_x     = degs(pdf_type::A4_x) + 1;
     njacs_A4_y     = (degs(pdf_type::A4_y)+1)/2;
   }
@@ -359,15 +363,15 @@ int main(int argc, char* argv[])
   TF2* tf2toy_A0 = new TF2("toy_A0", "2*x*x*(1 - 0.01*y*y)",                    0., max_x, -max_y, max_y);  
   TF2* tf2toy_A1 = new TF2("toy_A1", "(0.5*x + 2*x*x)*( 0.05*y + 0.002*y*y*y)", 0., max_x, -max_y, max_y);
   TF2* tf2toy_A2 = new TF2("toy_A2", "2*x*x*(1 - 0.01*y*y)",                    0., max_x, -max_y, max_y);
-  TF2* tf2toy_A3 = new TF2("toy_A3", "(x + x*x + x*x*x)*(1 - 0.01*y*y)",        0., max_x, -max_y, max_y);
+  //TF2* tf2toy_A3 = new TF2("toy_A3", "(x + x*x + x*x*x)*(1 - 0.01*y*y)",        0., max_x, -max_y, max_y);
+  TF2* tf2toy_A3 = new TF2("toy_A3", "0.3*(x + x*x + x*x*x)*(0.1*y*y)",         0., max_x, -max_y, max_y);
   TF2* tf2toy_A4 = new TF2("toy_A4", "(1-x)*(y + y*y*y/10.)/5",                 0., max_x, -max_y, max_y);
-  //TF2* tf2toy_A4 = new TF2("toy_A4", "(-y/3+2.0)*TMath::TanH(x/2.5)", 0., max_y, 0., max_x);
 
   auto toy_A0 = [](double x, double y)->double{ return 2*x*x*(1 - 0.01*y*y); };
   auto toy_A1 = [](double x, double y)->double{ return (0.5*x + 2*x*x)*(0.05*y + 0.002*y*y*y); };
   auto toy_A2 = [](double x, double y)->double{ return 2*x*x*(1 - 0.01*y*y); };
-  auto toy_A3 = [](double x, double y)->double{ return (x + x*x + x*x*x)*(1 - 0.01*y*y); };
-  //auto toy_A4 = [](double x, double y)->double{ return (-y/3+2.0)*TMath::TanH(x/2.5); };
+  //auto toy_A3 = [](double x, double y)->double{ return (x + x*x + x*x*x)*(1 - 0.01*y*y); };
+  auto toy_A3 = [](double x, double y)->double{ return 0.3*(x + x*x + x*x*x)*(0.1*y*y); };
   auto toy_A4 = [](double x, double y)->double{ return (1-x)*(y + y*y*y/10.)/5; };
   
   
@@ -572,6 +576,7 @@ int main(int argc, char* argv[])
 						      double Ax = cheb(x, 0.5*max_x, 1.0, degs(get_pdf_type(hel+"_x")), k);
 						      unsigned int deg = degs(get_pdf_type(hel+"_y"));
 						      unsigned int up_deg = is_odd ? (deg+1)/2 : deg/2+1 ;
+						      if(run=="full" && hel=="A3") up_deg--;
 						      for(unsigned int l = 0; l<up_deg; l++){
 							double cheb_l = (cheb(y, max_y, 0.0, deg, l) + (is_odd? -1 : +1)*cheb(y, max_y, 0.0, deg, deg-l)) ;
 							double alpha_l = (!is_odd && l==(up_deg-1) && deg%2==0) ? 0.5 : 1.0;;
@@ -674,7 +679,6 @@ int main(int argc, char* argv[])
     if(run!="grid"){
 
       int k0 = do_cheb_as_modifiers ? 0 : 1;
-      //int l0 = do_cheb_as_modifiers ? 0 : 1;
       
       for(int k = k0; k<(njacs_corrxy_x+k0); k++){
 	for(int l = 0; l<njacs_corrxy_y; l++){      
@@ -849,9 +853,8 @@ int main(int argc, char* argv[])
 	  //cout << "\tA4toy =" << A4 << endl;
 	  double norm_UL   = norm*UL;
 	  double norm_PiAi = norm*(har.at(0)+A0*har.at(1)+A1*har.at(2)+A2*har.at(3)+A3*har.at(4)+A4*har.at(5));
-	  out.emplace_back( UL*norm_PiAi);       // full weight 
-	  //out.emplace_back( norm_PiAi );         // weight for corr
-	  out.emplace_back( UL*norm_PiAi);         // weight for corr FIX!!!
+	  out.emplace_back( UL*norm_PiAi);          // full weight 
+	  out.emplace_back( UL*norm_PiAi);          // weight for corr
 	  out.emplace_back( norm_UL*A0*har.at(1) ); // weight for A0
 	  out.emplace_back( norm_UL*A1*har.at(2) ); // weight for A1
 	  out.emplace_back( norm_UL*A2*har.at(3) ); // weight for A2

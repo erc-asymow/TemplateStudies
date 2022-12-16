@@ -6,9 +6,11 @@ import copy
 parser = argparse.ArgumentParser(description='run')
 
 parser.add_argument('--none', action='store_true'  , help = 'none')
+parser.add_argument('--dryrun', action='store_true'  , help = 'dry run')
 parser.add_argument('--tag',  default='test'       , help = 'tag')
 parser.add_argument('--post_tag',  default='test'  , help = 'post tag')
-parser.add_argument('--algo', default='all'        , help = 'algo')
+parser.add_argument('--algo',   default='all'        , help = 'algo')
+parser.add_argument('--run',   default='full'        , help = 'run')
 parser.add_argument('--nevents', dest = 'nevents'  , type = int,  default=10000000, help='number of events')
 parser.add_argument('--rebinX', dest = 'rebinX'  , type = int,  default=-1, help='')
 parser.add_argument('--rebinY', dest = 'rebinY'  , type = int,  default=-1, help='')
@@ -22,85 +24,147 @@ parser.add_argument('--jacmass', dest = 'jacmass'  , type = int,  default=-1, he
 args = parser.parse_args()
 
 pol_default = {
-    'corr'   : [10,6],
-    'A0'     : [3,3],
+    'run'    : "full",
+    'corr'   : [10,4],
+    'A0'     : [3,2],
     'A1'     : [3,3],
-    'A2'     : [3,3],
-    'A3'     : [3,3],
+    'A2'     : [3,2],
+    'A3'     : [3,4],
     'A4'     : [3,3]
 }
 
-
 pol_systs = []
 
-pol_syst0 = copy.deepcopy(pol_default)
-pol_syst0['corr'] = [8,4]
-#pol_systs.append( pol_syst0 )
+pol_systs.append( pol_default )
 
-pol_syst1 = copy.deepcopy(pol_default)
-pol_syst1['corr'] = [10,6]
-#pol_systs.append( pol_syst1 )
+pol_syst = copy.deepcopy(pol_default)
+pol_syst['A0'] = [2,2]
+pol_syst['A2'] = [2,2]
+pol_systs.append( pol_syst )
 
-pol_syst2 = copy.deepcopy(pol_default)
-pol_syst2['A3'] = [4,4]
-#pol_systs.append( pol_syst2 )
+pol_syst= copy.deepcopy(pol_default)
+pol_syst['A3'] = [2,4]
+pol_systs.append( pol_syst )
 
-pol_syst3 = copy.deepcopy(pol_default)
-pol_syst3['A4'] = [3,4]
-pol_systs.append( pol_syst3 )
+pol_syst= copy.deepcopy(pol_default)
+pol_syst['A3'] = [3,2]
+pol_systs.append( pol_syst )
 
-pol_syst4 = copy.deepcopy(pol_default)
-pol_syst4['A4'] = [3,5]
-pol_systs.append( pol_syst4 )
+pol_syst= copy.deepcopy(pol_default)
+pol_syst['A4'] = [1,3]
+pol_systs.append( pol_syst )
 
-pol_syst5 = copy.deepcopy(pol_default)
-pol_syst5['A4'] = [3,6]
-pol_systs.append( pol_syst5 )
+pol_syst = copy.deepcopy(pol_default)
+pol_syst['run'] = "corr"
+pol_syst['corr'] = [3,2]
+pol_syst['A0']   = [2,2]
+pol_syst['A1']   = [2,2]
+pol_syst['A2']   = [2,2]
+pol_syst['A2']   = [2,2]
+pol_syst['A3']   = [2,2]
+pol_syst['A4']   = [2,2]
+pol_systs.append( pol_syst )
 
-pol_syst6 = copy.deepcopy(pol_default)
-pol_syst6['corr'] = [13,4]
-#pol_systs.append( pol_syst6 )
+pol_syst = copy.deepcopy(pol_default)
+pol_syst['run'] = "corr"
+pol_syst['corr'] = [5,2]
+pol_syst['A0']   = [2,2]
+pol_syst['A1']   = [2,2]
+pol_syst['A2']   = [2,2]
+pol_syst['A2']   = [2,2]
+pol_syst['A3']   = [2,2]
+pol_syst['A4']   = [2,2]
+pol_systs.append( pol_syst )
 
-pol_syst7 = copy.deepcopy(pol_default)
-pol_syst7['corr'] = [14,4]
-#pol_systs.append( pol_syst7 )
+pol_syst = copy.deepcopy(pol_default)
+pol_syst['run'] = "corr"
+pol_syst['corr'] = [3,2]
+pol_syst['A0']   = [2,2]
+pol_syst['A1']   = [2,2]
+pol_syst['A2']   = [2,2]
+pol_syst['A2']   = [2,2]
+pol_syst['A3']   = [1,2]
+pol_syst['A4']   = [2,2]
+pol_systs.append( pol_syst )
 
+pol_syst = copy.deepcopy(pol_default)
+pol_syst['run'] = "corr"
+pol_syst['corr'] = [3,2]
+pol_syst['A0']   = [2,2]
+pol_syst['A1']   = [2,2]
+pol_syst['A2']   = [2,2]
+pol_syst['A2']   = [2,2]
+pol_syst['A3']   = [2,2]
+pol_syst['A4']   = [1,2]
+pol_systs.append( pol_syst )
+
+pol_syst = copy.deepcopy(pol_default)
+pol_syst['run'] = "corr"
+pol_syst['corr'] = [3,2]
+pol_syst['A0']   = [1,2]
+pol_syst['A1']   = [1,2]
+pol_syst['A2']   = [1,2]
+pol_syst['A2']   = [1,2]
+pol_syst['A3']   = [1,2]
+pol_syst['A4']   = [1,2]
+pol_systs.append( pol_syst )
+
+pol_syst = copy.deepcopy(pol_default)
+pol_syst['run'] = "grid"
+pol_syst['corr'] = [8,6]
+pol_syst['A0']   = [8,6]
+pol_syst['A1']   = [8,6]
+pol_syst['A2']   = [8,6]
+pol_syst['A2']   = [8,6]
+pol_syst['A3']   = [8,6]
+pol_syst['A4']   = [8,6]
+pol_systs.append( pol_syst )
 
 if args.algo=='jac2':
-    command  = './jac2 --nevents='+str(args.nevents) +' --tag='+args.tag+' --run=closure'
+    command  = './jac2 --nevents='+str(args.nevents) +' --tag='+args.tag+' --run='+pol_default['run']
     for k in pol_default.keys():
+        if k=='run': continue
         command += ' --degs_'+k+'_x='+str(pol_default[k][0])+' --degs_'+k+'_y='+str(pol_default[k][1])
-    command += ' --toyTF2_corr'
     print(command)
     os.system(command)   
 
 elif args.algo=='jac2_systs':
+    count = 0
     for syst in pol_systs:
-        command  = './jac2 --nevents='+str(args.nevents) +' --tag='+args.tag+' --run=closure'
+        command  = './jac2 --nevents='+str(args.nevents) +' --tag='+args.tag
         for k in syst.keys():
-            command += ' --degs_'+k+'_x='+str(syst[k][0])+' --degs_'+k+'_y='+str(syst[k][1])
-        command += ' --toyTF2_corr'
+            if k=='run':
+                command += ' --run='+syst[k]
+            else:
+                command += ' --degs_'+k+'_x='+str(syst[k][0])+' --degs_'+k+'_y='+str(syst[k][1])
         print(command)
-        os.system(command)   
+        if not args.dryrun:
+            os.system(command)
+        count += 1
+    print('%.0f jobs will be submitted' % count)
 
-elif args.algo=='jac3':
-    command  = './jac3 --nevents='+str(args.nevents) +' --tag='+args.tag+' --run=grid'
-    for k in pol_default.keys():
-        if 'corr' not in k: continue
-        command += ' --degs_'+k+'_x='+str(pol_default[k][0])+' --degs_'+k+'_y='+str(pol_default[k][1])
-    command += ' --toyTF2_corr'
-    print(command)
-    os.system(command)   
-
-elif args.algo=='jac4':
-    command  = './jac4 --nevents='+str(args.nevents) +' --tag='+args.tag+' --run=exact'
-    for k in pol_default.keys():
-        if 'corr' not in k: continue
-        command += ' --degs_'+k+'_x='+str(pol_default[k][0])+' --degs_'+k+'_y='+str(pol_default[k][1])
-    command += ' --toyTF2_corr'
-    print(command)
-    os.system(command)   
-
+elif args.algo=='jac2_systs_vsN':
+    count = 0
+    for syst in pol_systs:
+        for n in [10000000,
+                  100000000,
+                  1000000000,
+                  4000000000,
+                  10000000000,
+                  ]:            
+            command  = './jac2 --nevents='+str(n) +' --tag='+args.tag
+            for k in syst.keys():
+                if k=='run':
+                    command += ' --run='+syst[k]
+                else:
+                    command += ' --degs_'+k+'_x='+str(syst[k][0])+' --degs_'+k+'_y='+str(syst[k][1])
+            print(command)
+            if not args.dryrun:
+                os.system(command)   
+            count += 1
+            
+    print('%.0f jobs will be submitted' % count)
+            
 elif args.algo=='fit':
     command  = './fit --nevents='+str(args.nevents) +' --tag='+args.tag+' --run=closure --post_tag='+args.post_tag
     for k in pol_default.keys():
