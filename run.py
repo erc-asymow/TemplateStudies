@@ -30,22 +30,23 @@ sample_sizes = {
     '1G':    1000000000,
     '4G':    4000000000,
     '10G':  10000000000,
+    '40G':  40000000000,
 }
 
 fit_opts = {
-    'ADDMC_ULA0A1A2A3A4' : ' --jUL --j1 --j2 --j3 --j4 --add_MC_uncert',
-    'ULA0A1A2A3A4' :       ' --jUL --j1 --j2 --j3 --j4',
-    'ADDMC_ULA0A1A2A4':    ' --jUL --j1 --j2 --j4 --add_MC_uncert',
-    'ULA0A1A2A4' :         ' --jUL --j1 --j2 --j4',
-    'ADDMC_ULA0A1A2A3':    ' --jUL --j1 --j2 --j3 --add_MC_uncert',
-    'ULA0A1A2A3' :         ' --jUL --j1 --j2 --j3',
+    'ADDMC_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert',
+    'ULA0A1A2A3A4' :       ' --jUL --j0 --j1 --j2 --j3 --j4',
+    'ADDMC_ULA0A1A2A4':    ' --jUL --j0 --j1 --j2 --j4 --add_MC_uncert',
+    'ULA0A1A2A4' :         ' --jUL --j0 --j1 --j2 --j4',
+    'ADDMC_ULA0A1A2A3':    ' --jUL --j0 --j1 --j2 --j3 --add_MC_uncert',
+    'ULA0A1A2A3' :         ' --jUL --j0 --j1 --j2 --j3',
 }
 
 pol_default = {
     'run'    : "full",
     'corr'   : [10,4],
     'A0'     : [3,2],
-    'A1'     : [3,3],
+    'A1'     : [2,3],
     'A2'     : [3,2],
     'A3'     : [3,4],
     'A4'     : [3,3]
@@ -86,6 +87,17 @@ pol_systs.append( pol_syst )
 pol_syst = copy.deepcopy(pol_default)
 pol_syst['run'] = "corr"
 pol_syst['corr'] = [5,2]
+pol_syst['A0']   = [2,2]
+pol_syst['A1']   = [2,2]
+pol_syst['A2']   = [2,2]
+pol_syst['A2']   = [2,2]
+pol_syst['A3']   = [2,2]
+pol_syst['A4']   = [2,2]
+pol_systs.append( pol_syst )
+
+pol_syst = copy.deepcopy(pol_default)
+pol_syst['run'] = "corr"
+pol_syst['corr'] = [3,4]
 pol_syst['A0']   = [2,2]
 pol_syst['A1']   = [2,2]
 pol_syst['A2']   = [2,2]
