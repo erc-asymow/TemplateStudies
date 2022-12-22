@@ -25,12 +25,13 @@ parser.add_argument('--jacmass', dest = 'jacmass'  , type = int,  default=-1, he
 args = parser.parse_args()
 
 sample_sizes = {
-    '10M':     10000000,
-    '100M':   100000000,
-    '1G':    1000000000,
-    '4G':    4000000000,
-    '10G':  10000000000,
-    '40G':  40000000000,
+    #'10M':     10000000,
+    #'100M':   100000000,
+    #'1G':    1000000000,
+    #'4G':    4000000000,
+    #'10G':  10000000000,
+    #'40G':  40000000000,
+    '200G': 200000000000,
 }
 
 fit_opts = {
@@ -54,24 +55,24 @@ pol_default = {
 
 pol_systs = []
 
-pol_systs.append( pol_default )
+##pol_systs.append( pol_default )
 
 pol_syst = copy.deepcopy(pol_default)
 pol_syst['A0'] = [2,2]
 pol_syst['A2'] = [2,2]
-pol_systs.append( pol_syst )
+#pol_systs.append( pol_syst )
 
 pol_syst= copy.deepcopy(pol_default)
 pol_syst['A3'] = [2,4]
-pol_systs.append( pol_syst )
+#pol_systs.append( pol_syst )
 
 pol_syst= copy.deepcopy(pol_default)
 pol_syst['A3'] = [3,2]
-pol_systs.append( pol_syst )
+#pol_systs.append( pol_syst )
 
 pol_syst= copy.deepcopy(pol_default)
 pol_syst['A4'] = [1,3]
-pol_systs.append( pol_syst )
+#pol_systs.append( pol_syst )
 
 pol_syst = copy.deepcopy(pol_default)
 pol_syst['run'] = "corr"
@@ -93,7 +94,7 @@ pol_syst['A2']   = [2,2]
 pol_syst['A2']   = [2,2]
 pol_syst['A3']   = [2,2]
 pol_syst['A4']   = [2,2]
-pol_systs.append( pol_syst )
+#pol_systs.append( pol_syst )
 
 pol_syst = copy.deepcopy(pol_default)
 pol_syst['run'] = "corr"
@@ -104,7 +105,7 @@ pol_syst['A2']   = [2,2]
 pol_syst['A2']   = [2,2]
 pol_syst['A3']   = [2,2]
 pol_syst['A4']   = [2,2]
-pol_systs.append( pol_syst )
+#pol_systs.append( pol_syst )
 
 pol_syst = copy.deepcopy(pol_default)
 pol_syst['run'] = "corr"
@@ -115,7 +116,7 @@ pol_syst['A2']   = [2,2]
 pol_syst['A2']   = [2,2]
 pol_syst['A3']   = [1,2]
 pol_syst['A4']   = [2,2]
-pol_systs.append( pol_syst )
+#pol_systs.append( pol_syst )
 
 pol_syst = copy.deepcopy(pol_default)
 pol_syst['run'] = "corr"
@@ -126,7 +127,7 @@ pol_syst['A2']   = [2,2]
 pol_syst['A2']   = [2,2]
 pol_syst['A3']   = [2,2]
 pol_syst['A4']   = [1,2]
-pol_systs.append( pol_syst )
+#pol_systs.append( pol_syst )
 
 pol_syst = copy.deepcopy(pol_default)
 pol_syst['run'] = "corr"
@@ -137,7 +138,7 @@ pol_syst['A2']   = [1,2]
 pol_syst['A2']   = [1,2]
 pol_syst['A3']   = [1,2]
 pol_syst['A4']   = [1,2]
-pol_systs.append( pol_syst )
+#pol_systs.append( pol_syst )
 
 pol_syst = copy.deepcopy(pol_default)
 pol_syst['run'] = "grid"
@@ -148,7 +149,7 @@ pol_syst['A2']   = [8,6]
 pol_syst['A2']   = [8,6]
 pol_syst['A3']   = [8,6]
 pol_syst['A4']   = [8,6]
-pol_systs.append( pol_syst )
+#pol_systs.append( pol_syst )
 
 if args.algo=='jac2':
     command  = './jac2 --nevents='+str(args.nevents) +' --tag='+args.tag+' --run='+pol_default['run']
@@ -190,6 +191,7 @@ elif args.algo=='jac2_systs_vsN':
                     command += ' --degs_'+k+'_x='+str(syst[k][0])+' --degs_'+k+'_y='+str(syst[k][1])
             if args.smear:
                 command += ' --smear'
+            command += ' --max_y=3.5'
             print(command)
             if not args.dryrun:
                 os.system(command)   
