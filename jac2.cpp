@@ -370,7 +370,6 @@ int main(int argc, char* argv[])
   auto toy_A0 = [](double x, double y)->double{ return 2*x*x*(1 - 0.01*y*y); };
   auto toy_A1 = [](double x, double y)->double{ return (0.5*x + 2*x*x)*(0.05*y + 0.002*y*y*y); };
   auto toy_A2 = [](double x, double y)->double{ return 2*x*x*(1 - 0.01*y*y); };
-  //auto toy_A3 = [](double x, double y)->double{ return (x + x*x + x*x*x)*(1 - 0.01*y*y); };
   auto toy_A3 = [](double x, double y)->double{ return 0.3*(x + x*x + x*x*x)*(0.1*y*y); };
   auto toy_A4 = [](double x, double y)->double{ return (1-x)*(y + y*y*y/10.)/5; };
   
@@ -576,10 +575,11 @@ int main(int argc, char* argv[])
 						      double Ax = cheb(x, 0.5*max_x, 1.0, degs(get_pdf_type(hel+"_x")), k);
 						      unsigned int deg = degs(get_pdf_type(hel+"_y"));
 						      unsigned int up_deg = is_odd ? (deg+1)/2 : deg/2+1 ;
-						      if(run=="full" && hel=="A3") up_deg--;
+						      bool set_mid_to_zero = run=="full" && hel=="A3";
+						      if(set_mid_to_zero) up_deg--;
 						      for(unsigned int l = 0; l<up_deg; l++){
 							double cheb_l = (cheb(y, max_y, 0.0, deg, l) + (is_odd? -1 : +1)*cheb(y, max_y, 0.0, deg, deg-l)) ;
-							double alpha_l = (!is_odd && l==(up_deg-1) && deg%2==0) ? 0.5 : 1.0;;
+							double alpha_l = (!is_odd && l==(up_deg-1) && deg%2==0 && !set_mid_to_zero) ? 0.5 : 1.0;;
 							out.emplace_back( Ax*(cheb_l*alpha_l) );
 						      }						      
 						    }

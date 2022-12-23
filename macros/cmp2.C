@@ -1,70 +1,45 @@
 
 {
 
-  TString name = "addmass3";
-
   int fit_qt_y = 0;
   
   int axis = 1;
   
   bool normalize = true;
 
+  std::vector<TFile*> files{};
   std::vector<TString> tags{};
 
-  std::vector<TFile*> files{};
-
+  /*
+  files.emplace_back( TFile::Open("../root/histos_NEWA3ZEROSMEARY3p5_4G_UL_14_4_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root") );
+  tags.emplace_back("14");
+  files.emplace_back( TFile::Open("../root/histos_NEWA3ZEROSMEARY3p5_4G_UL_12_4_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root") );
+  tags.emplace_back("12");
+  files.emplace_back( TFile::Open("../root/histos_NEWA3ZEROSMEARY3p5_4G_UL_10_4_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root") );
+  tags.emplace_back("10");
+  files.emplace_back(TFile::Open( "../root/histos_NEWA3ZEROSMEARY3p5_4G_UL_8_4_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root") );
+  tags.emplace_back("8");
+  files.emplace_back(TFile::Open( "../root/histos_NEWA3ZEROSMEARY3p5_4G_UL_10_6_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root") );
+  tags.emplace_back("6");
+  */
+  //files.emplace_back(TFile::Open( "../root/histos_DEBUG_100M_UL_10_4_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root"));
+  //tags.emplace_back("DEB");
+  files.emplace_back(TFile::Open( "../root/histos_DEBUGnoA3_100M_UL_14_6_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root"));
+  tags.emplace_back("DEB2");
+  
   std::vector<TH1D*> histos{};
   std::vector<TH1D*> histos_mass{};
 
-  for(auto CORRX : ROOT::TSeqI(13) ){
-    if( !(CORRX==12 || CORRX==10 || CORRX==8) ) continue;
-    for(auto CORRY : ROOT::TSeqI(8) ){
-      if(CORRY!=4) continue;
-      for(auto A0X : ROOT::TSeqI(6) ){
-	if(A0X!=3) continue;
-	for(auto A0Y : ROOT::TSeqI(6) ){
-	  if(A0Y!=3) continue;	      
-	  for(auto A1X : ROOT::TSeqI(6) ){
-	    if(A1X!=3) continue;
-	    for(auto A1Y : ROOT::TSeqI(6) ){
-	      if(A1Y!=3) continue;	      
-	      for(auto A2X : ROOT::TSeqI(6) ){
-		if(A2X!=3) continue;
-		for(auto A2Y : ROOT::TSeqI(6) ){
-		  if(A2Y!=3) continue;	      
-		  for(auto A3X : ROOT::TSeqI(6) ){
-		    if( !(A3X==3 || A3X==-1) ) continue;
-		    for(auto A3Y : ROOT::TSeqI(6) ){
-		      if(A3Y!=3) continue;	      
-		      for(auto A4X : ROOT::TSeqI(6) ){
-			if( !(A4X==3 || A4X==-1 || A4X==4) ) continue;
-			for(auto A4Y : ROOT::TSeqI(6) ){
-			  if(A4Y!=3) continue;	      
-			  TString tag(Form("UL_%d_%d_A0_%d_%d_A1_%d_%d_A2_%d_%d_A3_%d_%d_A4_%d_%d",CORRX,CORRY,A0X,A0Y,A1X,A1Y,A2X,A2Y,A3X,A3Y,A4X,A4Y));
-			  cout << "file " << tag << endl;
-			  TFile* f = TFile::Open("root/histos_"+name+"_"+tag+"_closure.root");
-			  if(f==nullptr || f->IsZombie()) continue;
-			  files.emplace_back(f);    
-			  tags.emplace_back(tag);
-			}
-		      }
-		    }
-		  }
-		}
-	      }
-	    }
-	  }
-	}
-      }
-    }
-  }
+  TCanvas* c = new TCanvas("c", "canvas", 1200, 800);
+  //c->SetGridy();
 
-  TCanvas* c = new TCanvas();
-  TLegend* leg = new TLegend(0.1,0.7,0.6,0.9);
+  TLegend* leg = new TLegend(0.10, 0.68, 0.70, 0.90, "","brNDC");
   leg->SetFillStyle(0);
   leg->SetBorderSize(0);
-  leg->SetTextSize(0.03);
+  leg->SetTextSize(0.035);
   leg->SetFillColor(10);
+  leg->SetNColumns(1);
+  leg->SetHeader("");
   c->cd();
 
   int i = 0;
@@ -73,7 +48,6 @@
     TH1D* hT = axis==0?h_truth->ProjectionX("hT_py"):h_truth->ProjectionY("hT_py");
     TH2D* h_cheb = files[i]->Get<TH2D>("h");
     TH1D* hC = axis==0?h_cheb->ProjectionX("hC_py"):h_cheb->ProjectionY("hC_py");
-
     if(i==0){
       files[i]->cd();
       if(files[i]->FindObjectAny("hMC_up")){
@@ -114,8 +88,8 @@
 	h->SetMaximum(1.01);
       }
       else{
-	h->SetMinimum(0.997);
-	h->SetMaximum(1.003);
+	h->SetMinimum(0.998);
+	h->SetMaximum(1.002);
       }
       h->SetTitle("");
       h->SetStats(0);
