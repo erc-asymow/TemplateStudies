@@ -2,9 +2,9 @@
 
   bool logy = true;
   
-  float norm_lumi    = (1.000/0.800);
-  TString image_name = "deltaM_vs_N_paper2_main_1G.eps";
-  TString header     = "L = 1.0#times10^{9} events, p_{T}/GeV#in[25,60], |#eta|<2.5";
+  float norm_lumi    = (0.100/0.800);
+  TString image_name = "deltaM_vs_N_paper2_main_noA3.eps";
+  TString header     = "L = 1.0#times10^{8} events, p_{T}/GeV#in[25,60], |#eta|<2.5, no A_{3}";
 
   TCanvas* c = new TCanvas("c", "canvas", 1200, 800);
   c->SetGridy();
@@ -35,8 +35,8 @@
   //files_n.emplace_back("UL_3_2_A0_1_2_A1_1_2_A2_1_2_A3_1_2_A4_1_2_corr"); files_l.emplace_back("A^{(k)}_{x}: 2#rightarrow1");    files_c.emplace_back(kBlue-5); files_w.emplace_back(1.5);
   
   vector<TString> posttags = {
-    "jUL_j0_j1_j2_j3_j4_DEBUG_ADDMC_ULA0A1A2A3A4_1G",
-    "jUL_j0_j1_j2_j3_j4_DEBUG_ULA0A1A2A3A4_1G",
+    "jUL_j0_j1_j2_j4_DEBUG_ADDMC_ULA0A1A2A4",
+    "jUL_j0_j1_j2_j4_DEBUG_ULA0A1A2A4",
   };
 
   vector<TString> nevents_s;
@@ -64,6 +64,7 @@
 	TString fn = "../root/fit_NEWA3ZEROSMEAR_"+nevents_s[i3]+"_"+files_n[i2]+"_"+posttag+".root";
 	TFile* f = TFile::Open(fn, "READ");
 	if(f==0 || f==nullptr || f->IsZombie()) continue;
+	//cout << f->GetName() << endl;
 	TTree *t = f->Get<TTree>("tree");
 	double err;
 	t->SetBranchAddress("best_mass_err", &err);

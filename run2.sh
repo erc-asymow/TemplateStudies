@@ -8,23 +8,23 @@ do
     do
 	for A0X in 3
 	do		    
-	    for A0Y in 4
+	    for A0Y in 3
 	    do		    
 		for A1X in 3
 		do		    
-		    for A1Y in 4
+		    for A1Y in 3
 		    do		    
 			for A2X in 3
  			do		    
-			    for A2Y in 4
+			    for A2Y in 3
 			    do		    
-				for A3X in 2
+				for A3X in 3
 				do		    
-				    for A3Y in 4
+				    for A3Y in 3
 				    do	
-					for A4X in 2
+					for A4X in 3
 					do		    
-					    for A4Y in 4
+					    for A4Y in 3
 					    do		    
 						echo 'Now doing ', $CORRX, $CORRY, $A0X, $A0Y, $A1X, $A1Y, $A2X, $A2Y, $A3X, $A3Y, $A4X, $A4Y
 						./jac2 --nevents=100000000 --tag=$GRID --run=closure\

@@ -2,10 +2,10 @@
 
   bool logy = true;
   
-  //float norm_lumi    = (0.100/0.800);
-  float norm_lumi    = (0.100/0.780);
-  TString image_name = "deltaM_vs_N_paper2_corr_y3p5.eps";
-  TString header     = "L = 1.0#times10^{8} events, p_{T}/GeV#in[25,60], |#eta|<2.5, |y|<3.5";
+  float norm_lumi    = (0.100/0.800);
+  //float norm_lumi    = (0.100/0.780);
+  TString image_name = "deltaM_vs_N_paper2_corr.eps";
+  TString header     = "L = 1.0#times10^{8} events, p_{T}/GeV#in[25,60], |#eta|<2.5";
 
   TCanvas* c = new TCanvas("c", "canvas", 1200, 800);
   c->SetGridy();
@@ -31,9 +31,11 @@
   //files_n.emplace_back("UL_10_4_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_1_3_full"); files_l.emplace_back("A^{(4)}_{x}: 3#rightarrow1");   files_c.emplace_back(kRed-10); files_w.emplace_back(1.5);
   files_n.emplace_back("UL_3_2_A0_2_2_A1_2_2_A2_2_2_A3_2_2_A4_2_2_corr"); files_l.emplace_back("w_{corr}");                       files_c.emplace_back(kBlue);   files_w.emplace_back(3); 
   files_n.emplace_back("UL_5_2_A0_2_2_A1_2_2_A2_2_2_A3_2_2_A4_2_2_corr"); files_l.emplace_back("UL_{x}: 3#rightarrow5 ");        files_c.emplace_back(kBlue-7); files_w.emplace_back(1.5);
+  files_n.emplace_back("UL_3_4_A0_2_2_A1_2_2_A2_2_2_A3_2_2_A4_2_2_corr"); files_l.emplace_back("UL_{y}: 2#rightarrow4 ");        files_c.emplace_back(kBlue-6); files_w.emplace_back(1.5);
   files_n.emplace_back("UL_3_2_A0_2_2_A1_2_2_A2_2_2_A3_1_2_A4_2_2_corr"); files_l.emplace_back("A^{(3)}_{x}: 2#rightarrow1");    files_c.emplace_back(kBlue-9); files_w.emplace_back(1.5);
   files_n.emplace_back("UL_3_2_A0_2_2_A1_2_2_A2_2_2_A3_2_2_A4_1_2_corr"); files_l.emplace_back("A^{(4)}_{x}: 2#rightarrow1");    files_c.emplace_back(kBlue-8); files_w.emplace_back(1.5);
   files_n.emplace_back("UL_3_2_A0_1_2_A1_1_2_A2_1_2_A3_1_2_A4_1_2_corr"); files_l.emplace_back("A^{(k)}_{x}: 2#rightarrow1");    files_c.emplace_back(kBlue-5); files_w.emplace_back(1.5);
+  files_n.emplace_back("UL_3_2_A0_1_1_A1_1_1_A2_1_1_A3_1_1_A4_1_1_corr"); files_l.emplace_back("A^{(k)}_{x,y}: 2#rightarrow1");    files_c.emplace_back(kBlue-3); files_w.emplace_back(1.5);
   
   vector<TString> posttags = {
     "jUL_j0_j1_j2_j3_j4_DEBUG_ADDMC_ULA0A1A2A3A4",
@@ -48,6 +50,7 @@
   nevents_s.emplace_back("4G");   nevents_f.emplace_back(4.0);
   nevents_s.emplace_back("10G");  nevents_f.emplace_back(10.0);
   nevents_s.emplace_back("40G");  nevents_f.emplace_back(40.0);
+  nevents_s.emplace_back("200G");  nevents_f.emplace_back(200.0);
   
   ////////////////////////////////////////////////
   for(unsigned int i1 = 0; i1<posttags.size(); i1++){
@@ -62,7 +65,7 @@
       unsigned int n_nevents = 0;
       double xx_nevents[20], yy_nevents[20], yyMC_nevents[20], exx_nevents[20], eyy_nevents[20];
       for(unsigned int i3=0; i3<nevents_s.size(); i3++){
-	TString fn = "../root/fit_NEWA3ZEROSMEARY3p5_"+nevents_s[i3]+"_"+files_n[i2]+"_"+posttag+".root";
+	TString fn = "../root/fit_NEWA3ZEROSMEAR_"+nevents_s[i3]+"_"+files_n[i2]+"_"+posttag+".root";
 	TFile* f = TFile::Open(fn, "READ");
 	if(f==0 || f==nullptr || f->IsZombie()) continue;
 	TTree *t = f->Get<TTree>("tree");

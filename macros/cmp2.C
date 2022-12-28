@@ -10,22 +10,14 @@
   std::vector<TFile*> files{};
   std::vector<TString> tags{};
 
-  /*
-  files.emplace_back( TFile::Open("../root/histos_NEWA3ZEROSMEARY3p5_4G_UL_14_4_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root") );
-  tags.emplace_back("14");
-  files.emplace_back( TFile::Open("../root/histos_NEWA3ZEROSMEARY3p5_4G_UL_12_4_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root") );
-  tags.emplace_back("12");
-  files.emplace_back( TFile::Open("../root/histos_NEWA3ZEROSMEARY3p5_4G_UL_10_4_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root") );
-  tags.emplace_back("10");
-  files.emplace_back(TFile::Open( "../root/histos_NEWA3ZEROSMEARY3p5_4G_UL_8_4_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root") );
-  tags.emplace_back("8");
-  files.emplace_back(TFile::Open( "../root/histos_NEWA3ZEROSMEARY3p5_4G_UL_10_6_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root") );
-  tags.emplace_back("6");
-  */
-  //files.emplace_back(TFile::Open( "../root/histos_DEBUG_100M_UL_10_4_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root"));
-  //tags.emplace_back("DEB");
-  files.emplace_back(TFile::Open( "../root/histos_DEBUGnoA3_100M_UL_14_6_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root"));
-  tags.emplace_back("DEB2");
+  files.emplace_back( TFile::Open("../root/histos_NEWA3ZEROSMEAR_cheb_4G_UL_8_4_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root") );
+  tags.emplace_back("n_{x}=8");
+  files.emplace_back( TFile::Open("../root/histos_NEWA3ZEROSMEAR_cheb_4G_UL_10_4_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root") );
+  tags.emplace_back("n_{x}=10");
+  files.emplace_back( TFile::Open("../root/histos_NEWA3ZEROSMEAR_cheb_4G_UL_12_4_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root") );
+  tags.emplace_back("n_{x}=12");
+  //files.emplace_back(TFile::Open( "../root/histos_NEWA3ZEROSMEAR_cheb_4G_UL_10_6_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root") );
+  //tags.emplace_back("n_{y}=6");
   
   std::vector<TH1D*> histos{};
   std::vector<TH1D*> histos_mass{};
@@ -92,10 +84,17 @@
 	h->SetMaximum(1.002);
       }
       h->SetTitle("");
+      h->GetXaxis()->SetTitleSize(0.045);
+      h->GetXaxis()->SetTitleOffset(0.9);
+      h->GetYaxis()->SetTitleSize(0.06);
+      h->GetYaxis()->SetTitleOffset(0.8);
+      h->GetXaxis()->SetTitle("p_{T} [GeV]");
+      h->GetYaxis()->SetTitle("w_{cheb}/w_{toy}");
       h->SetStats(0);
-      h->Draw("HISTE");
+      h->Draw("HIST");
     }
     else h->Draw("HISTSAME");
+    h->SetLineWidth(2);
     leg->AddEntry(h, tags[i], "L");
     i++;
   }
@@ -103,10 +102,11 @@
   i=0;
   for(auto h : histos_mass){
     h->SetLineWidth(3);
+    h->SetLineStyle(kDashed);
     h->Draw("HISTSAME");
     if(i==0) leg->AddEntry(h, "#pm 10 MeV", "L");
     i++;
   }
   leg->Draw();
-  //gPad->SaveAs("plot_cmp_"+name+".png");
+  gPad->SaveAs("plot_cmp.eps");
 }
