@@ -28,7 +28,7 @@ using namespace boost::program_options;
 std::vector<std::string> helicities = {"A0", "A1", "A2", "A3", "A4"};
 
 constexpr double MW = 80.;
-constexpr double GW = 2.0;
+constexpr double GW = 1.0;
 constexpr double MASSSHIFT = 0.050;
 constexpr int NMAX  = 200;
 //constexpr int NMASS = 20;
@@ -178,9 +178,9 @@ int main(int argc, char* argv[])
   int nbins_rap   = 25; 
   double rap_low  = 0.0;
   double rap_high = +2.5;
-  int nbins_pt    = 35; 
+  int nbins_pt    = 45; 
   double pt_low   = 25.;
-  double pt_high  = 60.;
+  double pt_high  = 70.;
 
   if(fit_qt_y){
     nbins_rap   = 13; 
@@ -326,14 +326,14 @@ int main(int argc, char* argv[])
     return 1./TMath::Pi()/(1 + (Q-M)*(Q-M)/G/G);
   };
 
-  TF1* tf1toy_x = new TF1("toy_x", "[0]*x/(x*x+[1])", 0.0, max_x);  
+  TF1* tf1toy_x = new TF1("toy_x", "[0]*x/TMath::Power(x*x+[1], 1.25)", 0.0, max_x);  
   double p0_x = +2.35e-03;
   tf1toy_x->SetParameter(0, 1.0);
   tf1toy_x->SetParameter(1, p0_x);
   double int_toy_x = tf1toy_x->Integral(0.0, max_x);
   tf1toy_x->SetParameter(0, 1.0/int_toy_x);
   auto toy_x = [&](double x)->double{
-    return x/(x*x + p0_x)/int_toy_x;
+    return x/TMath::Power(x*x + p0_x, 1.25)/int_toy_x;
   };
   
   TF1* tf1toy_y = new TF1("toy_y", "[2]/TMath::Sqrt(2*TMath::Pi()*[1])*TMath::Exp(-0.5*(x-[0])*(x-[0])/[1])", -max_y, max_y);
