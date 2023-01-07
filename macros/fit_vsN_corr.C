@@ -2,10 +2,10 @@
 
   bool logy = true;
   
-  //float norm_lumi    = (0.100/0.800);
-  float norm_lumi    = (0.100/0.780);
-  TString image_name = "deltaM_vs_N_paper2_corr_y3p5x0p5Ymax70GW1p0NEWTOYX.eps";
-  TString header     = "L = 1.0#times10^{8} events, p_{T}/GeV#in[25,70], |#eta|<2.5, |y|<3.5, x<0.5, #Gamma=2, new w_{xy}";
+  float norm_lumi    = (0.100/0.800);
+  //float norm_lumi    = (0.100/0.780);
+  TString image_name = "deltaM_vs_N_paper2_corr_GW1p0.eps";
+  TString header     = "L = 1.0#times10^{8} events, p_{T}/GeV#in[25,60], |#eta|<2.5";
 
   TCanvas* c = new TCanvas("c", "canvas", 1200, 800);
   c->SetGridy();
@@ -65,7 +65,7 @@
       unsigned int n_nevents = 0;
       double xx_nevents[20], yy_nevents[20], yyMC_nevents[20], exx_nevents[20], eyy_nevents[20];
       for(unsigned int i3=0; i3<nevents_s.size(); i3++){
-	TString fn = "../root/fit_NEWA3ZEROSMEARY3p5X0p5Ymax70GW1p0NEWTOYX_"+nevents_s[i3]+"_"+files_n[i2]+"_"+posttag+".root";
+	TString fn = "../root/fit_NEWA3ZEROSMEARGW1p0_"+nevents_s[i3]+"_"+files_n[i2]+"_"+posttag+".root";
 	TFile* f = TFile::Open(fn, "READ");
 	if(f==0 || f==nullptr || f->IsZombie()) continue;
 	TTree *t = f->Get<TTree>("tree");
@@ -115,7 +115,7 @@
   mg->GetYaxis()->SetTitleOffset(0.7);
   mg->GetYaxis()->SetTitle("#Delta M_{W} (MeV)");
   if(logy) mg->GetXaxis()->SetTitle("log_{10}(N/L)");
-  mg->GetYaxis()->SetRangeUser(10, 200.);
+  mg->GetYaxis()->SetRangeUser(5., 100.);
   mg->GetXaxis()->SetRangeUser(0.0001, 100e+09);
   if(logy) mg->GetXaxis()->SetRangeUser(-4, 5);
 

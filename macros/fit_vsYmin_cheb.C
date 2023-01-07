@@ -3,10 +3,10 @@
   bool logy = false;
   
   float norm_lumi    = (0.100/0.800);
-  TString image_name = "deltaM_vs_Ymin_paper2_corr_GW1p0.eps";
+  TString image_name = "deltaM_vs_Ymin_paper2_cheb_GW1p0.eps";
   TString header     = "L = 1.0#times10^{8} events, p_{T}/GeV#in[p_{T}^{(L)},60]";
   //float norm_lumi    = (0.100/0.750);
-  //TString image_name = "deltaM_vs_Ymin_paper2_corr_GW1p0Y3p5X0p5.eps";
+  //TString image_name = "deltaM_vs_Ymin_paper2_cheb_GW1p0Y3p5X0p5.eps";
   //TString header     = "L = 1.0#times10^{8} events, p_{T}/GeV#in[p_{T}^{(L)},60], |#eta|<2.5, |y|<3.5, x<0.5";
 
   TCanvas* c = new TCanvas("c", "canvas", 1200, 800);
@@ -25,7 +25,7 @@
   vector<TString> files_l;
   vector<int>     files_c;
   vector<float>   files_w;
-  files_n.emplace_back("UL_3_2_A0_2_2_A1_2_2_A2_2_2_A3_2_2_A4_2_2_corr"); files_l.emplace_back("w_{corr}"); files_c.emplace_back(kBlue);   files_w.emplace_back(3); 
+  files_n.emplace_back("UL_10_4_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full"); files_l.emplace_back("w_{cheb}");files_c.emplace_back(kRed); files_w.emplace_back(3); 
   
   vector<TString> posttags = {
     "jUL_j0_j1_j2_j3_j4_DEBUG_ADDMC_ULA0A1A2A3A4",
@@ -109,7 +109,7 @@
   mg->GetYaxis()->SetTitleOffset(0.7);
   mg->GetYaxis()->SetTitle("#Delta M_{W} (MeV)");
   if(logy) mg->GetXaxis()->SetTitle("log_{10}(N/L)");
-  mg->GetYaxis()->SetRangeUser(20, 50.);
+  mg->GetYaxis()->SetRangeUser(60, 180.);
   mg->GetXaxis()->SetRangeUser(0.0001, 100e+09);
   if(logy) mg->GetXaxis()->SetRangeUser(-4, 5);
 

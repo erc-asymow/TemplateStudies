@@ -3,11 +3,12 @@
   bool logy = false;
   
   float norm_lumi    = (0.100/0.800);
-  TString image_name = "deltaM_vs_Ymin_paper2_corr_GW1p0.eps";
-  TString header     = "L = 1.0#times10^{8} events, p_{T}/GeV#in[p_{T}^{(L)},60]";
+  TString image_name = "deltaM_vs_Xmax_paper2_cheb_GW1p0.eps";
+  TString header     = "L = 1.0#times10^{8} events, p_{T}/GeV#in[25,60], |#eta|<#eta^{(H)}";
+
   //float norm_lumi    = (0.100/0.750);
-  //TString image_name = "deltaM_vs_Ymin_paper2_corr_GW1p0Y3p5X0p5.eps";
-  //TString header     = "L = 1.0#times10^{8} events, p_{T}/GeV#in[p_{T}^{(L)},60], |#eta|<2.5, |y|<3.5, x<0.5";
+  //TString image_name = "deltaM_vs_Xmax_paper2_cheb_GW1p0Y3p5X0p5.eps";
+  //TString header     = "L = 1.0#times10^{8} events, p_{T}/GeV#in[25,60], |y|<3.5, x<0.5, |#eta|<#eta^{(H)}";
 
   TCanvas* c = new TCanvas("c", "canvas", 1200, 800);
   c->SetGridy();
@@ -25,7 +26,7 @@
   vector<TString> files_l;
   vector<int>     files_c;
   vector<float>   files_w;
-  files_n.emplace_back("UL_3_2_A0_2_2_A1_2_2_A2_2_2_A3_2_2_A4_2_2_corr"); files_l.emplace_back("w_{corr}"); files_c.emplace_back(kBlue);   files_w.emplace_back(3); 
+  files_n.emplace_back("UL_10_4_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full"); files_l.emplace_back("w_{cheb}");files_c.emplace_back(kRed); files_w.emplace_back(3); 
   
   vector<TString> posttags = {
     "jUL_j0_j1_j2_j3_j4_DEBUG_ADDMC_ULA0A1A2A3A4",
@@ -34,17 +35,20 @@
 
   vector<TString> nevents_s;
   vector<float>   nevents_f;
-  nevents_s.emplace_back("Ymin25");  nevents_f.emplace_back(25);
-  nevents_s.emplace_back("Ymin26");  nevents_f.emplace_back(26);
-  nevents_s.emplace_back("Ymin27");  nevents_f.emplace_back(27);
-  nevents_s.emplace_back("Ymin28");  nevents_f.emplace_back(28);
-  nevents_s.emplace_back("Ymin29");  nevents_f.emplace_back(29);
-  nevents_s.emplace_back("Ymin30");  nevents_f.emplace_back(30);
-  nevents_s.emplace_back("Ymin31");  nevents_f.emplace_back(31);
-  nevents_s.emplace_back("Ymin32");  nevents_f.emplace_back(32);
-  //nevents_s.emplace_back("Ymin33");  nevents_f.emplace_back(33);
-  //nevents_s.emplace_back("Ymin34");  nevents_f.emplace_back(34);
-  //nevents_s.emplace_back("Ymin35");  nevents_f.emplace_back(35);
+  nevents_s.emplace_back("Xmax2p6");  nevents_f.emplace_back(2.6);
+  //nevents_s.emplace_back("Xmax2p5");  nevents_f.emplace_back(2.5);
+  nevents_s.emplace_back("Xmax2p4");  nevents_f.emplace_back(2.4);
+  //nevents_s.emplace_back("Xmax2p3");  nevents_f.emplace_back(2.3);
+  nevents_s.emplace_back("Xmax2p2");  nevents_f.emplace_back(2.2);
+  //nevents_s.emplace_back("Xmax2p1");  nevents_f.emplace_back(2.1);
+  nevents_s.emplace_back("Xmax2p0");  nevents_f.emplace_back(2.0);
+  nevents_s.emplace_back("Xmax1p8");  nevents_f.emplace_back(1.8);
+  nevents_s.emplace_back("Xmax1p5");  nevents_f.emplace_back(1.5);
+  nevents_s.emplace_back("Xmax1p0");  nevents_f.emplace_back(1.0);
+  nevents_s.emplace_back("Xmax0p8");  nevents_f.emplace_back(0.8);
+  nevents_s.emplace_back("Xmax0p5");  nevents_f.emplace_back(0.5);
+  nevents_s.emplace_back("Xmax0p3");  nevents_f.emplace_back(0.3);
+  nevents_s.emplace_back("Xmax0p2");  nevents_f.emplace_back(0.2);
 
   ////////////////////////////////////////////////
   for(unsigned int i1 = 0; i1<posttags.size(); i1++){
@@ -102,14 +106,14 @@
     }
   }
   ////////////////////////////////////////////////////////
-  mg->GetXaxis()->SetTitle("p^{(L)}_{T} (GeV)");
+  mg->GetXaxis()->SetTitle("#eta^{(H)}");
   mg->GetXaxis()->SetTitleSize(0.045);
   mg->GetXaxis()->SetTitleOffset(0.9);
   mg->GetYaxis()->SetTitleSize(0.06);
   mg->GetYaxis()->SetTitleOffset(0.7);
   mg->GetYaxis()->SetTitle("#Delta M_{W} (MeV)");
   if(logy) mg->GetXaxis()->SetTitle("log_{10}(N/L)");
-  mg->GetYaxis()->SetRangeUser(20, 50.);
+  mg->GetYaxis()->SetRangeUser(60, 300.);
   mg->GetXaxis()->SetRangeUser(0.0001, 100e+09);
   if(logy) mg->GetXaxis()->SetRangeUser(-4, 5);
 

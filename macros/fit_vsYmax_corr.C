@@ -1,13 +1,14 @@
 {
 
   bool logy = false;
- 
-  float norm_lumi    = (0.100/0.780);
-  TString image_name = "deltaM_vs_Ymax_paper2_corr_y3p5x0p5Ymax70GW1p0.eps";
-  TString header     = "L = 1.0#times10^{8} events, p_{T}/GeV#in[25,p_{T}^{(H)}], |#eta|<2.5, |y|<3.5, x<0.5, #Gamma=2";
-  //float norm_lumi    = (0.100/0.800);
-  //TString image_name = "deltaM_vs_Ymax_paper2_corr.eps";
-  //TString header     = "L = 1.0#times10^{8} events, p_{T}/GeV#in[25,p_{T}^{(H)}], |#eta|<2.5";
+
+  float norm_lumi    = (0.100/0.800);
+  TString image_name = "deltaM_vs_Ymax_paper2_corr_GW1p0.eps";
+  TString header     = "L = 1.0#times10^{8} events, p_{T}/GeV#in[25,p_{T}^{(H)}], |#eta|<2.5";
+
+  //float norm_lumi    = (0.100/0.750);
+  //TString image_name = "deltaM_vs_Ymax_paper2_corr_GW1p0Y3p5X0p5.eps";
+  //TString header     = "L = 1.0#times10^{8} events, p_{T}/GeV#in[25,p_{T}^{(H)}], |#eta|<2.5, |y|<3.5, x<0.5";
 
   TCanvas* c = new TCanvas("c", "canvas", 1200, 800);
   c->SetGridy();
@@ -35,10 +36,10 @@
   vector<TString> nevents_s;
   vector<float>   nevents_f;
 
-  nevents_s.emplace_back("Ymax70");  nevents_f.emplace_back(70);
-  nevents_s.emplace_back("Ymax68");  nevents_f.emplace_back(68);
-  nevents_s.emplace_back("Ymax66");  nevents_f.emplace_back(66);
-  nevents_s.emplace_back("Ymax64");  nevents_f.emplace_back(64);
+  //nevents_s.emplace_back("Ymax70");  nevents_f.emplace_back(70);
+  //nevents_s.emplace_back("Ymax68");  nevents_f.emplace_back(68);
+  //nevents_s.emplace_back("Ymax66");  nevents_f.emplace_back(66);
+  //nevents_s.emplace_back("Ymax64");  nevents_f.emplace_back(64);
   nevents_s.emplace_back("Ymax62");  nevents_f.emplace_back(62);
   nevents_s.emplace_back("Ymax60");  nevents_f.emplace_back(60);
   nevents_s.emplace_back("Ymax58");  nevents_f.emplace_back(58);
@@ -58,7 +59,7 @@
       unsigned int n_nevents = 0;
       double xx_nevents[20], yy_nevents[20], yyMC_nevents[20], exx_nevents[20], eyy_nevents[20];
       for(unsigned int i3=0; i3<nevents_s.size(); i3++){
-	TString fn = "../root/fit_NEWA3ZEROSMEARY3p5X0p5Ymax70GW1p0_40G_"+files_n[i2]+"_"+posttag+"_"+nevents_s[i3]+".root";
+	TString fn = "../root/fit_NEWA3ZEROSMEARGW1p0_10G_"+files_n[i2]+"_"+posttag+"_"+nevents_s[i3]+".root";
 	TFile* f = TFile::Open(fn, "READ");
 	if(f==0 || f==nullptr || f->IsZombie()) continue;
 	TTree *t = f->Get<TTree>("tree");
@@ -108,7 +109,7 @@
   mg->GetYaxis()->SetTitleOffset(0.7);
   mg->GetYaxis()->SetTitle("#Delta M_{W} (MeV)");
   if(logy) mg->GetXaxis()->SetTitle("log_{10}(N/L)");
-  mg->GetYaxis()->SetRangeUser(20, 200.);
+  mg->GetYaxis()->SetRangeUser(20, 80.);
   mg->GetXaxis()->SetRangeUser(0.0001, 100e+09);
   if(logy) mg->GetXaxis()->SetRangeUser(-4, 5);
 
@@ -116,7 +117,7 @@
   mg->GetYaxis()->CenterTitle(true);
   
   mg->Draw("apl");
-  c->SetLogy();
+  //c->SetLogy();
   leg1->Draw();
   c->SaveAs(image_name);
   //c->SaveAs("deltaM_vs_y_finalfix.png");
