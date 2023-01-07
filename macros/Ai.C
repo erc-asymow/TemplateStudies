@@ -71,6 +71,6 @@
   tf2toy_A4->GetYaxis()->SetTitle("y");
   
   leg->Draw();
-  c->cd();
-  gPad->SaveAs("Ai.eps");
+  c->Update();
+  c->SaveAs("Ai.eps");
 }
