@@ -106,7 +106,8 @@ int main(int argc, char* argv[])
 	//("inter_extTH2_corr",  bool_switch()->default_value(false), "interpol corr(x,y)")
 	//("toyTF2_corr",  bool_switch()->default_value(false), "toy TF2 corr(x,y)")
 	("seed", value<int>()->default_value(4357), "seed")
-	("fit_qt_y",  bool_switch()->default_value(false), "fit qt vs y");
+	("fit_qt_y",  bool_switch()->default_value(false), "fit qt vs y")
+        ("relativistic",  bool_switch()->default_value(false), "relativistic");
 
       store(parse_command_line(argc, argv, desc), vm);
       notify(vm);
@@ -171,6 +172,8 @@ int main(int argc, char* argv[])
     
   double max_x = vm["max_x"].as<double>();
   double max_y = vm["max_y"].as<double>();
+
+  bool relativistic = vm["relativistic"].as<bool>();
 
   bool do_cheb_as_modifiers = false;
   if(run=="corr") do_cheb_as_modifiers = true;
@@ -322,10 +325,12 @@ int main(int argc, char* argv[])
   first_jac_A4xy = njacs;  
   njacs += njacs_A4xy;
   
-  auto toy_mass = [](double Q, double M, double G){
-    //double gamma = TMath::Sqrt(M*M*(M*M+G*G));
-    //double k = 2*TMath::Sqrt2()*M*G*gamma/TMath::Pi()/TMath::Sqrt(M*M+gamma);
-    //return k/((Q*Q-M*M)*(Q*Q-M*M)+M*M*G*G);
+  auto toy_mass = [&](double Q, double M, double G){
+    if (relativistic){
+    double gamma = TMath::Sqrt(M*M*(M*M+G*G));
+    double k = 2*TMath::Sqrt2()*M*G*gamma/TMath::Pi()/TMath::Sqrt(M*M+gamma);
+    return k/((Q*Q-M*M)*(Q*Q-M*M)+M*M*G*G);
+    }
     return 1./TMath::Pi()/(1 + (Q-M)*(Q-M)/(G*G/4)); // non-relativistic
   };
 
@@ -544,10 +549,7 @@ int main(int argc, char* argv[])
   dlast = std::make_unique<RNode>(dlast->Define("weights_mass", 
 						[&](double Q)->RVecD{
 						  RVecD out;
-						  //double gamma = TMath::Sqrt(MW*MW*(MW*MW+GW*GW));
-                                                  //double k = 2*TMath::Sqrt2()*MW*GW*gamma/TMath::Pi()/TMath::Sqrt(MW*MW+gamma);
-                                                  //double gen = k/((Q*Q-MW*MW)*(Q*Q-MW*MW)+MW*MW*GW*GW);
-						  double gen = 1./TMath::Pi()/(1 + (Q-MW)*(Q-MW)/(GW/4)); // non-relativistic
+						  double gen = 1./TMath::Pi()/(1 + (Q-MW)*(Q-MW)/(GW*GW/4)); //conversion factor
 						  out.emplace_back( toy_mass(Q,MW,GW)/gen );
 						  out.emplace_back( toy_mass(Q,MW+MASSSHIFT,GW)/gen );
 						  out.emplace_back( toy_mass(Q,MW-MASSSHIFT,GW)/gen );
