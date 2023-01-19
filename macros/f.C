@@ -1,7 +1,8 @@
 {
 
   bool logy = true;
-  
+  float norm_lumi = 0.1;
+    
   TCanvas* c = new TCanvas("c", "canvas", 1000, 600);
   c->SetGridy();
 
@@ -40,13 +41,22 @@
     
     ////// nevents
     vector<TString> files_nevents = {
-      "../root/fit_DEV_1M_UL_3_2_A0_1_1_A1_1_1_A2_1_1_A3_1_1_A4_1_1_closure_"+posttag+".root",
-      "../root/fit_DEV_10M_UL_3_2_A0_1_1_A1_1_1_A2_1_1_A3_1_1_A4_1_1_closure_"+posttag+".root",
-      "../root/fit_DEV_100M_UL_3_2_A0_1_1_A1_1_1_A2_1_1_A3_1_1_A4_1_1_closure_"+posttag+".root",
-      "../root/fit_DEV_1G_UL_3_2_A0_1_1_A1_1_1_A2_1_1_A3_1_1_A4_1_1_closure_"+posttag+".root",
-      "../root/fit_DEV_4G_UL_3_2_A0_1_1_A1_1_1_A2_1_1_A3_1_1_A4_1_1_closure_"+posttag+".root",
-      "../root/fit_DEV_10G_UL_3_2_A0_1_1_A1_1_1_A2_1_1_A3_1_1_A4_1_1_closure_"+posttag+".root",
-      "../root/fit_DEV_40G_UL_3_2_A0_1_1_A1_1_1_A2_1_1_A3_1_1_A4_1_1_closure_"+posttag+".root",
+      "../root/fit_DEV_1M_UL_3_2_A0_1_2_A1_1_1_A2_1_2_A3_1_2_A4_1_1_closure_"+posttag+".root",
+      "../root/fit_DEV_10M_UL_3_2_A0_1_2_A1_1_1_A2_1_2_A3_1_2_A4_1_1_closure_"+posttag+".root",
+      "../root/fit_DEV_100M_UL_3_2_A0_1_2_A1_1_1_A2_1_2_A3_1_2_A4_1_1_closure_"+posttag+".root",
+      "../root/fit_DEV_1G_UL_3_2_A0_1_2_A1_1_1_A2_1_2_A3_1_2_A4_1_1_closure_"+posttag+".root",
+      "../root/fit_DEV_4G_UL_3_2_A0_1_2_A1_1_1_A2_1_2_A3_1_2_A4_1_1_closure_"+posttag+".root",
+      "../root/fit_DEV_10G_UL_3_2_A0_1_2_A1_1_1_A2_1_2_A3_1_2_A4_1_1_closure_"+posttag+".root",
+      "../root/fit_DEV_40G_UL_3_2_A0_1_2_A1_1_1_A2_1_2_A3_1_2_A4_1_1_closure_"+posttag+".root",
+      "../root/fit_DEV_80G_UL_3_2_A0_1_2_A1_1_1_A2_1_2_A3_1_2_A4_1_1_closure_"+posttag+".root",
+      //"../root/fit_DEV_1M_UL_3_2_A0_1_1_A1_1_1_A2_1_1_A3_1_1_A4_1_1_closure_"+posttag+".root",
+      //"../root/fit_DEV_10M_UL_3_2_A0_1_1_A1_1_1_A2_1_1_A3_1_1_A4_1_1_closure_"+posttag+".root",
+      //"../root/fit_DEV_100M_UL_3_2_A0_1_1_A1_1_1_A2_1_1_A3_1_1_A4_1_1_closure_"+posttag+".root",
+      //"../root/fit_DEV_1G_UL_3_2_A0_1_1_A1_1_1_A2_1_1_A3_1_1_A4_1_1_closure_"+posttag+".root",
+      //"../root/fit_DEV_4G_UL_3_2_A0_1_1_A1_1_1_A2_1_1_A3_1_1_A4_1_1_closure_"+posttag+".root",
+      //"../root/fit_DEV_10G_UL_3_2_A0_1_1_A1_1_1_A2_1_1_A3_1_1_A4_1_1_closure_"+posttag+".root",
+      //"../root/fit_DEV_40G_UL_3_2_A0_1_1_A1_1_1_A2_1_1_A3_1_1_A4_1_1_closure_"+posttag+".root",
+      //"../root/fit_DEV_80G_UL_3_2_A0_1_1_A1_1_1_A2_1_1_A3_1_1_A4_1_1_closure_"+posttag+".root",
       //"../root/fit_DEV_1M_UL_3_4_A0_2_2_A1_2_2_A2_2_2_A3_2_2_A4_2_3_closure_"+posttag+".root",
       //"../root/fit_DEV_10M_UL_3_4_A0_2_2_A1_2_2_A2_2_2_A3_2_2_A4_2_3_closure_"+posttag+".root",
       //"../root/fit_DEV_100M_UL_3_4_A0_2_2_A1_2_2_A2_2_2_A3_2_2_A4_2_3_closure_"+posttag+".root",
@@ -54,6 +64,7 @@
       //"../root/fit_DEV_10G_UL_3_4_A0_2_2_A1_2_2_A2_2_2_A3_2_2_A4_2_3_closure_"+posttag+".root",
       //"../root/fit_DEV_40G_UL_3_4_A0_2_2_A1_2_2_A2_2_2_A3_2_2_A4_2_3_closure_"+posttag+".root",
       //"../root/fit_DEV_80G_UL_3_4_A0_2_2_A1_2_2_A2_2_2_A3_2_2_A4_2_3_closure_"+posttag+".root",
+      //"../root/fit_DEV_200G_UL_3_4_A0_2_2_A1_2_2_A2_2_2_A3_2_2_A4_2_3_closure_"+posttag+".root",
     };
     vector<float> edges_nevents = {
       0.001,
@@ -63,10 +74,11 @@
       4.,
       10.,
       40.,
-      //80.,
+      80.,
+      //200,
     };
     
-    for(auto& e : edges_nevents) e *= 0.710;
+    for(auto& e : edges_nevents) e *= 0.710/norm_lumi;
     if(logy){for(auto& e : edges_nevents) e = TMath::Log10(e);}
     
     unsigned int n_nevents = files_nevents.size();
@@ -98,14 +110,14 @@
   ////////////////////////////////////////////////////////
   mg->GetXaxis()->SetTitle("(N effective)/10^{9} events");
   mg->GetYaxis()->SetTitle("#Delta M_{W} (MeV)");
-  if(logy) mg->GetXaxis()->SetTitle("log_{10}(N/10^{9})");
-  mg->GetYaxis()->SetRangeUser(0.0, 55.);
+  if(logy) mg->GetXaxis()->SetTitle("log_{10}(N/norm)");
+  mg->GetYaxis()->SetRangeUser(0.0, 75.);
   mg->GetXaxis()->SetRangeUser(0.0001, 100e+09);
-  if(logy) mg->GetXaxis()->SetRangeUser(-4, 2);
+  if(logy) mg->GetXaxis()->SetRangeUser(-4, 3);
 			     
   mg->Draw("apl");
   leg1->Draw();
-  c->SaveAs("deltaM_vs_y.png");
+  c->SaveAs("deltaM_vs_y_v2.png");
 
   //TF1* func = new TF1("func", "[0]*TMath::Log(x)+[1]", 0.0001, 50e+09);
   //fit_nevents->Fit(func);

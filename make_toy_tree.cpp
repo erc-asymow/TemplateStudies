@@ -1,16 +1,18 @@
 #include "TFile.h"
 #include "TTree.h"
 #include "TF1.h"
+//#include <boost/program_options.hpp>
 
 using namespace std;
 using namespace ROOT;
+//using namespace boost::program_options;
 
 enum pdf_type { pdf_x=0, pdf_y, corr_x, corr_y, A0_x, A0_y, A1_x, A1_y, A4_x, A4_y, unknown};
 
 auto degs = [](const pdf_type& pdf){
   switch(pdf){
-  case pdf_type::pdf_x:  return  10; // f(x)
-  case pdf_type::pdf_y:  return  10; // f(y|0)
+  case pdf_type::pdf_x:  return  30; // f(x)
+  case pdf_type::pdf_y:  return  20; // f(y|0)
   case pdf_type::corr_x: return  2; // P(x,.)
   case pdf_type::corr_y: return  2; // P(.,y)
   case pdf_type::A0_x:   return  2; // A0(x,.)
@@ -26,6 +28,27 @@ auto degs = [](const pdf_type& pdf){
 constexpr int NMAX = 100;
 
 int main(int argc, char* argv[]){
+
+  /*
+  try
+    {
+      options_description desc{"Options"};
+      desc.add_options()
+	("help,h", "Help screen")
+	("pi", value<float>()->default_value(3.14f), "Pi");
+      variables_map vm;
+      store(parse_command_line(argc, argv, desc), vm);
+      notify(vm);
+      if (vm.count("help"))
+	std::cout << desc << '\n';
+      else if (vm.count("pi"))
+	std::cout << "Pi: " << vm["pi"].as<float>() << '\n';
+    }
+  catch (const error &ex)
+    {
+      std::cerr << ex.what() << '\n';
+    }
+  */
 
   std::string tag = "";
   if(argc>1) tag = std::string(argv[1]);
@@ -48,7 +71,7 @@ int main(int argc, char* argv[]){
 
   TF1* toy_y = new TF1("toy_y", "1/TMath::Sqrt(2*TMath::Pi()*[1])*TMath::Exp(-0.5*(x-[0])*(x-[0])/[1]/[1])", -max_y, max_y);
   toy_y->SetParameter(0, 0.0);
-  toy_y->SetParameter(1, 1.0);
+  toy_y->SetParameter(1, 2.0);
   double pdf_y[NMAX];
   for(int j = 0; j<=degs(pdf_type::pdf_y); j++){
     tree->Branch(Form("pdfy_%d", j), &(pdf_y[j]), Form("pdfy_%d/D", j));

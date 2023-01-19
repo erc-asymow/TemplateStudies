@@ -3,9 +3,10 @@
   bool logy = true;
   
   //float norm_lumi    = (0.100/0.800);
-  float norm_lumi    = (0.100/0.750);
-  TString image_name = "deltaM_vs_N_paper2_main_GW1p0Y3p5X0p5.eps";
-  TString header     = "L = 1.0#times10^{8} events, p_{T}/GeV#in[25,60], |#eta|<2.5, |y|<3.5, x<0.5";
+  //float norm_lumi    = (0.100/0.750);
+  float norm_lumi    = (0.100/0.780);
+  TString image_name = "deltaM_vs_N_paper2_main_GW1p0Y3p5.eps";
+  TString header     = "L = 1.0#times10^{8} events, p_{T}/GeV#in[25,60], |#eta|<2.5, |y|<3.5";
 
   TCanvas* c = new TCanvas("c", "canvas", 1200, 800);
   c->SetGridy();
@@ -24,7 +25,7 @@
   vector<int>     files_c;
   vector<float>   files_w;
   //files_n.emplace_back("UL_8_6_A0_8_6_A1_8_6_A2_8_6_A3_8_6_A4_8_6_grid"); files_l.emplace_back("w_{grid}");                       files_c.emplace_back(1); files_w.emplace_back(3); 
-  files_n.emplace_back("UL_12_6_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full"); files_l.emplace_back("w_{cheb}");                      files_c.emplace_back(kRed);   files_w.emplace_back(3); 
+  files_n.emplace_back("UL_10_6_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full"); files_l.emplace_back("w_{cheb}");                      files_c.emplace_back(kRed);   files_w.emplace_back(3); 
   //files_n.emplace_back("UL_10_4_A0_2_2_A1_2_3_A2_2_2_A3_3_4_A4_3_3_full"); files_l.emplace_back("A^{(0,2)}_{x}: 3#rightarrow2"); files_c.emplace_back(kRed-4); files_w.emplace_back(1.5);
   //files_n.emplace_back("UL_10_4_A0_3_2_A1_2_3_A2_3_2_A3_2_4_A4_3_3_full"); files_l.emplace_back("A^{(3)}_{x}: 3#rightarrow2");   files_c.emplace_back(kRed-7); files_w.emplace_back(1.5);
   //files_n.emplace_back("UL_10_4_A0_3_2_A1_2_3_A2_3_2_A3_3_2_A4_3_3_full"); files_l.emplace_back("A^{(3)}_{y}: 4#rightarrow2");   files_c.emplace_back(kRed-9); files_w.emplace_back(1.5);
@@ -62,7 +63,7 @@
       unsigned int n_nevents = 0;
       double xx_nevents[20], yy_nevents[20], yyMC_nevents[20], exx_nevents[20], eyy_nevents[20];
       for(unsigned int i3=0; i3<nevents_s.size(); i3++){
-	TString fn = "../root/fit_NEWA3ZEROSMEARGW1p0Y3p5X0p5_"+nevents_s[i3]+"_"+files_n[i2]+"_"+posttag+".root";
+	TString fn = "../root/fit_NEWA3ZEROSMEARGW1p0Y3p5_"+nevents_s[i3]+"_"+files_n[i2]+"_"+posttag+".root";
 	TFile* f = TFile::Open(fn, "READ");
 	if(f==0 || f==nullptr || f->IsZombie()) continue;
 	//cout << f->GetName() << endl;

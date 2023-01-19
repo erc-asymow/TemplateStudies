@@ -12,16 +12,16 @@
 
   ////// SCALEA0A1A2A3A4
   vector<TString> files_SCALEA0A1A2A3A4 = {
-    //"root/fit_SYSTS_1G_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST.root",
-    "root/fit_jacVsM_4G_y2p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3A4.root",
-    "root/fit_jacVsM_4G_y3p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3A4.root",
-    "root/fit_jacVsM_4G_y3p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3A4.root",
-    "root/fit_jacVsM_4G_y3p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3A4.root",
-    "root/fit_jacVsM_4G_y3p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3A4.root",
-    "root/fit_jacVsM_4G_y4p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3A4.root",
-    "root/fit_jacVsM_4G_y4p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3A4.root",
-    "root/fit_jacVsM_4G_y4p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3A4.root",
-    "root/fit_jacVsM_4G_y5p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3A4.root"
+    //"../root/fit_SYSTS_1G_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST.root",
+    "../root/fit_jacVsM_4G_y2p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3A4.root",
+    "../root/fit_jacVsM_4G_y3p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3A4.root",
+    "../root/fit_jacVsM_4G_y3p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3A4.root",
+    "../root/fit_jacVsM_4G_y3p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3A4.root",
+    "../root/fit_jacVsM_4G_y3p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3A4.root",
+    "../root/fit_jacVsM_4G_y4p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3A4.root",
+    "../root/fit_jacVsM_4G_y4p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3A4.root",
+    "../root/fit_jacVsM_4G_y4p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3A4.root",
+    "../root/fit_jacVsM_4G_y5p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3A4.root"
   };
   vector<float> edges_SCALEA0A1A2A3A4 = {
     //2.50,
@@ -62,16 +62,16 @@
 
   ////// SCALEA0A1A2A4
   vector<TString> files_SCALEA0A1A2A4 = {
-    //"root/fit_SYSTS_1G_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST.root",
-    "root/fit_jacVsM_4G_y2p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A4.root",
-    "root/fit_jacVsM_4G_y3p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A4.root",
-    "root/fit_jacVsM_4G_y3p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A4.root",
-    "root/fit_jacVsM_4G_y3p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A4.root",
-    "root/fit_jacVsM_4G_y3p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A4.root",
-    "root/fit_jacVsM_4G_y4p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A4.root",
-    "root/fit_jacVsM_4G_y4p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A4.root",
-    "root/fit_jacVsM_4G_y4p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A4.root",
-    "root/fit_jacVsM_4G_y5p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A4.root"
+    //"../root/fit_SYSTS_1G_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST.root",
+    "../root/fit_jacVsM_4G_y2p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A4.root",
+    "../root/fit_jacVsM_4G_y3p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A4.root",
+    "../root/fit_jacVsM_4G_y3p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A4.root",
+    "../root/fit_jacVsM_4G_y3p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A4.root",
+    "../root/fit_jacVsM_4G_y3p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A4.root",
+    "../root/fit_jacVsM_4G_y4p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A4.root",
+    "../root/fit_jacVsM_4G_y4p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A4.root",
+    "../root/fit_jacVsM_4G_y4p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A4.root",
+    "../root/fit_jacVsM_4G_y5p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A4.root"
   };
   vector<float> edges_SCALEA0A1A2A4 = {
     //2.50,
@@ -112,16 +112,16 @@
 
   ////// SCALEA0A1A3A4
   vector<TString> files_SCALEA0A1A3A4 = {
-    //"root/fit_SYSTS_1G_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST.root",
-    "root/fit_jacVsM_4G_y2p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A3A4.root",
-    "root/fit_jacVsM_4G_y3p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A3A4.root",
-    "root/fit_jacVsM_4G_y3p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A3A4.root",
-    "root/fit_jacVsM_4G_y3p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A3A4.root",
-    "root/fit_jacVsM_4G_y3p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A3A4.root",
-    "root/fit_jacVsM_4G_y4p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A3A4.root",
-    "root/fit_jacVsM_4G_y4p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A3A4.root",
-    "root/fit_jacVsM_4G_y4p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A3A4.root",
-    "root/fit_jacVsM_4G_y5p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A3A4.root"
+    //"../root/fit_SYSTS_1G_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST.root",
+    "../root/fit_jacVsM_4G_y2p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A3A4.root",
+    "../root/fit_jacVsM_4G_y3p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A3A4.root",
+    "../root/fit_jacVsM_4G_y3p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A3A4.root",
+    "../root/fit_jacVsM_4G_y3p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A3A4.root",
+    "../root/fit_jacVsM_4G_y3p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A3A4.root",
+    "../root/fit_jacVsM_4G_y4p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A3A4.root",
+    "../root/fit_jacVsM_4G_y4p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A3A4.root",
+    "../root/fit_jacVsM_4G_y4p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A3A4.root",
+    "../root/fit_jacVsM_4G_y5p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A3A4.root"
   };
   vector<float> edges_SCALEA0A1A3A4 = {
     //2.50,
@@ -162,16 +162,16 @@
 
   ////// SCALEA0A1A2A3
   vector<TString> files_SCALEA0A1A2A3 = {
-    //"root/fit_SYSTS_1G_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST.root",
-    "root/fit_jacVsM_4G_y2p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root",
-    "root/fit_jacVsM_4G_y3p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root",
-    "root/fit_jacVsM_4G_y3p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root",
-    "root/fit_jacVsM_4G_y3p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root",
-    "root/fit_jacVsM_4G_y3p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root",
-    "root/fit_jacVsM_4G_y4p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root",
-    "root/fit_jacVsM_4G_y4p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root",
-    "root/fit_jacVsM_4G_y4p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root",
-    "root/fit_jacVsM_4G_y5p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root"
+    //"../root/fit_SYSTS_1G_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST.root",
+    "../root/fit_jacVsM_4G_y2p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root",
+    "../root/fit_jacVsM_4G_y3p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root",
+    "../root/fit_jacVsM_4G_y3p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root",
+    "../root/fit_jacVsM_4G_y3p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root",
+    "../root/fit_jacVsM_4G_y3p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root",
+    "../root/fit_jacVsM_4G_y4p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root",
+    "../root/fit_jacVsM_4G_y4p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root",
+    "../root/fit_jacVsM_4G_y4p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root",
+    "../root/fit_jacVsM_4G_y5p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root"
   };
   vector<float> edges_SCALEA0A1A2A3 = {
     //2.50,
@@ -212,16 +212,16 @@
 
   ////// SCALEA0A1A2
   vector<TString> files_SCALEA0A1A2 = {
-    //"root/fit_SYSTS_1G_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST.root",
-    "root/fit_jacVsM_4G_y2p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root",
-    "root/fit_jacVsM_4G_y3p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root",
-    "root/fit_jacVsM_4G_y3p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root",
-    "root/fit_jacVsM_4G_y3p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root",
-    "root/fit_jacVsM_4G_y3p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root",
-    "root/fit_jacVsM_4G_y4p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root",
-    "root/fit_jacVsM_4G_y4p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root",
-    "root/fit_jacVsM_4G_y4p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root",
-    "root/fit_jacVsM_4G_y5p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root"
+    //"../root/fit_SYSTS_1G_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST.root",
+    "../root/fit_jacVsM_4G_y2p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root",
+    "../root/fit_jacVsM_4G_y3p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root",
+    "../root/fit_jacVsM_4G_y3p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root",
+    "../root/fit_jacVsM_4G_y3p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root",
+    "../root/fit_jacVsM_4G_y3p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root",
+    "../root/fit_jacVsM_4G_y4p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root",
+    "../root/fit_jacVsM_4G_y4p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root",
+    "../root/fit_jacVsM_4G_y4p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root",
+    "../root/fit_jacVsM_4G_y5p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root"
   };
   vector<float> edges_SCALEA0A1A2 = {
     //2.50,
@@ -262,16 +262,16 @@
 
   ////// SCALEA0A1
   vector<TString> files_SCALEA0A1 = {
-    //"root/fit_SYSTS_1G_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST.root",
-    "root/fit_jacVsM_4G_y2p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root",
-    "root/fit_jacVsM_4G_y3p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root",
-    "root/fit_jacVsM_4G_y3p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root",
-    "root/fit_jacVsM_4G_y3p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root",
-    "root/fit_jacVsM_4G_y3p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root",
-    "root/fit_jacVsM_4G_y4p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root",
-    "root/fit_jacVsM_4G_y4p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root",
-    "root/fit_jacVsM_4G_y4p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root",
-    "root/fit_jacVsM_4G_y5p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root"
+    //"../root/fit_SYSTS_1G_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST.root",
+    "../root/fit_jacVsM_4G_y2p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root",
+    "../root/fit_jacVsM_4G_y3p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root",
+    "../root/fit_jacVsM_4G_y3p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root",
+    "../root/fit_jacVsM_4G_y3p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root",
+    "../root/fit_jacVsM_4G_y3p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root",
+    "../root/fit_jacVsM_4G_y4p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root",
+    "../root/fit_jacVsM_4G_y4p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root",
+    "../root/fit_jacVsM_4G_y4p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root",
+    "../root/fit_jacVsM_4G_y5p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root"
   };
   vector<float> edges_SCALEA0A1 = {
     //2.50,
@@ -312,16 +312,16 @@
 
   ////// FULL
   vector<TString> files_FULL = {
-    //"root/fit_SYSTS_1G_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST.root",
-    "root/fit_jacVsM_4G_y2p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root",
-    "root/fit_jacVsM_4G_y3p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root",
-    "root/fit_jacVsM_4G_y3p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root",
-    "root/fit_jacVsM_4G_y3p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root",
-    "root/fit_jacVsM_4G_y3p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root",
-    "root/fit_jacVsM_4G_y4p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root",
-    "root/fit_jacVsM_4G_y4p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root",
-    "root/fit_jacVsM_4G_y4p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root",
-    "root/fit_jacVsM_4G_y5p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root"
+    //"../root/fit_SYSTS_1G_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST.root",
+    "../root/fit_jacVsM_4G_y2p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root",
+    "../root/fit_jacVsM_4G_y3p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root",
+    "../root/fit_jacVsM_4G_y3p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root",
+    "../root/fit_jacVsM_4G_y3p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root",
+    "../root/fit_jacVsM_4G_y3p75_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root",
+    "../root/fit_jacVsM_4G_y4p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root",
+    "../root/fit_jacVsM_4G_y4p25_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root",
+    "../root/fit_jacVsM_4G_y4p50_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root",
+    "../root/fit_jacVsM_4G_y5p00_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root"
   };
   vector<float> edges_FULL = {
     //2.50,
@@ -362,10 +362,10 @@
 
   //////// 
   vector<TString> files_A4new = {
-    "root/fit_jacVsM_4G_y4p00_A4new_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root",
-    "root/fit_jacVsM_4G_y4p00_A4new_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root",
-    "root/fit_jacVsM_4G_y4p00_A4new_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root",
-    "root/fit_jacVsM_4G_y4p00_A4new_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root",
+    "../root/fit_jacVsM_4G_y4p00_A4new_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root",
+    "../root/fit_jacVsM_4G_y4p00_A4new_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root",
+    "../root/fit_jacVsM_4G_y4p00_A4new_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root",
+    "../root/fit_jacVsM_4G_y4p00_A4new_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root",
   };
   vector<float> edges_A4new = {
     4.0-0.04,
@@ -401,10 +401,10 @@
   
   //////// 
   vector<TString> files_A4new36 = {
-    "root/fit_jacVsM_4G_y4p00_A4new_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_6_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root",
-    "root/fit_jacVsM_4G_y4p00_A4new_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_6_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root",
-    "root/fit_jacVsM_4G_y4p00_A4new_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_6_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root",
-    "root/fit_jacVsM_4G_y4p00_A4new_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_6_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root",
+    "../root/fit_jacVsM_4G_y4p00_A4new_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_6_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root",
+    "../root/fit_jacVsM_4G_y4p00_A4new_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_6_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root",
+    "../root/fit_jacVsM_4G_y4p00_A4new_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_6_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root",
+    "../root/fit_jacVsM_4G_y4p00_A4new_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_6_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root",
   };
   vector<float> edges_A4new36 = {
     4.0-0.02,
@@ -439,10 +439,10 @@
 
   //////// 
   vector<TString> files_8 = {
-    "root/fit_jacVsM_4G_y4p00_UL_10_8_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root",
-    "root/fit_jacVsM_4G_y4p00_UL_10_8_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root",
-    "root/fit_jacVsM_4G_y4p00_UL_10_8_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root",
-    "root/fit_jacVsM_4G_y4p00_UL_10_8_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root",
+    "../root/fit_jacVsM_4G_y4p00_UL_10_8_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root",
+    "../root/fit_jacVsM_4G_y4p00_UL_10_8_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root",
+    "../root/fit_jacVsM_4G_y4p00_UL_10_8_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root",
+    "../root/fit_jacVsM_4G_y4p00_UL_10_8_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_3_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root",
   };
   vector<float> edges_8 = {
     4.0+0.02,
@@ -475,13 +475,91 @@
   leg1->AddEntry(fit_8, "corr(y): 6->8", "P");
   mg->Add(fit_8);
 
+
+  //////// 
+  vector<TString> files_AtanH = {
+    "../root/fit_jacVsM_4G_y4p00_A4TanH_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_4_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root",
+    "../root/fit_jacVsM_4G_y4p00_A4TanH_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_4_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root",
+    "../root/fit_jacVsM_4G_y4p00_A4TanH_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_4_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root",
+    "../root/fit_jacVsM_4G_y4p00_A4TanH_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_4_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root",
+  };
+  vector<float> edges_AtanH = {
+    4.0+0.04,
+    4.0+0.04,
+    4.0+0.04,
+    4.0+0.04
+  };
+  unsigned int n_AtanH = files_AtanH.size();
+  double xx_AtanH[10], yy_AtanH[10], yyMC_AtanH[10], exx_AtanH[10], eyy_AtanH[10];
+  for(unsigned int i=0; i<n_AtanH; i++){
+    TString fn = files_AtanH[i];
+    TFile* f = TFile::Open(fn, "READ");
+    TTree *t = f->Get<TTree>("tree");
+    double err;
+    t->SetBranchAddress("best_mass_err", &err);
+    t->GetEntry(0);
+    xx_AtanH[i] = edges_AtanH[i];
+    exx_AtanH[i] = 0.0;
+    yy_AtanH[i] = err;
+    eyy_AtanH[i] = 0.0;
+    //cout << yy[i] << endl;
+  }
+  TGraphErrors* fit_AtanH   = new TGraphErrors(n_AtanH,xx_AtanH,yy_AtanH,exx_AtanH,eyy_AtanH);
+  fit_AtanH->SetMarkerStyle(23);
+  fit_AtanH->SetMarkerSize(1.5);
+  fit_AtanH->SetMarkerColor(kBlack);
+  fit_AtanH->SetMinimum(0.0);
+  fit_AtanH->SetMaximum(110.0);
+  //fit_AtanH->Draw("apl");
+  leg1->AddEntry(fit_AtanH, "A_{4}: pol -> ATanH", "P");
+  mg->Add(fit_AtanH);
+
+  //////// 
+  vector<TString> files_AtanH_10G = {
+    "../root/fit_jacVsM_10G_y4p00_A4TanH_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_4_closure_jUL_j0_j1_j2_j3_j4_TEST_FULL.root",
+    "../root/fit_jacVsM_10G_y4p00_A4TanH_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_4_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1.root",
+    "../root/fit_jacVsM_10G_y4p00_A4TanH_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_4_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2.root",
+    "../root/fit_jacVsM_10G_y4p00_A4TanH_UL_10_6_A0_3_3_A1_3_3_A2_3_3_A3_3_3_A4_3_4_closure_jUL_j0_j1_j2_j3_j4_TEST_SCALEA0A1A2A3.root",
+  };
+  vector<float> edges_AtanH_10G = {
+    4.0+0.06,
+    4.0+0.06,
+    4.0+0.06,
+    4.0+0.06
+  };
+  unsigned int n_AtanH_10G = files_AtanH_10G.size();
+  double xx_AtanH_10G[10], yy_AtanH_10G[10], yyMC_AtanH_10G[10], exx_AtanH_10G[10], eyy_AtanH_10G[10];
+  for(unsigned int i=0; i<n_AtanH_10G; i++){
+    TString fn = files_AtanH_10G[i];
+    TFile* f = TFile::Open(fn, "READ");
+    TTree *t = f->Get<TTree>("tree");
+    double err;
+    t->SetBranchAddress("best_mass_err", &err);
+    t->GetEntry(0);
+    xx_AtanH_10G[i] = edges_AtanH_10G[i];
+    exx_AtanH_10G[i] = 0.0;
+    yy_AtanH_10G[i] = err;
+    eyy_AtanH_10G[i] = 0.0;
+    //cout << yy[i] << endl;
+  }
+  TGraphErrors* fit_AtanH_10G   = new TGraphErrors(n_AtanH_10G,xx_AtanH_10G,yy_AtanH_10G,exx_AtanH_10G,eyy_AtanH_10G);
+  fit_AtanH_10G->SetMarkerStyle(28);
+  fit_AtanH_10G->SetMarkerSize(1.5);
+  fit_AtanH_10G->SetMarkerColor(kBlack);
+  fit_AtanH_10G->SetMinimum(0.0);
+  fit_AtanH_10G->SetMaximum(110.0);
+  //fit_AtanH_10G->Draw("apl");
+  leg1->AddEntry(fit_AtanH_10G, "A_{4}: pol -> ATanH, 4G -> 10G", "P");
+  mg->Add(fit_AtanH_10G);
+
   
   ////////////////////////////////////////////////////////
   mg->GetXaxis()->SetTitle("y_{max}");
   mg->GetYaxis()->SetTitle("#Delta M_{W} (MeV)");
-  mg->GetYaxis()->SetRangeUser(0., 130.);
+  mg->GetYaxis()->SetRangeUser(0., 150.);
 			     
   mg->Draw("apl");
   leg1->Draw();
-  
+  c->SaveAs("deltaM_vs_y.png");
+  return;
 }
