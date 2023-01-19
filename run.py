@@ -26,10 +26,10 @@ args = parser.parse_args()
 
 sample_sizes = {
     #'10M':     10000000,
-    #'100M':   100000000,
+    '100M':   100000000,
     #'1G':    1000000000,
     #'4G':    4000000000,
-    '10G':  10000000000,
+    #'10G':  10000000000,
     #'40G':  40000000000,
     ##'200G': 200000000000,
 }
@@ -78,7 +78,7 @@ fit_opts = {
 
 pol_default = {
     'run'    : "full",
-    'corr'   : [10,4],
+    'corr'   : [10,6],
     'A0'     : [3,2],
     'A1'     : [2,3],
     'A2'     : [3,2],
@@ -132,7 +132,7 @@ pol_syst['A2']   = [2,2]
 pol_syst['A2']   = [2,2]
 pol_syst['A3']   = [2,2]
 pol_syst['A4']   = [2,2]
-pol_systs.append( pol_syst )
+#pol_systs.append( pol_syst )
 
 pol_syst = copy.deepcopy(pol_default)
 pol_syst['run'] = "corr"
@@ -252,6 +252,7 @@ elif args.algo=='jac2_systs_vsN':
             if args.smear:
                 command += ' --smear'
             command += ' --max_y=3.5 --max_x=0.5'
+            command += ' --relativistic'
             print(command)
             if not args.dryrun:
                 os.system(command)   

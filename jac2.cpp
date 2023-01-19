@@ -28,8 +28,8 @@ using namespace boost::program_options;
 std::vector<std::string> helicities = {"A0", "A1", "A2", "A3", "A4"};
 
 constexpr double MW = 80.;
-constexpr double GW = 1.0;
-constexpr double MASSSHIFT = 0.050;
+constexpr double GW = 2.0; 
+constexpr double MASSSHIFT = 0.01; 
 constexpr int NMAX  = 200;
 //constexpr int NMASS = 20;
 constexpr int NMASS = 3;
@@ -106,7 +106,8 @@ int main(int argc, char* argv[])
 	//("inter_extTH2_corr",  bool_switch()->default_value(false), "interpol corr(x,y)")
 	//("toyTF2_corr",  bool_switch()->default_value(false), "toy TF2 corr(x,y)")
 	("seed", value<int>()->default_value(4357), "seed")
-	("fit_qt_y",  bool_switch()->default_value(false), "fit qt vs y");
+	("fit_qt_y",  bool_switch()->default_value(false), "fit qt vs y")
+        ("relativistic",  bool_switch()->default_value(false), "relativistic");
 
       store(parse_command_line(argc, argv, desc), vm);
       notify(vm);
@@ -171,6 +172,8 @@ int main(int argc, char* argv[])
     
   double max_x = vm["max_x"].as<double>();
   double max_y = vm["max_y"].as<double>();
+
+  bool relativistic = vm["relativistic"].as<bool>();
 
   bool do_cheb_as_modifiers = false;
   if(run=="corr") do_cheb_as_modifiers = true;
@@ -322,8 +325,13 @@ int main(int argc, char* argv[])
   first_jac_A4xy = njacs;  
   njacs += njacs_A4xy;
   
-  auto toy_mass = [](double Q, double M, double G){
-    return 1./TMath::Pi()/(1 + (Q-M)*(Q-M)/G/G);
+  auto toy_mass = [&](double Q, double M, double G){
+    if (relativistic){
+    double gamma = TMath::Sqrt(M*M*(M*M+G*G));
+    double k = 2*TMath::Sqrt2()*M*G*gamma/TMath::Pi()/TMath::Sqrt(M*M+gamma);
+    return k/((Q*Q-M*M)*(Q*Q-M*M)+M*M*G*G);
+    }
+    return 1./TMath::Pi()/(1 + (Q-M)*(Q-M)/(G*G/4)); // non-relativistic
   };
 
   TF1* tf1toy_x = new TF1("toy_x", "[0]*x/TMath::Power(x*x+[1], 1.0)", 0.0, max_x);  
@@ -488,9 +496,9 @@ int main(int argc, char* argv[])
     double pt{0.0};
     double eta{0.0};
     while(!accept){
-      Q = TMath::Tan(rans[nslot]->Uniform(-TMath::Pi()*0.5, +TMath::Pi()*0.5))*GW + MW; 
+      Q = TMath::Tan(rans[nslot]->Uniform(-TMath::Pi()*0.5, +TMath::Pi()*0.5))*(GW/2) + MW; 
       while(Q < 50.0){
-	Q = TMath::Tan(rans[nslot]->Uniform(-TMath::Pi()*0.5, +TMath::Pi()*0.5))*GW + MW; 
+	Q = TMath::Tan(rans[nslot]->Uniform(-TMath::Pi()*0.5, +TMath::Pi()*0.5))*(GW/2) + MW; 
       }
       cos = rans[nslot]->Uniform(-1.0, 1.0);
       phi = rans[nslot]->Uniform(-TMath::Pi(), +TMath::Pi());
@@ -541,7 +549,7 @@ int main(int argc, char* argv[])
   dlast = std::make_unique<RNode>(dlast->Define("weights_mass", 
 						[&](double Q)->RVecD{
 						  RVecD out;
-						  double gen = 1./TMath::Pi()/(1 + (Q-MW)*(Q-MW)/GW/GW);
+						  double gen = 1./TMath::Pi()/(1 + (Q-MW)*(Q-MW)/(GW*GW/4)); //conversion factor
 						  out.emplace_back( toy_mass(Q,MW,GW)/gen );
 						  out.emplace_back( toy_mass(Q,MW+MASSSHIFT,GW)/gen );
 						  out.emplace_back( toy_mass(Q,MW-MASSSHIFT,GW)/gen );
@@ -968,7 +976,7 @@ int main(int argc, char* argv[])
 
     dlast = std::make_unique<RNode>(dlast->Define("weight_jacM",[&](RVecD weights, double Q)->double {
       double w = weights.at(0);
-      w *= TMath::Pi()*toy_mass(Q,MW,GW)*2*(Q-MW)/GW/GW;
+      w *= TMath::Pi()*toy_mass(Q,MW,GW)*2*(Q-MW)/(GW*GW/4);
       return w;
     }, {(run=="full" ? "weights_cheb" : "weights_mctruth"), "Q"} ));
     
