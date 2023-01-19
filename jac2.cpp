@@ -178,9 +178,9 @@ int main(int argc, char* argv[])
   int nbins_rap   = 25; 
   double rap_low  = 0.0;
   double rap_high = +2.5;
-  int nbins_pt    = 45; 
+  int nbins_pt    = 35; 
   double pt_low   = 25.;
-  double pt_high  = 70.;
+  double pt_high  = 60.;
 
   if(fit_qt_y){
     nbins_rap   = 13; 
@@ -326,14 +326,14 @@ int main(int argc, char* argv[])
     return 1./TMath::Pi()/(1 + (Q-M)*(Q-M)/G/G);
   };
 
-  TF1* tf1toy_x = new TF1("toy_x", "[0]*x/TMath::Power(x*x+[1], 1.25)", 0.0, max_x);  
+  TF1* tf1toy_x = new TF1("toy_x", "[0]*x/TMath::Power(x*x+[1], 1.0)", 0.0, max_x);  
   double p0_x = +2.35e-03;
   tf1toy_x->SetParameter(0, 1.0);
   tf1toy_x->SetParameter(1, p0_x);
   double int_toy_x = tf1toy_x->Integral(0.0, max_x);
   tf1toy_x->SetParameter(0, 1.0/int_toy_x);
   auto toy_x = [&](double x)->double{
-    return x/TMath::Power(x*x + p0_x, 1.25)/int_toy_x;
+    return x/TMath::Power(x*x + p0_x, 1.0)/int_toy_x;
   };
   
   TF1* tf1toy_y = new TF1("toy_y", "[2]/TMath::Sqrt(2*TMath::Pi()*[1])*TMath::Exp(-0.5*(x-[0])*(x-[0])/[1])", -max_y, max_y);
@@ -546,7 +546,7 @@ int main(int argc, char* argv[])
 						  out.emplace_back( toy_mass(Q,MW+MASSSHIFT,GW)/gen );
 						  out.emplace_back( toy_mass(Q,MW-MASSSHIFT,GW)/gen );
 						  for(unsigned int i=0; i<NMASS; i++)
-						    out.emplace_back( toy_mass(Q, MW - DELTAM*0.5 + DELTAM/NMASS*i,GW)/gen );
+						    out.emplace_back( toy_mass(Q, MW - DELTAM*0.5 + DELTAM/(NMASS-1)*i,GW)/gen );
 						  return out; 
 						}, {"Q"}));
 
