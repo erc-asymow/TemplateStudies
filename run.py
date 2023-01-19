@@ -35,20 +35,20 @@ sample_sizes = {
 }
 
 fit_opts = {
-    #'ADDMC_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert',
+    'ADDMC_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert',
     #'ULA0A1A2A3A4' :       ' --jUL --j0 --j1 --j2 --j3 --j4',
     #'ADDMC_ULA0A1A2A4':    ' --jUL --j0 --j1 --j2 --j4 --add_MC_uncert',
     #'ULA0A1A2A4' :         ' --jUL --j0 --j1 --j2 --j4',
     #'ADDMC_ULA0A1A2A3':    ' --jUL --j0 --j1 --j2 --j3 --add_MC_uncert',
     #'ULA0A1A2A3' :         ' --jUL --j0 --j1 --j2 --j3',
-    'ADDMC_ULA0A1A2A3A4_Ymin25' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_min=25',
-    'ADDMC_ULA0A1A2A3A4_Ymin26' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_min=26',
-    'ADDMC_ULA0A1A2A3A4_Ymin27' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_min=27',
-    'ADDMC_ULA0A1A2A3A4_Ymin28' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_min=28',
-    'ADDMC_ULA0A1A2A3A4_Ymin29' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_min=29',
-    'ADDMC_ULA0A1A2A3A4_Ymin30' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_min=30',
-    'ADDMC_ULA0A1A2A3A4_Ymin31' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_min=31',
-    'ADDMC_ULA0A1A2A3A4_Ymin32' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_min=32',
+    #'ADDMC_ULA0A1A2A3A4_Ymin25' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_min=25',
+    #'ADDMC_ULA0A1A2A3A4_Ymin26' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_min=26',
+    #'ADDMC_ULA0A1A2A3A4_Ymin27' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_min=27',
+    #'ADDMC_ULA0A1A2A3A4_Ymin28' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_min=28',
+    #'ADDMC_ULA0A1A2A3A4_Ymin29' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_min=29',
+    #'ADDMC_ULA0A1A2A3A4_Ymin30' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_min=30',
+    #'ADDMC_ULA0A1A2A3A4_Ymin31' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_min=31',
+    #'ADDMC_ULA0A1A2A3A4_Ymin32' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_min=32',
     #'ADDMC_ULA0A1A2A3A4_Ymin33' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_min=33',
     #'ADDMC_ULA0A1A2A3A4_Ymin34' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_min=34',
     #'ADDMC_ULA0A1A2A3A4_Ymin35' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_min=35',
@@ -57,28 +57,28 @@ fit_opts = {
     #'ADDMC_ULA0A1A2A3A4_Ymax68' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_max=68',
     #'ADDMC_ULA0A1A2A3A4_Ymax66' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_max=66',
     #'ADDMC_ULA0A1A2A3A4_Ymax64' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_max=64',
-    'ADDMC_ULA0A1A2A3A4_Ymax62' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_max=62',
-    'ADDMC_ULA0A1A2A3A4_Ymax60' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_max=60',
-    'ADDMC_ULA0A1A2A3A4_Ymax58' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_max=58',
-    'ADDMC_ULA0A1A2A3A4_Ymax56' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_max=56',
-    'ADDMC_ULA0A1A2A3A4_Ymax54' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_max=54',
-    'ADDMC_ULA0A1A2A3A4_Ymax52' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_max=52',
-    'ADDMC_ULA0A1A2A3A4_Xmax2p6' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --X_max=2.6',
-    'ADDMC_ULA0A1A2A3A4_Xmax2p4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --X_max=2.4',
-    'ADDMC_ULA0A1A2A3A4_Xmax2p2' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --X_max=2.2',
-    'ADDMC_ULA0A1A2A3A4_Xmax2p0' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --X_max=2.0',
-    'ADDMC_ULA0A1A2A3A4_Xmax1p8' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --X_max=1.8',
-    'ADDMC_ULA0A1A2A3A4_Xmax1p5' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --X_max=1.5',
-    'ADDMC_ULA0A1A2A3A4_Xmax1p0' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --X_max=1.0',
-    'ADDMC_ULA0A1A2A3A4_Xmax0p8' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --X_max=0.8',
-    'ADDMC_ULA0A1A2A3A4_Xmax0p5' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --X_max=0.5',
-    'ADDMC_ULA0A1A2A3A4_Xmax0p3' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --X_max=0.3',
-    'ADDMC_ULA0A1A2A3A4_Xmax0p2' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --X_max=0.2',
+    #'ADDMC_ULA0A1A2A3A4_Ymax62' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_max=62',
+    #'ADDMC_ULA0A1A2A3A4_Ymax60' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_max=60',
+    #'ADDMC_ULA0A1A2A3A4_Ymax58' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_max=58',
+    #'ADDMC_ULA0A1A2A3A4_Ymax56' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_max=56',
+    #'ADDMC_ULA0A1A2A3A4_Ymax54' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_max=54',
+    #'ADDMC_ULA0A1A2A3A4_Ymax52' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --Y_max=52',
+    #'ADDMC_ULA0A1A2A3A4_Xmax2p6' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --X_max=2.6',
+    #'ADDMC_ULA0A1A2A3A4_Xmax2p4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --X_max=2.4',
+    #'ADDMC_ULA0A1A2A3A4_Xmax2p2' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --X_max=2.2',
+    #'ADDMC_ULA0A1A2A3A4_Xmax2p0' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --X_max=2.0',
+    #'ADDMC_ULA0A1A2A3A4_Xmax1p8' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --X_max=1.8',
+    #'ADDMC_ULA0A1A2A3A4_Xmax1p5' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --X_max=1.5',
+    #'ADDMC_ULA0A1A2A3A4_Xmax1p0' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --X_max=1.0',
+    #'ADDMC_ULA0A1A2A3A4_Xmax0p8' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --X_max=0.8',
+    #'ADDMC_ULA0A1A2A3A4_Xmax0p5' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --X_max=0.5',
+    #'ADDMC_ULA0A1A2A3A4_Xmax0p3' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --X_max=0.3',
+    #'ADDMC_ULA0A1A2A3A4_Xmax0p2' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --X_max=0.2',
 }
 
 pol_default = {
     'run'    : "full",
-    'corr'   : [10,4],
+    'corr'   : [10,6],
     'A0'     : [3,2],
     'A1'     : [2,3],
     'A2'     : [3,2],
@@ -88,7 +88,7 @@ pol_default = {
 
 pol_systs = []
 
-pol_systs.append( pol_default )
+#pol_systs.append( pol_default )
 
 pol_syst = copy.deepcopy(pol_default)
 pol_syst['A0'] = [2,2]
@@ -251,7 +251,8 @@ elif args.algo=='jac2_systs_vsN':
                     command += ' --degs_'+k+'_x='+str(syst[k][0])+' --degs_'+k+'_y='+str(syst[k][1])
             if args.smear:
                 command += ' --smear'
-            command += ' --max_y=3.5 --max_x=0.5'
+            #command += ' --max_y=3.5 --max_x=0.5'
+            command += ' --max_y=3.5'
             print(command)
             if not args.dryrun:
                 os.system(command)   
