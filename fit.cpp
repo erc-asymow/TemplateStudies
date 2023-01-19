@@ -77,6 +77,8 @@ int main(int argc, char* argv[])
 	("jacmass", value<int>()->default_value(-1), "")
 	("add_MC_uncert", bool_switch()->default_value(false), "")
 	("jacobians_from_external", bool_switch()->default_value(false), "")
+	("hMC_from_external", bool_switch()->default_value(false), "")
+	("rnd_jac_scale", value<float>()->default_value(-1.0), "")
 	("X_max", value<float>()->default_value(99.), "")
 	("X_min", value<float>()->default_value(-99.), "")
 	("Y_max", value<float>()->default_value(99.), "")
@@ -134,13 +136,15 @@ int main(int argc, char* argv[])
   int jM   = vm["jM"].as<bool>();
   bool add_MC_uncert = vm["add_MC_uncert"].as<bool>();
   bool jacobians_from_external = vm["jacobians_from_external"].as<bool>();
+  bool hMC_from_external = vm["hMC_from_external"].as<bool>();
+  float rnd_jac_scale = vm["rnd_jac_scale"].as<float>();
+  bool rnd_jacobians = rnd_jac_scale>0.;
   int verbose = vm["verbose"].as<bool>();
   int debug = vm["debug"].as<bool>();
 
   TFile* f_external = 0;
   if(jacobians_from_external){
-    TString external_jacobians_fname = //"./root/histos_DEVFIX_10G_UL_8_6_A0_1_1_A1_1_1_A2_1_1_A3_1_1_A4_1_1_grid.root";
-      "./root/histos_DEVFIX_40G_UL_3_2_A0_1_2_A1_1_1_A2_1_2_A3_1_2_A4_1_1_corr.root"; 
+    TString external_jacobians_fname = "./root/histos_NEWA3ZEROSMEARGW1p0_10M_UL_8_6_A0_8_6_A1_8_6_A2_8_6_A3_8_6_A4_8_6_grid.root";
     f_external = TFile::Open(external_jacobians_fname, "READ");
     cout << "Using jacobians from external file " << external_jacobians_fname << endl; 
   }
@@ -162,6 +166,13 @@ int main(int argc, char* argv[])
   if(fin==0 || fin==nullptr || fin->IsZombie()){
     cout << "File NOT found" << endl;
     return 0;
+  }
+
+  TFile* f_aux = 0;
+  if(hMC_from_external){
+    TString external_hMC_fname = "./root/histos_NEWA3ZEROSMEARGW1p0_10M_UL_8_6_A0_8_6_A1_8_6_A2_8_6_A3_8_6_A4_8_6_grid.root";
+    f_aux = TFile::Open(external_hMC_fname, "READ");
+    cout << "Using hMC* from external file " << external_hMC_fname << endl; 
   }
 
   auto get_nbins_XY = [X_max,X_min,Y_max,Y_min](TH2D* h)-> std::pair<int,int> {
@@ -290,11 +301,23 @@ int main(int argc, char* argv[])
   else if(jacmass==2) hw_name += "_down";
 
   cout << "Starting template is histo=" << hw_name << endl;
-
+  
   TH2D* hwMC = fin->Get<TH2D>("hMC");
   TH2D* hw   = fin->Get<TH2D>( hw_name );
   vector<TH2D*> all_histos = { hw, hwMC };
-  for(unsigned int i=0; i<NMASS; i++) all_histos.push_back( fin->Get<TH2D>(Form("hMC_mass%d",i)) );
+  for(unsigned int i=0; i<NMASS; i++)
+    all_histos.push_back( fin->Get<TH2D>(Form("hMC_mass%d",i)) );
+
+  if(hMC_from_external){    
+    hwMC = f_aux->Get<TH2D>("hMC");
+    hw   = f_aux->Get<TH2D>(hw_name);
+    all_histos[0] = hwMC;
+    all_histos[1] = hw;
+    for(unsigned int i=0; i<NMASS; i++)
+      all_histos[2+i] = f_aux->Get<TH2D>(Form("hMC_mass%d",i));
+  }
+
+  
   if(rebinX>0 || rebinY>0){
     for(auto h : all_histos) h->Rebin2D(rebinX,rebinY);
   }
@@ -318,6 +341,7 @@ int main(int argc, char* argv[])
   unsigned int bin_counter = 0;
 
   MatrixXd jac(nbins, poi_counter);
+  MatrixXd jac_err(nbins, poi_counter);
   for(unsigned int j = 0; j<poi_counter; j++){
     unsigned int idx = active_pois[j];
     TString jac_name(Form("jac_%d", idx));
@@ -341,7 +365,8 @@ int main(int argc, char* argv[])
     for(unsigned int ix = 1; ix<=nx; ix++ ){
       for(unsigned int iy = 1; iy<=ny; iy++ ){
 	if(!accept_bin(hjac,ix,iy)) continue;
-	jac(bin_counter,j) = N*hjac->GetBinContent(ix,iy); 
+	jac(bin_counter,j)     = N*hjac->GetBinContent(ix,iy);
+	jac_err(bin_counter,j) = N*hjac->GetBinError(ix,iy); 
 	bin_counter++;
       }
     }
@@ -429,6 +454,20 @@ int main(int argc, char* argv[])
       }	
     }
 
+    //cout << inv_V << endl;
+    MatrixXd jac_rnd(jac.rows(), jac.cols());
+    if(rnd_jacobians){
+      for(unsigned int ix = 0; ix<jac.rows(); ix++){
+	for(unsigned int iy = 0; iy<jac.cols(); iy++){
+	  jac_rnd(ix,iy) = ran->Gaus(jac(ix,iy), jac_err(ix,iy)*rnd_jac_scale); 
+	  //cout << jac(ix,iy) << " --> " << jac_rnd(ix,iy) << endl;
+	}
+      }
+    }
+    else{
+      jac_rnd = jac;
+    }
+    
     // mass specific
     for(int m = (!do_toys ? -1 : 0); m<NMASS; m++){
 
@@ -444,19 +483,21 @@ int main(int argc, char* argv[])
       cout << "Pseudo-data is histo=" << hMC->GetName() << endl;
       
       // account for slight change in V for different mass hypos
-      bin_counter = 0;
-      for(unsigned int ix = 1; ix<=nx; ix++ ){
-	for(unsigned int iy = 1; iy<=ny; iy++ ){
-	  if(!accept_bin(hMC,ix,iy)) continue;
-	  double val = hMC->GetBinContent(ix,iy);
-	  if(do_toys){
-	    val = -1.0;
-	    while(val<0) val = mu_ran(bin_counter);
+      if(false){
+	bin_counter = 0;
+	for(unsigned int ix = 1; ix<=nx; ix++ ){
+	  for(unsigned int iy = 1; iy<=ny; iy++ ){
+	    if(!accept_bin(hMC,ix,iy)) continue;
+	    double val = hMC->GetBinContent(ix,iy);
+	    if(do_toys && !rnd_jacobians){
+	      val = -1.0;
+	      while(val<0) val = mu_ran(bin_counter);
+	    }
+	    if(add_MC_uncert) val += (hMC->GetBinError(ix,iy)*hMC->GetBinError(ix,iy));
+	    inv_sqrtV(bin_counter,bin_counter) = 1./TMath::Sqrt(val);
+	    inv_V(bin_counter,bin_counter) = 1./val;
+	    bin_counter++;
 	  }
-	  if(add_MC_uncert) val += (hMC->GetBinError(ix,iy)*hMC->GetBinError(ix,iy));
-	  inv_sqrtV(bin_counter,bin_counter) = 1./TMath::Sqrt(val);
-	  inv_V(bin_counter,bin_counter) = 1./val;
-	  bin_counter++;
 	}
       }
       
@@ -465,16 +506,15 @@ int main(int argc, char* argv[])
       for(unsigned int ix = 1; ix<=nx; ix++ ){
 	for(unsigned int iy = 1; iy<=ny; iy++ ){
 	  if(!accept_bin(hMC,ix,iy)) continue;
-	  if(!do_toys)
-	    y(bin_counter) = -all_histos[0]->GetBinContent(ix,iy)+hMC->GetBinContent(ix,iy);
-	  else
+	  if(do_toys && !rnd_jacobians)
 	    y(bin_counter) = -mu_ran(bin_counter)+hMC->GetBinContent(ix,iy);
+	  else
+	    y(bin_counter) = -all_histos[0]->GetBinContent(ix,iy)+hMC->GetBinContent(ix,iy);
 	  bin_counter++;
 	}
       }
 
-      //cout << inv_V << endl;
-      MatrixXd A = inv_sqrtV*jac;
+      MatrixXd A = inv_sqrtV*jac_rnd;
       MatrixXd b = inv_sqrtV*y;
       VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
       
@@ -502,7 +542,7 @@ int main(int argc, char* argv[])
 	//cout << "\tCompleteOrthogonalDecomposition = " << chi2_CompleteOrthogonalDecomposition << endl;
       }
       
-      MatrixXd C = (jac.transpose()*inv_V*jac).inverse();
+      MatrixXd C = (jac_rnd.transpose()*inv_V*jac_rnd).inverse();
       MatrixXd rho( C.rows(), C.rows() ) ;
       for(unsigned int ir = 0; ir<C.rows(); ir++){
 	for(unsigned int ic = 0; ic<C.rows(); ic++){
@@ -607,7 +647,7 @@ int main(int argc, char* argv[])
       chi2_start = chi2old(0,0);
       chi2_min = chi2(0,0);
       if(m>=0){
-	mass_test =  (MW - DELTAM*0.5 + DELTAM/NMASS*m);
+	mass_test =  (MW - DELTAM*0.5 + DELTAM/(NMASS)*m);
       }
       else if(jacmass==1) mass_test = MW + MASSSHIFT;
       else if(jacmass==2) mass_test = MW - MASSSHIFT;
@@ -615,7 +655,7 @@ int main(int argc, char* argv[])
       tree2->Fill();
       
       if(m>=0){
-	xx_mass[m] = MW - DELTAM*0.5 + DELTAM/NMASS*m; 
+	xx_mass[m] = MW - DELTAM*0.5 + DELTAM/(NMASS)*m; 
 	exx_mass[m] = 0.0;
 	yy_chi2[m] = chi2(0,0);
 	eyy_chi2[m] = 0.0;
@@ -652,7 +692,7 @@ int main(int argc, char* argv[])
 	  for(unsigned int iy = 1; iy<=ny; iy++ ){
 	    if(!accept_bin(hw,ix,iy)) continue;
 	    double val = hw->GetBinContent(ix,iy);
-	    val += (jac*x)(bin_counter);
+	    val += (jac_rnd*x)(bin_counter);
 	    hw_postfit->SetBinContent(ix,iy,val);
 	    bin_counter++;
 	  }
@@ -734,7 +774,7 @@ int main(int argc, char* argv[])
       
       int idx = 0;
       for(int m=0; m<NMASS; m++){
-	float mass_m = MW - DELTAM*0.5 + DELTAM/NMASS*m;
+	float mass_m = MW - DELTAM*0.5 + DELTAM/(NMASS)*m;
 	if(mass_m > (biasM - deltaM)){
 	  idx = m;
 	  break;
@@ -752,7 +792,9 @@ int main(int argc, char* argv[])
   tree2->Write();
   fout->Close();
   fin->Close();
-
+  if(f_aux!=0) f_aux->Close();
+  if(f_external!=0) f_external->Close();
+    
   sw.Stop();
   std::cout << "Real time: " << sw.RealTime() << " seconds " << "(CPU time:  " << sw.CpuTime() << " seconds)" << std::endl;
   return 1;
