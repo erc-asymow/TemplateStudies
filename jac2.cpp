@@ -331,17 +331,17 @@ int main(int argc, char* argv[])
     double k = 2*TMath::Sqrt2()*M*G*gamma/TMath::Pi()/TMath::Sqrt(M*M+gamma);
     return k/((Q*Q-M*M)*(Q*Q-M*M)+M*M*G*G);
     }
-    return 1./TMath::Pi()/(1 + (Q-M)*(Q-M)/(G*G/4)); // non-relativistic
+    return 1./TMath::Pi()/(1 + (Q-M)*(Q-M)/(G*G/4))*2./G; // non-relativistic
   };
 
-  TF1* tf1toy_x = new TF1("toy_x", "[0]*x/TMath::Power(x*x+[1], 1.25)", 0.0, max_x);  
+  TF1* tf1toy_x = new TF1("toy_x", "[0]*x/TMath::Power(x*x+[1], 1.05)", 0.0, max_x);  
   double p0_x = +2.35e-03;
   tf1toy_x->SetParameter(0, 1.0);
   tf1toy_x->SetParameter(1, p0_x);
   double int_toy_x = tf1toy_x->Integral(0.0, max_x);
   tf1toy_x->SetParameter(0, 1.0/int_toy_x);
   auto toy_x = [&](double x)->double{
-    return x/TMath::Power(x*x + p0_x, 1.25)/int_toy_x;
+    return x/TMath::Power(x*x + p0_x, 1.05)/int_toy_x;
   };
   
   TF1* tf1toy_y = new TF1("toy_y", "[2]/TMath::Sqrt(2*TMath::Pi()*[1])*TMath::Exp(-0.5*(x-[0])*(x-[0])/[1])", -max_y, max_y);
@@ -549,7 +549,7 @@ int main(int argc, char* argv[])
   dlast = std::make_unique<RNode>(dlast->Define("weights_mass", 
 						[&](double Q)->RVecD{
 						  RVecD out;
-						  double gen = 1./TMath::Pi()/(1 + (Q-MW)*(Q-MW)/(GW*GW/4)); //conversion factor
+						  double gen = 1./TMath::Pi()/(1 + (Q-MW)*(Q-MW)/(GW*GW/4))*2./GW; //conversion factor
 						  out.emplace_back( toy_mass(Q,MW,GW)/gen );
 						  out.emplace_back( toy_mass(Q,MW+MASSSHIFT,GW)/gen );
 						  out.emplace_back( toy_mass(Q,MW-MASSSHIFT,GW)/gen );
@@ -976,7 +976,7 @@ int main(int argc, char* argv[])
 
     dlast = std::make_unique<RNode>(dlast->Define("weight_jacM",[&](RVecD weights, double Q)->double {
       double w = weights.at(0);
-      w *= TMath::Pi()*toy_mass(Q,MW,GW)*2*(Q-MW)/(GW*GW/4);
+      w *= 4*TMath::Pi()*(1./TMath::Pi()/(1 + (Q-MW)*(Q-MW)/(GW*GW/4))*2./GW)*2*(Q-MW)/GW;
       return w;
     }, {(run=="full" ? "weights_cheb" : "weights_mctruth"), "Q"} ));
     
