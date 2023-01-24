@@ -42,3 +42,6 @@ fit_grid: fit_grid.cpp
 
 debug.o: debug.cpp
 	$(GCC) $(CXXFLAGS) -o $(BINDIR)/debug debug.cpp  
+
+estim: estim.cpp
+	$(GCC) $(CXXFLAGS) -o $(BINDIR)/estim estim.cpp
