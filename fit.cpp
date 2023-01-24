@@ -87,6 +87,7 @@ int main(int argc, char* argv[])
 	("debug", bool_switch()->default_value(false), "")
 	("tag", value<std::string>()->default_value(""), "tag name")
 	("post_tag", value<std::string>()->default_value(""), "post tag name")
+	("compute_deltachi2", bool_switch()->default_value(false), "")
 	("run", value<std::string>()->default_value("closure"), "run type");
 
       store(parse_command_line(argc, argv, desc), vm);
@@ -141,7 +142,8 @@ int main(int argc, char* argv[])
   bool rnd_jacobians = rnd_jac_scale>0.;
   int verbose = vm["verbose"].as<bool>();
   int debug = vm["debug"].as<bool>();
-
+  bool compute_deltachi2 = vm["compute_deltachi2"].as<bool>();
+  
   TFile* f_external = 0;
   if(jacobians_from_external){
     TString external_jacobians_fname = "./root/histos_NEWA3ZEROSMEARGW1p0_10M_UL_8_6_A0_8_6_A1_8_6_A2_8_6_A3_8_6_A4_8_6_grid.root";
@@ -644,6 +646,60 @@ int main(int argc, char* argv[])
       int ndof = nbins-poi_counter;
       double chi2norm = chi2(0,0)/ndof;
 
+      if(compute_deltachi2){
+	MatrixXd Vj(jac.rows()*jac.cols(), jac.rows()*jac.cols());
+	for(unsigned int ir=0; ir<Vj.rows(); ir++){
+	  for(unsigned int ic=0; ic<Vj.cols(); ic++){
+	    Vj(ir,ic) = 0.0;
+	  }
+	}
+	for(unsigned int ir=0; ir<jac.rows(); ir++){
+	  for(unsigned int ic=0; ic<jac.cols(); ic++){
+	    unsigned int idx_j = jac.cols()*ir + ic;
+	    Vj(idx_j,idx_j) = jac_err(ir,ic)*jac_err(ir,ic);
+	  }
+	}	
+	//cout << Vj << endl;
+	cout << "Vj matrix filled" << endl;
+	MatrixXd theta(b.size(), b.size()*x.size());
+	MatrixXd jac_new = jac_rnd;
+	double dchi2_old = 999.;
+	double dchi2_new = 0.;
+	unsigned int iter = 0;
+	while(true){
+	  MatrixXd A_new = inv_sqrtV*jac_new;
+	  VectorXd x_new = A_new.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
+	  for(unsigned int ir=0; ir<theta.rows(); ir++){
+	    for(unsigned int ic=0; ic<theta.cols(); ic++){
+	      theta(ir,ic) = x_new(ic % x.size())*(ic/b.size()==ir ? 1.0 : 0.0);
+	    }
+	  }
+	  //cout << theta << endl;
+	  cout << "Theta matrix filled" << endl;
+	  MatrixXd D = inv_sqrtV*theta;
+	  cout << "D matrix computed" << endl;
+	  VectorXd xi = D.transpose()*(b - A_new*x_new);
+	  cout << "xi vector computed" << endl;
+	  //MatrixXd delta_chi2 = -xi.transpose()*(D.transpose()*D + Vj.inverse()).inverse()*xi;
+	  MatrixXd delta_chi2 = -xi.transpose()*Vj*xi;
+	  MatrixXd delta_j = Vj*xi;
+	  for(unsigned int ir=0; ir<jac.rows(); ir++){
+	    for(unsigned int ic=0; ic<jac.cols(); ic++){
+	      unsigned int idx_j = jac.cols()*ir + ic;
+	      jac_new(ir,ic) += delta_j(idx_j,0);
+	    }
+	  }		  
+	  cout << "Iter " << iter << ": Delta chi2 from jac_err: " << delta_chi2(0,0) << endl;
+	  dchi2_new = delta_chi2(0,0);
+	  if(TMath::Abs(dchi2_old-dchi2_new)<0.1)
+	    break;
+	  else
+	    dchi2_old = dchi2_new;
+	  iter++;
+	}
+	chi2(0,0) += dchi2_new;	
+      }
+      
       chi2_start = chi2old(0,0);
       chi2_min = chi2(0,0);
       if(m>=0){
