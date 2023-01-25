@@ -25,17 +25,21 @@ parser.add_argument('--jacmass', dest = 'jacmass'  , type = int,  default=-1, he
 args = parser.parse_args()
 
 sample_sizes = {
-    #'10M':     10000000,
+    '10M':     10000000,
     '100M':   100000000,
-    #'1G':    1000000000,
-    #'4G':    4000000000,
-    #'10G':  10000000000,
+    '1G':    1000000000,
+    '4G':    4000000000,
+    '10G':  10000000000,
     #'40G':  40000000000,
     ##'200G': 200000000000,
 }
 
 fit_opts = {
-    'ADDMC_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert',
+    #'ADDMC_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert',
+    'ADDMCBBB_ULA0A1A2A3A4'    : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --compute_deltachi2',
+    'ADDMCJACEXT_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --jacobians_from_external',
+    'ADDMCHMCEXT_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --hMC_from_external',
+    'ADDMCBBBHMCEXT_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --hMC_from_external --compute_deltachi2',
     #'ULA0A1A2A3A4' :       ' --jUL --j0 --j1 --j2 --j3 --j4',
     #'ADDMC_ULA0A1A2A4':    ' --jUL --j0 --j1 --j2 --j4 --add_MC_uncert',
     #'ULA0A1A2A4' :         ' --jUL --j0 --j1 --j2 --j4',
@@ -78,7 +82,7 @@ fit_opts = {
 
 pol_default = {
     'run'    : "full",
-    'corr'   : [10,6],
+    'corr'   : [10,4],
     'A0'     : [3,2],
     'A1'     : [2,3],
     'A2'     : [3,2],
@@ -132,7 +136,7 @@ pol_syst['A2']   = [2,2]
 pol_syst['A2']   = [2,2]
 pol_syst['A3']   = [2,2]
 pol_syst['A4']   = [2,2]
-#pol_systs.append( pol_syst )
+pol_systs.append( pol_syst )
 
 pol_syst = copy.deepcopy(pol_default)
 pol_syst['run'] = "corr"

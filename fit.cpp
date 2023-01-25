@@ -146,7 +146,7 @@ int main(int argc, char* argv[])
   
   TFile* f_external = 0;
   if(jacobians_from_external){
-    TString external_jacobians_fname = "./root/histos_NEWA3ZEROSMEARGW1p0_10M_UL_8_6_A0_8_6_A1_8_6_A2_8_6_A3_8_6_A4_8_6_grid.root";
+    TString external_jacobians_fname = "./root/histos_NEWA3ZEROSMEARGW1p0_10G_UL_3_2_A0_2_2_A1_2_2_A2_2_2_A3_2_2_A4_2_2_corr.root";
     f_external = TFile::Open(external_jacobians_fname, "READ");
     cout << "Using jacobians from external file " << external_jacobians_fname << endl; 
   }
@@ -172,7 +172,7 @@ int main(int argc, char* argv[])
 
   TFile* f_aux = 0;
   if(hMC_from_external){
-    TString external_hMC_fname = "./root/histos_NEWA3ZEROSMEARGW1p0_10M_UL_8_6_A0_8_6_A1_8_6_A2_8_6_A3_8_6_A4_8_6_grid.root";
+    TString external_hMC_fname = "./root/histos_NEWA3ZEROSMEARGW1p0_10G_UL_3_2_A0_2_2_A1_2_2_A2_2_2_A3_2_2_A4_2_2_corr.root";
     f_aux = TFile::Open(external_hMC_fname, "READ");
     cout << "Using hMC* from external file " << external_hMC_fname << endl; 
   }
@@ -311,12 +311,13 @@ int main(int argc, char* argv[])
     all_histos.push_back( fin->Get<TH2D>(Form("hMC_mass%d",i)) );
 
   if(hMC_from_external){    
+    all_histos.clear();
     hwMC = f_aux->Get<TH2D>("hMC");
-    hw   = f_aux->Get<TH2D>(hw_name);
-    all_histos[0] = hwMC;
-    all_histos[1] = hw;
+    hw   = f_aux->Get<TH2D>(hw_name);    
+    all_histos.push_back(hw);
+    all_histos.push_back(hwMC);
     for(unsigned int i=0; i<NMASS; i++)
-      all_histos[2+i] = f_aux->Get<TH2D>(Form("hMC_mass%d",i));
+      all_histos.push_back( f_aux->Get<TH2D>(Form("hMC_mass%d",i)) );
   }
 
   
@@ -709,6 +710,8 @@ int main(int argc, char* argv[])
       else if(jacmass==2) mass_test = MW - MASSSHIFT;
       else mass_test = MW;
       tree2->Fill();
+
+      cout << "m=" << m << ": chi2_min=" << chi2_min << endl;
       
       if(m>=0){
 	xx_mass[m] = MW - DELTAM*0.5 + DELTAM/(NMASS)*m; 
