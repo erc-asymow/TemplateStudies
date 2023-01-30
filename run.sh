@@ -2,6 +2,7 @@
 
 #old tag = NEWA3ZEROSMEARY3p5X0p5Ymax70GW1p0NEWTOYX
 
+
 #python run.py --tag=NEWA3ZEROSMEARGW1p0Y3p5 --algo=jac2_systs_vsN --smear
 
 python run.py --tag=NEWA3ZEROSMEARGW1p0 --algo=fit_systs_vsN --post_tag=DEBUG --nevents=100000000 --dryrun

@@ -331,8 +331,9 @@ int main(int argc, char* argv[])
     double k = 2*TMath::Sqrt2()*M*G*gamma/TMath::Pi()/TMath::Sqrt(M*M+gamma);
     return k/((Q*Q-M*M)*(Q*Q-M*M)+M*M*G*G);
     }
-    return 1./TMath::Pi()/(1 + (Q-M)*(Q-M)/(G*G/4)); // non-relativistic
+    return 1./TMath::Pi()/(1 + (Q-M)*(Q-M)/(G*G/4))*2./G; // non-relativistic
   };
+
 
   TF1* tf1toy_x = new TF1("toy_x", "[0]*x/TMath::Power(x*x+[1], 1.0)", 0.0, max_x);  
   double p0_x = +2.35e-03;
@@ -549,7 +550,7 @@ int main(int argc, char* argv[])
   dlast = std::make_unique<RNode>(dlast->Define("weights_mass", 
 						[&](double Q)->RVecD{
 						  RVecD out;
-						  double gen = 1./TMath::Pi()/(1 + (Q-MW)*(Q-MW)/(GW*GW/4)); //conversion factor
+						  double gen = 1./TMath::Pi()/(1 + (Q-MW)*(Q-MW)/(GW*GW/4))*2./GW; //conversion factor
 						  out.emplace_back( toy_mass(Q,MW,GW)/gen );
 						  out.emplace_back( toy_mass(Q,MW+MASSSHIFT,GW)/gen );
 						  out.emplace_back( toy_mass(Q,MW-MASSSHIFT,GW)/gen );
@@ -976,7 +977,7 @@ int main(int argc, char* argv[])
 
     dlast = std::make_unique<RNode>(dlast->Define("weight_jacM",[&](RVecD weights, double Q)->double {
       double w = weights.at(0);
-      w *= TMath::Pi()*toy_mass(Q,MW,GW)*2*(Q-MW)/(GW*GW/4);
+      w *= 4*TMath::Pi()*(1./TMath::Pi()/(1 + (Q-MW)*(Q-MW)/(GW*GW/4))*2./GW)*2*(Q-MW)/GW;
       return w;
     }, {(run=="full" ? "weights_cheb" : "weights_mctruth"), "Q"} ));
     
