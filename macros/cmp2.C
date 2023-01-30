@@ -10,15 +10,32 @@
   std::vector<TFile*> files{};
   std::vector<TString> tags{};
 
-  files.emplace_back( TFile::Open("../root/histos_NEWA3ZEROSMEAR_cheb_4G_UL_8_4_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root") );
-  tags.emplace_back("n_{x}=8");
-  files.emplace_back( TFile::Open("../root/histos_NEWA3ZEROSMEAR_cheb_4G_UL_10_4_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root") );
-  tags.emplace_back("n_{x}=10");
-  files.emplace_back( TFile::Open("../root/histos_NEWA3ZEROSMEAR_cheb_4G_UL_12_4_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root") );
-  tags.emplace_back("n_{x}=12");
+  //files.emplace_back( TFile::Open("../root/histos_NEWA3ZEROSMEAR_cheb_4G_UL_8_4_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root") );
+  //tags.emplace_back("n_{x}=8");
+  //files.emplace_back( TFile::Open("../root/histos_NEWA3ZEROSMEAR_cheb_4G_UL_10_4_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root") );
+  //tags.emplace_back("n_{x}=10");
+  //files.emplace_back( TFile::Open("../root/histos_NEWA3ZEROSMEAR_cheb_4G_UL_12_4_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root") );
+  //tags.emplace_back("n_{x}=12");
   //files.emplace_back(TFile::Open( "../root/histos_NEWA3ZEROSMEAR_cheb_4G_UL_10_6_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root") );
   //tags.emplace_back("n_{y}=6");
-  
+
+  //files.emplace_back( TFile::Open("../root/histos_NEWA3ZEROSMEARY3p5X0p5Ymax70GW1p0_40G_UL_3_2_A0_2_2_A1_2_2_A2_2_2_A3_2_2_A4_2_2_corr.root"));
+  //tags.emplace_back("1p0");
+  //files.emplace_back( TFile::Open("../root/histos_NEWA3ZEROSMEARY3p5X0p5Ymax70_40G_UL_3_2_A0_2_2_A1_2_2_A2_2_2_A3_2_2_A4_2_2_corr.root"));
+  //tags.emplace_back("2p0");
+
+  //files.emplace_back( TFile::Open("../root/histos_NEWA3ZEROSMEARGW1p0_10G_UL_8_6_A0_8_6_A1_8_6_A2_8_6_A3_8_6_A4_8_6_grid.root"));
+  //tags.emplace_back("1p0");
+  //files.emplace_back( TFile::Open("../root/histos_NEWA3ZEROSMEAR_10G_UL_8_6_A0_8_6_A1_8_6_A2_8_6_A3_8_6_A4_8_6_grid.root"));
+  //tags.emplace_back("2p0");
+
+  //files.emplace_back( TFile::Open("../root/histos_NEWA3ZEROSMEARGW1p0Y3p5X0p5_10G_UL_12_6_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root"));
+  //tags.emplace_back("0p5");
+  files.emplace_back( TFile::Open("../root/histos_NEWA3ZEROSMEARGW1p0Y3p5_4G_UL_10_6_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root"));
+  tags.emplace_back("0p5");
+  //files.emplace_back( TFile::Open("../root/histos_NEWA3ZEROSMEARGW1p0_10G_UL_10_4_A0_3_2_A1_2_3_A2_3_2_A3_3_4_A4_3_3_full.root"));
+  //tags.emplace_back("0p5");
+
   std::vector<TH1D*> histos{};
   std::vector<TH1D*> histos_mass{};
 
@@ -80,8 +97,8 @@
 	h->SetMaximum(1.01);
       }
       else{
-	h->SetMinimum(0.998);
-	h->SetMaximum(1.002);
+	h->SetMinimum(0.99);
+	h->SetMaximum(1.01);
       }
       h->SetTitle("");
       h->GetXaxis()->SetTitleSize(0.045);
@@ -108,5 +125,5 @@
     i++;
   }
   leg->Draw();
-  gPad->SaveAs("plot_cmp.eps");
+  //gPad->SaveAs("plot_cmp_1p0.png");
 }

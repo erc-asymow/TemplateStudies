@@ -1,6 +1,6 @@
 {
 
-  int n = 4;
+  int n = 2;
 
   double xx[20], yy[20];
   
@@ -42,7 +42,7 @@
   leg1->SetBorderSize(0);
   leg1->SetTextSize(0.03);
   leg1->SetFillColor(10);
-  leg1->SetHeader(Form("Base functions for n=%d", n));
+  leg1->SetHeader(Form("#lambda functions for n=%d", n));
   leg1->SetNColumns(4);
  
   TCanvas* c = new TCanvas("c", "canvas", 800, 800);
@@ -79,6 +79,6 @@
   gr->Draw("PSAME");  
   leg1->AddEntry(gr, "Chebyshev points", "P");
   leg1->Draw();
-  c->SaveAs(Form("chebyshev_interpolants_n%d.png", n));
+  c->SaveAs(Form("chebyshev_interpolants_n%d_paper.eps", n));
  
 }

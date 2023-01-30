@@ -1,16 +1,22 @@
 #!/bin/sh
 
-#ADD="_ADDMC_ULA0A1A2A3A4"
-#ADDflag="--j0 --j1 --j2 --j3 --j4 --add_MC_uncert"
+ADD="_ADDMC_ULA0A1A2A3A4"
+ADDflag="--j0 --j1 --j2 --j3 --j4 --add_MC_uncert"
 
-ADD="_ULA0A1A2A3A4"
-ADDflag="--j0 --j1 --j2 --j3 --j4"
+#ADD="_ULA0A1A2A3A4"
+#ADDflag="--j0 --j1 --j2 --j3 --j4"
 
 NEVENTS=100000000
 
 echo $ADD $ADDflag
 
-./fit --nevents=${NEVENTS} --tag=TESTETA_100M --run=grid --post_tag=DEBUG${ADD} --degs_corr_x=8 --degs_corr_y=6 --degs_A0_x=1 --degs_A0_y=1 --degs_A1_x=1 --degs_A1_y=1 --degs_A2_x=1 --degs_A2_y=1 --degs_A3_x=1 --degs_A3_y=1 --degs_A4_x=1 --degs_A4_y=1 --jUL   $ADDflag
+#./fit --nevents=${NEVENTS} --tag=DEBUGNEWA3_100M --run=grid --post_tag=DEBUG${ADD} --degs_corr_x=8 --degs_corr_y=6 --degs_A0_x=1 --degs_A0_y=1 --degs_A1_x=1 --degs_A1_y=1 --degs_A2_x=1 --degs_A2_y=1 --degs_A3_x=1 --degs_A3_y=1 --degs_A4_x=1 --degs_A4_y=1 --jUL   $ADDflag
+#./fit --nevents=${NEVENTS} --tag=NEWA3_1G --run=full --post_tag=DEBUG${ADD} --degs_corr_x=10 --degs_corr_y=4 --degs_A0_x=3 --degs_A0_y=2 --degs_A1_x=3 --degs_A1_y=3 --degs_A2_x=3 --degs_A2_y=2 --degs_A3_x=3 --degs_A3_y=3 --degs_A4_x=3 --degs_A4_y=3 --jUL   $ADDflag
+#./fit --nevents=${NEVENTS} --tag=NEWA3_1G --run=full --post_tag=DEBUG${ADD} --degs_corr_x=10 --degs_corr_y=4 --degs_A0_x=2 --degs_A0_y=2 --degs_A1_x=3 --degs_A1_y=3 --degs_A2_x=2 --degs_A2_y=2 --degs_A3_x=3 --degs_A3_y=3 --degs_A4_x=3 --degs_A4_y=3 --jUL   $ADDflag
+#./fit --nevents=${NEVENTS} --tag=NEWA3_1G --run=full --post_tag=DEBUG${ADD} --degs_corr_x=10 --degs_corr_y=4 --degs_A0_x=2 --degs_A0_y=2 --degs_A1_x=3 --degs_A1_y=3 --degs_A2_x=2 --degs_A2_y=2 --degs_A3_x=3 --degs_A3_y=3 --degs_A4_x=1 --degs_A4_y=3 --jUL   $ADDflag
+#./fit --nevents=${NEVENTS} --tag=NEWA3_1G --run=full --post_tag=DEBUG${ADD} --degs_corr_x=10 --degs_corr_y=4 --degs_A0_x=2 --degs_A0_y=2 --degs_A1_x=3 --degs_A1_y=3 --degs_A2_x=2 --degs_A2_y=2 --degs_A3_x=3 --degs_A3_y=3 --degs_A4_x=2 --degs_A4_y=3 --jUL   $ADDflag
+./fit --nevents=${NEVENTS} --tag=NEWA3_100M --run=full --post_tag=DEBUG${ADD} --degs_corr_x=10 --degs_corr_y=4 --degs_A0_x=3 --degs_A0_y=2 --degs_A1_x=3 --degs_A1_y=3 --degs_A2_x=3 --degs_A2_y=2 --degs_A3_x=3 --degs_A3_y=3 --degs_A4_x=3 --degs_A4_y=3 --jUL   $ADDflag
+
 
 exit
 

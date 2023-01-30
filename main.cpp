@@ -667,8 +667,8 @@ int main(int argc, char* argv[])
 
   fout->cd();
   std::cout << "Writing histos..." << std::endl;
-  for(auto h : histos1D) h->Write();
-  for(auto h : histos2D) h->Write();
+  //for(auto h : histos1D) h->Write();
+  //for(auto h : histos2D) h->Write();
   double total = *(dlast->Count());
   //for(auto sum : sums) std::cout << *sum/total << std::endl;
 
@@ -677,9 +677,9 @@ int main(int argc, char* argv[])
   int n_pdfx = degs(pdf_type::pdf_x) + 1;
   double norms_pdfx[ degs(pdf_type::pdf_x) + 1];
   double points_x[ degs(pdf_type::pdf_x) + 1];
+  outtree->Branch("points_x", &points_x, "points_x[n_pdfx]/D");
   outtree->Branch("n_pdfx", &n_pdfx, "n_pdfx/I");
   outtree->Branch("norms_pdfx", &norms_pdfx, "norms_pdfx[n_pdfx]/D");
-  outtree->Branch("points_x", &points_x, "points_x[n_pdfx]/D");
 
   int n_pdfy = degs(pdf_type::pdf_y) + 1;
   double norms_pdfy[ degs(pdf_type::pdf_y) + 1];

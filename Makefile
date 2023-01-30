@@ -45,3 +45,6 @@ debug.o: debug.cpp
 
 estim: estim.cpp
 	$(GCC) $(CXXFLAGS) -o $(BINDIR)/estim estim.cpp
+
+jac2tmp: jac2.cpp
+	$(GCC) $(CXXFLAGS) -o $(BINDIR)/jac2tmp jac2.cpp  
