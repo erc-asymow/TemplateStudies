@@ -327,9 +327,9 @@ int main(int argc, char* argv[])
   
   auto toy_mass = [&](double Q, double M, double G){
     if (relativistic){
-    double gamma = TMath::Sqrt(M*M*(M*M+G*G));
-    double k = 2*TMath::Sqrt2()*M*G*gamma/TMath::Pi()/TMath::Sqrt(M*M+gamma);
-    return k/((Q*Q-M*M)*(Q*Q-M*M)+M*M*G*G);
+      double gamma = TMath::Sqrt(M*M*(M*M+G*G));
+      double k = 2*TMath::Sqrt2()*M*G*gamma/TMath::Pi()/TMath::Sqrt(M*M+gamma);
+      return k/((Q*Q-M*M)*(Q*Q-M*M)+M*M*G*G);
     }
     return 1./TMath::Pi()/(1 + (Q-M)*(Q-M)/(G*G/4)); // non-relativistic
   };
