@@ -88,6 +88,7 @@ int main(int argc, char* argv[])
 	("tag", value<std::string>()->default_value(""), "tag name")
 	("post_tag", value<std::string>()->default_value(""), "post tag name")
 	("compute_deltachi2", bool_switch()->default_value(false), "")
+	("with_offset", bool_switch()->default_value(false), "")
 	("run", value<std::string>()->default_value("closure"), "run type");
 
       store(parse_command_line(argc, argv, desc), vm);
@@ -143,6 +144,8 @@ int main(int argc, char* argv[])
   int verbose = vm["verbose"].as<bool>();
   int debug = vm["debug"].as<bool>();
   bool compute_deltachi2 = vm["compute_deltachi2"].as<bool>();
+  bool with_offset = vm["with_offset"].as<bool>();
+
   
   TFile* f_external = 0;
   if(jacobians_from_external){
@@ -509,16 +512,18 @@ int main(int argc, char* argv[])
       for(unsigned int ix = 1; ix<=nx; ix++ ){
 	for(unsigned int iy = 1; iy<=ny; iy++ ){
 	  if(!accept_bin(hMC,ix,iy)) continue;
-	  if(do_toys && !rnd_jacobians)
-	    y(bin_counter) = -mu_ran(bin_counter)+hMC->GetBinContent(ix,iy);
-	  else
-	    y(bin_counter) = -all_histos[0]->GetBinContent(ix,iy)+hMC->GetBinContent(ix,iy);
+	  if(do_toys && !rnd_jacobians){
+	    y(bin_counter) = -mu_ran(bin_counter)+hMC->GetBinContent(ix,iy) ;
+	  }
+	  else{
+	    y(bin_counter) = !with_offset ? -all_histos[0]->GetBinContent(ix,iy)+hMC->GetBinContent(ix,iy) : hMC->GetBinContent(ix,iy);
+	  }
 	  bin_counter++;
 	}
       }
 
       MatrixXd A = inv_sqrtV*jac_rnd;
-      MatrixXd b = inv_sqrtV*y;
+      VectorXd b = inv_sqrtV*y;
       VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
       
       if(debug && false){
@@ -785,12 +790,12 @@ int main(int argc, char* argv[])
 	  }
 	}		
 	cout << "j_rnd matrix filled" << endl;
-	VectorXd j_new = j_rnd;
+	//VectorXd j_new = j_rnd;
 	MatrixXd jac_new = jac_rnd;
 	VectorXd x_new = x;
 	double chi2_new = chi2(0,0);
 	unsigned int iter = 0;	
-	while(true && iter<30){
+	while(true && iter<50){
 	  MatrixXd A_new = inv_sqrtV*jac_new;
 	  x_new = A_new.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
 	  double extra_chi2 = 0.0;
@@ -802,29 +807,35 @@ int main(int argc, char* argv[])
 	    MatrixXd inv_Vj_k(x.size(), x.size());
 	    for(unsigned int ir=0; ir<inv_Vj_k.rows(); ir++){
 	      for(unsigned int ic=0; ic<inv_Vj_k.cols(); ic++){
-		inv_Vj_k(ir,ic) = 0.0;
+		inv_Vj_k(ir,ic) = ir==ic ? (jac_err(k,ic)>0. ? 1./jac_err(k,ic)/jac_err(k,ic) : 0.) : 0.0;
 	      }
 	    }
-	    for(unsigned int ic=0; ic<x.size(); ic++){
-	      inv_Vj_k(ic,ic) = jac_err(k,ic)>0. ? 1./jac_err(k,ic)/jac_err(k,ic) : 99999.;
-	    }	  		
 	    MatrixXd B_k = 2*(theta_k*theta_k.transpose()+inv_Vj_k);
 	    VectorXd g_k = -2*(b_k*theta_k + inv_Vj_k*jac_rnd.row(k).transpose() );
 	    VectorXd j_k = B_k.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(-g_k);
+	    //cout << "b_k=" << b_k << endl;
+	    //cout << theta_k.transpose() << endl;
+	    //cout << j_k.transpose() << endl;
+	    //cout << "B_k" << endl;
+	    //cout << B_k - 2*inv_Vj_k << endl;
+	    //cout << "g_k" << endl;
+	    //cout << g_k + 2*inv_Vj_k*jac_rnd.row(k).transpose() << endl;
 	    for(unsigned int m=0; m<x.size(); m++){
-	      //cout << "jac_new(" << k << ", " << m << "): " << jac_new(k, m) << " --> " << j_k(m) << endl;
+	      //cout << "jac_new(" << k << ", " << m << "): " << jac_new(k, m) << "+/-" << jac_err(k,m) << " --> " << j_k(m) << endl;
 	      jac_new(k, m) = j_k(m);
 	    }
 	    extra_chi2 += ((j_k - jac_rnd.row(k).transpose()).transpose()*inv_Vj_k*(j_k - jac_rnd.row(k).transpose()))(0,0);
+	    //cout << "extra_chi2=" << extra_chi2 << endl;
 	  }
-	  for(unsigned int ir=0; ir<jac.rows(); ir++){
-	    for(unsigned int ic=0; ic<jac.cols(); ic++){
-	      unsigned int idx_j = jac.cols()*ir + ic;
-	      j_new(idx_j) = jac_new(ir,ic);
-	    }
-	  }		
+	  //for(unsigned int ir=0; ir<jac.rows(); ir++){
+	  //for(unsigned int ic=0; ic<jac.cols(); ic++){
+	  //  unsigned int idx_j = jac.cols()*ir + ic;
+	  //  j_new(idx_j) = jac_new(ir,ic);
+	  //}
+	  //}		
 	  MatrixXd loss = (b-inv_sqrtV*jac_new*x_new).transpose()*(b-inv_sqrtV*jac_new*x_new) ; //+ (j_new-j_rnd).transpose()*inv_Vj*(j_new-j_rnd);
 	  cout << "loss computed..." << endl;
+	  cout << "extra_chi2=" << extra_chi2 << endl;
 	  loss(0,0) += extra_chi2;
 	  double delta_chi2 = loss(0,0)-chi2_new;
 	  cout << "Iter " << iter << ": " << chi2_new << " --> " << loss(0,0) << endl;
@@ -865,7 +876,8 @@ int main(int argc, char* argv[])
       if(m<0 && verbose){
 	for(unsigned int j = 0; j<poi_counter; j++){
 	  unsigned int idx = active_pois[j];
-	  cout << "POI " << idx << ": " << poi_val[idx] << " +/- " << TMath::Sqrt(C(j,j)) 
+	  //cout << "POI " << idx << ": " << poi_val[idx] << " +/- " << TMath::Sqrt(C(j,j))
+	  cout << "POI " << idx << ": " << x(j) << " +/- " << TMath::Sqrt(C(j,j)) 
 	       << " (pull = " << pulls(j) << ")" <<  endl;
 	}
       }
