@@ -36,10 +36,10 @@ sample_sizes = {
 
 fit_opts = {
     #'ADDMC_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert',
-    'ADDMCBBB_ULA0A1A2A3A4'    : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --compute_deltachi2',
+    'FBB_ULA0A1A2A3A4'         : ' --jUL --j0 --j1 --j2 --j3 --j4 --compute_deltachi2 --with_offset',
+    'ADDMCFBB_ULA0A1A2A3A4'    : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert',
     'ADDMCJACEXT_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --jacobians_from_external',
     'ADDMCHMCEXT_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --hMC_from_external',
-    'ADDMCBBBHMCEXT_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --hMC_from_external --compute_deltachi2',
     #'ULA0A1A2A3A4' :       ' --jUL --j0 --j1 --j2 --j3 --j4',
     #'ADDMC_ULA0A1A2A4':    ' --jUL --j0 --j1 --j2 --j4 --add_MC_uncert',
     #'ULA0A1A2A4' :         ' --jUL --j0 --j1 --j2 --j4',
@@ -92,7 +92,7 @@ pol_default = {
 
 pol_systs = []
 
-#pol_systs.append( pol_default )
+pol_systs.append( pol_default )
 
 pol_syst = copy.deepcopy(pol_default)
 pol_syst['A0'] = [2,2]
