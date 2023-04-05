@@ -2,6 +2,7 @@ import argparse
 import os
 import sys
 import copy
+import math
 
 parser = argparse.ArgumentParser(description='run')
 
@@ -36,10 +37,11 @@ sample_sizes = {
 
 fit_opts = {
     #'ADDMC_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert',
-    'FBB_ULA0A1A2A3A4'         : ' --jUL --j0 --j1 --j2 --j3 --j4 --compute_deltachi2 --with_offset',
-    'ADDMCFBB_ULA0A1A2A3A4'    : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert',
-    'ADDMCJACEXT_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --jacobians_from_external',
-    'ADDMCHMCEXT_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --hMC_from_external',
+    #'FBB_ULA0A1A2A3A4'         : ' --jUL --j0 --j1 --j2 --j3 --j4 --compute_deltachi2 --with_offset',
+    #'ADDMCFBB_ULA0A1A2A3A4'    : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --compute_deltachi2 --with_offset',
+    #'ADDMCJACEXT_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --jacobians_from_external',
+    #'ADDMCHMCEXT_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --hMC_from_external',
+    'ADDMCHMCEXTSCALED_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --hMC_from_external',
     #'ULA0A1A2A3A4' :       ' --jUL --j0 --j1 --j2 --j3 --j4',
     #'ADDMC_ULA0A1A2A4':    ' --jUL --j0 --j1 --j2 --j4 --add_MC_uncert',
     #'ULA0A1A2A4' :         ' --jUL --j0 --j1 --j2 --j4',
@@ -314,6 +316,8 @@ elif args.algo=='fit_systs_vsN':
                 if (args.rebinX>0 or args.rebinY>0):
                     command += ' --rebinX='+str(args.rebinX)+' --rebinY='+str(args.rebinY)
                 command += fit_opts[opt]+' --post_tag='+args.post_tag+'_'+opt            
+                if 'hMC_from_external' in command:
+                    command += ' --scale_MC_uncert='+str(math.sqrt(1.0e+10/sample_sizes[size]))
                 print(command)
                 if not args.dryrun:
                     os.system(command)   

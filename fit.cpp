@@ -76,6 +76,7 @@ int main(int argc, char* argv[])
 	("scale4",bool_switch()->default_value(false), "")
 	("jacmass", value<int>()->default_value(-1), "")
 	("add_MC_uncert", bool_switch()->default_value(false), "")
+	("scale_MC_uncert", value<float>()->default_value(1.0), "")
 	("jacobians_from_external", bool_switch()->default_value(false), "")
 	("hMC_from_external", bool_switch()->default_value(false), "")
 	("rnd_jac_scale", value<float>()->default_value(-1.0), "")
@@ -137,6 +138,7 @@ int main(int argc, char* argv[])
   int j4   = vm["j4"].as<bool>();
   int jM   = vm["jM"].as<bool>();
   bool add_MC_uncert = vm["add_MC_uncert"].as<bool>();
+  float scale_MC_uncert = vm["scale_MC_uncert"].as<float>();
   bool jacobians_from_external = vm["jacobians_from_external"].as<bool>();
   bool hMC_from_external = vm["hMC_from_external"].as<bool>();
   float rnd_jac_scale = vm["rnd_jac_scale"].as<float>();
@@ -398,7 +400,9 @@ int main(int argc, char* argv[])
     for(unsigned int iy = 1; iy<=ny; iy++ ){
       if(!accept_bin(hwMC,ix,iy)) continue;
       double var = hwMC->GetBinContent(ix,iy);
-      if(add_MC_uncert) var += (hwMC->GetBinError(ix,iy)*hwMC->GetBinError(ix,iy));
+      if(add_MC_uncert){
+	var += (hwMC->GetBinError(ix,iy)*hwMC->GetBinError(ix,iy)*scale_MC_uncert*scale_MC_uncert);
+      }
       inv_sqrtV(bin_counter,bin_counter) = 1./TMath::Sqrt(var);
       inv_V(bin_counter,bin_counter) = 1./var;
       bin_counter++;
@@ -458,7 +462,7 @@ int main(int argc, char* argv[])
 	for(unsigned int iy = 1; iy<=ny; iy++ ){
 	  if(!accept_bin(all_histos[0],ix,iy)) continue;
 	  double mu = all_histos[0]->GetBinContent(ix,iy);
-	  if(add_MC_uncert) mu = ran->Gaus(mu, all_histos[0]->GetBinError(ix,iy) );
+	  if(add_MC_uncert) mu = ran->Gaus(mu, all_histos[0]->GetBinError(ix,iy)*scale_MC_uncert );
 	  mu_ran(bin_counter) = ran->PoissonD(mu);  
 	  bin_counter++;
 	}
@@ -504,7 +508,7 @@ int main(int argc, char* argv[])
 	      val = -1.0;
 	      while(val<0) val = mu_ran(bin_counter);
 	    }
-	    if(add_MC_uncert) val += (hMC->GetBinError(ix,iy)*hMC->GetBinError(ix,iy));
+	    if(add_MC_uncert) val += (hMC->GetBinError(ix,iy)*hMC->GetBinError(ix,iy)*scale_MC_uncert*scale_MC_uncert);
 	    inv_sqrtV(bin_counter,bin_counter) = 1./TMath::Sqrt(val);
 	    inv_V(bin_counter,bin_counter) = 1./val;
 	    bin_counter++;
