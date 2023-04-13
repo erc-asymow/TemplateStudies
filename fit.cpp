@@ -77,6 +77,8 @@ int main(int argc, char* argv[])
 	("jacmass", value<int>()->default_value(-1), "")
 	("add_MC_uncert", bool_switch()->default_value(false), "")
 	("scale_MC_uncert", value<float>()->default_value(1.0), "")
+	("add_mass_uncert", value<float>()->default_value(-1.0), "")
+	("scale_mass_uncert", value<float>()->default_value(1.0), "")
 	("jacobians_from_external", bool_switch()->default_value(false), "")
 	("hMC_from_external", bool_switch()->default_value(false), "")
 	("rnd_jac_scale", value<float>()->default_value(-1.0), "")
@@ -138,7 +140,9 @@ int main(int argc, char* argv[])
   int j4   = vm["j4"].as<bool>();
   int jM   = vm["jM"].as<bool>();
   bool add_MC_uncert = vm["add_MC_uncert"].as<bool>();
+  float add_mass_uncert = vm["add_mass_uncert"].as<float>();
   float scale_MC_uncert = vm["scale_MC_uncert"].as<float>();
+  float scale_mass_uncert = vm["scale_mass_uncert"].as<float>();
   bool jacobians_from_external = vm["jacobians_from_external"].as<bool>();
   bool hMC_from_external = vm["hMC_from_external"].as<bool>();
   float rnd_jac_scale = vm["rnd_jac_scale"].as<float>();
@@ -350,6 +354,7 @@ int main(int argc, char* argv[])
 
   cout << "Number of data points: " << nx_cut << "*" << ny_cut << " = " << nbins << endl;
   cout << "Data integral: " << hwMC->Integral() << endl;
+  cout << "N: " << N << endl;
   
   unsigned int bin_counter = 0;
 
@@ -402,6 +407,25 @@ int main(int argc, char* argv[])
       double var = hwMC->GetBinContent(ix,iy);
       if(add_MC_uncert){
 	var += (hwMC->GetBinError(ix,iy)*hwMC->GetBinError(ix,iy)*scale_MC_uncert*scale_MC_uncert);
+	cout << "adding... " << (hwMC->GetBinError(ix,iy)*hwMC->GetBinError(ix,iy)*scale_MC_uncert*scale_MC_uncert);
+	cout << " ==> var: " << hwMC->GetBinContent(ix,iy) << " --> " << var << endl;
+	//if(add_mass_uncert>0.){
+	//double extra_err = TMath::Power(hwMC->GetBinContent(ix,iy)*add_mass_uncert*scale_mass_uncert, 2.0);
+	//var += extra_err;
+	//cout << "adding " << extra_err << " to stat. uncert. variance " << hwMC->GetBinContent(ix,iy) << endl;
+	//}	
+      }
+      if(add_mass_uncert>0.){
+	double extra_fact = 1.0 +
+	  TMath::Power(hwMC->GetBinError(ix,iy)*scale_mass_uncert,2.0)/hwMC->GetBinContent(ix,iy);
+	  //TMath::Power(3.0e-04*TMath::Sqrt(0.001)*scale_mass_uncert/add_mass_uncert, 2.0) +
+	  //TMath::Power(hwMC->GetBinError(ix,iy)*scale_mass_uncert/(hwMC->GetBinContent(ix,iy)*add_mass_uncert), 2.0);	
+	//var /= (extra_fact*extra_fact);
+	var *= extra_fact; 
+	//cout << "first term: " << TMath::Power(3.0e-04*TMath::Sqrt(0.001)*scale_mass_uncert/add_mass_uncert, 2.0) << endl;
+	//cout << "second term: " << TMath::Power(hwMC->GetBinError(ix,iy)*scale_mass_uncert/(hwMC->GetBinContent(ix,iy)*add_mass_uncert), 2.0) << endl; 
+	cout << "adding: " << TMath::Power(hwMC->GetBinError(ix,iy)*scale_mass_uncert,2.0);
+	cout << " ==> var: " << hwMC->GetBinContent(ix,iy) << " --> " << var << endl;
       }
       inv_sqrtV(bin_counter,bin_counter) = 1./TMath::Sqrt(var);
       inv_V(bin_counter,bin_counter) = 1./var;
@@ -658,8 +682,16 @@ int main(int argc, char* argv[])
       
       MatrixXd chi2old = b.transpose()*b;
       MatrixXd chi2 = ((b - A*x).transpose())*(b-A*x);
+
+      TH1D* h_delta = new TH1D(("h_deltas_"+std::string(hMC->GetName())).c_str(), "", 1000, -0.002, 0.002);
       int ndof = nbins-poi_counter;
       double chi2norm = chi2(0,0)/ndof;
+      
+      for(auto i=0; i<y.size(); i++)
+	//cout << "Delta y(" << i << ") = " (y(i) - (jac_rnd*x)(i)) << ", " << y(i) << endl;
+	h_delta->Fill((y(i) - (jac_rnd*x)(i))/y(i));
+      fout->cd();
+      h_delta->Write();
 
       if(compute_deltachi2){
 	VectorXd j_rnd(jac.rows()*jac.cols());
