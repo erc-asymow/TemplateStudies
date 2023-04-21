@@ -407,8 +407,8 @@ int main(int argc, char* argv[])
       double var = hwMC->GetBinContent(ix,iy);
       if(add_MC_uncert){
 	var += (hwMC->GetBinError(ix,iy)*hwMC->GetBinError(ix,iy)*scale_MC_uncert*scale_MC_uncert);
-	cout << "adding... " << (hwMC->GetBinError(ix,iy)*hwMC->GetBinError(ix,iy)*scale_MC_uncert*scale_MC_uncert);
-	cout << " ==> var: " << hwMC->GetBinContent(ix,iy) << " --> " << var << endl;
+	//cout << "adding... " << (hwMC->GetBinError(ix,iy)*hwMC->GetBinError(ix,iy)*scale_MC_uncert*scale_MC_uncert);
+	//cout << " ==> var: " << hwMC->GetBinContent(ix,iy) << " --> " << var << endl;
 	//if(add_mass_uncert>0.){
 	//double extra_err = TMath::Power(hwMC->GetBinContent(ix,iy)*add_mass_uncert*scale_mass_uncert, 2.0);
 	//var += extra_err;
@@ -558,6 +558,22 @@ int main(int argc, char* argv[])
       MatrixXd A = inv_sqrtV*jac_rnd;
       VectorXd b = inv_sqrtV*y;
       VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
+
+      if(false && m<0){
+	MatrixXd U = MatrixXd::Identity(y.size(),y.size()) - A*(A.transpose()*A).inverse()*A.transpose();
+	Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver(U);
+	if (eigensolver.info() != Eigen::Success){
+	  cout << "Could not eigendecompose U" << endl;
+	}
+	else{
+	  auto eigenvals = eigensolver.eigenvalues();
+	  auto eigenvecs = eigensolver.eigenvectors();
+	  cout << "Number of parameters: " << x.size() << ", points: " << y.size() << ", d.o.f.: " << y.size()-x.size() << endl;
+	  cout << "Sum of eigenvalues:" << eigenvals.sum() << " (num of 0/1 eigenvals = " << eigenvals.size() << ")" << endl;
+	  for(unsigned int ei = 0; ei<y.size(); ei++)
+	    std::cout << "Eigen(" << ei << ") = " << eigenvals(ei) << "\n" << eigenvecs.col(ei) << std::endl;
+	}
+      }
       
       if(debug && false){
 	double chi2_BDCSVD       = (b-A*A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b)).squaredNorm();
