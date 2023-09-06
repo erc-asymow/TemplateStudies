@@ -113,7 +113,7 @@ int main(int argc, char* argv[])
   // dummy file
   TFile* f = TFile::Open( "root/histos_default.root", "RECREATE");  
   for(auto pr : proc){
-    TH2D* h = new TH2D("histo_"+pr, "", 10, 0.0, 0.5, 10, 0.0, 2.5 );
+    TH2D* h = new TH2D("histo_"+pr, "", 20, 0.0, 0.5, 20, 0.0, 2.5 );
     for(int ibx=1; ibx<=h->GetXaxis()->GetNbins() ; ibx++ ){
       for(int iby=1; iby<=h->GetYaxis()->GetNbins() ; iby++ ){
 	if(pr=="A1" || pr=="A3"){
@@ -198,9 +198,9 @@ int main(int argc, char* argv[])
     double X_edges[X_nbins+1];
     for(int ib = 0; ib<X_nbins; ib++) X_edges[ib] = (h->GetXaxis()->GetBinLowEdge(ib+1)+X_min)/X_range;
     X_edges[X_nbins] = (h->GetXaxis()->GetBinUpEdge(X_nbins)+X_min)/X_range;
-    cout << "X_edges: ";
-    for(int i = 0; i <= X_nbins; i++) cout << X_edges[i] << "," ;
-    cout << endl;
+    if(debug) cout << "X_edges: ";
+    if(debug) for(int i = 0; i <= X_nbins; i++) cout << X_edges[i] << "," ;
+    if(debug) cout << endl;
     
     // Y-axis
     int Y_nbins  = h->GetYaxis()->GetNbins();
@@ -210,15 +210,15 @@ int main(int argc, char* argv[])
     double Y_edges[Y_nbins+1];
     for(int ib = 0; ib<Y_nbins; ib++) Y_edges[ib] = (h->GetYaxis()->GetBinLowEdge(ib+1)+Y_min)/Y_range;
     Y_edges[Y_nbins] = (h->GetYaxis()->GetBinUpEdge(Y_nbins)+Y_min)/Y_range;
-    cout << "Y_edges: ";
-    for(int i = 0; i <= Y_nbins; i++) cout << Y_edges[i] << "," ;
-    cout << endl;
+    if(debug) cout << "Y_edges: ";
+    if(debug) for(int i = 0; i <= Y_nbins; i++) cout << Y_edges[i] << "," ;
+    if(debug) cout << endl;
 
     int nd = X_nbins*Y_nbins;
     int npx = deg_map[iproc].at(0) + 1 - ctr_map[iproc].at(0);
     int npy = par_map[iproc].at(1)>0 ? (deg_map[iproc].at(1)/2 + 1) : (deg_map[iproc].at(1) + 1)/2;
     int np = npx*npy;
-    cout << "np = " << npx << " * " << npy << " = " << np << endl;
+    if(debug) cout << "np = " << npx << " * " << npy << " = " << np << endl;
     
     cheb_x->SetParameter("n", deg_map[iproc].at(0) );
     cheb_y->SetParameter("n", deg_map[iproc].at(1) );
@@ -241,7 +241,7 @@ int main(int argc, char* argv[])
 	}	  
 	cheb_x->SetParameter("m", ipx);
 	double totx = cheb_x->Integral( X_edges[idx], X_edges[idx+1],1.e-12 );
-	cout << "\tmX=" << ipx << ": int_x [" << X_edges[idx] << "," << X_edges[idx+1] << "] = " << totx << endl;
+	if(debug) cout << "\tmX=" << ipx << ": int_x [" << X_edges[idx] << "," << X_edges[idx+1] << "] = " << totx << endl;
 	integrals_x(idx, ipx) = totx;
       }       
     }
@@ -257,18 +257,20 @@ int main(int argc, char* argv[])
 	// even function:
 	if( par_map[iproc].at(1)>0 && ipy < (deg_map[iproc].at(1)/2 + 1)){
 	  double toty = cheby1+cheby2 ;
-	  cout << "\tmY=[" << ipy << "," << deg_map[iproc].at(1) - ipy << "] : int_y [" << Y_edges[idy] << "," << Y_edges[idy+1] << "] = (" << cheby1  << " + " << cheby2 << ")";
+	  if(debug) cout << "\tmY=[" << ipy << "," << deg_map[iproc].at(1) - ipy << "] : int_y [" << Y_edges[idy] << "," << Y_edges[idy+1] << "] = (" << cheby1  << " + " << cheby2 << ")";
 	  if( deg_map[iproc].at(1)%2==0 && ipy==deg_map[iproc].at(1)/2 ){
 	    toty *= 0.5;
-	    cout << "/2" << endl;
+	    if(debug) cout << "/2" << endl;
 	  }
-	  else cout << endl;
+	  else{
+	    if(debug) cout << endl;
+	  }
 	  integrals_y(idy,ipy) = toty;
 	}
 	// odd function
 	else if( par_map[iproc].at(1)<0 && ipy < (deg_map[iproc].at(1)+1)/2){
 	  double toty = cheby1 - cheby2 ;
-	  cout << "\tmY=[" << ipy << "," << deg_map[iproc].at(1) - ipy << "] : int_y [" << Y_edges[idy] << "," << Y_edges[idy+1] << "] = (" << cheby1  << " - " << cheby2 << ")";
+	  if(debug) cout << "\tmY=[" << ipy << "," << deg_map[iproc].at(1) - ipy << "] : int_y [" << Y_edges[idy] << "," << Y_edges[idy+1] << "] = (" << cheby1  << " - " << cheby2 << ")";
 	  integrals_y(idy,ipy) = toty;
 	}
       }	
@@ -278,26 +280,26 @@ int main(int argc, char* argv[])
     cout << "Start the final loop..." << endl;
     for(unsigned int idx = 0; idx<X_nbins; idx++){
       for(unsigned int idy = 0; idy<Y_nbins; idy++){
-	cout << "Doing bin number... " << count_d << endl;
+	if(debug) cout << "Doing bin number... " << count_d << endl;
 	y(count_d) = h->GetBinContent(idx+1, idy+1);
 	y_err(count_d) = h->GetBinError(idx+1, idy+1);
 	// loop over parameters
 	int count_p=0;
 	for(unsigned int ipx = 0; ipx<(deg_map[iproc].at(0) + 1); ipx++){
 	  // constraint at 0
-	  if( ctr_map[iproc].at(0) && ipx==0){
+ 	  if( ctr_map[iproc].at(0) && ipx==0){
 	    continue;
 	  }	  	  
 	  for(unsigned int ipy = 0; ipy<deg_map[iproc].at(1) + 1; ipy++){
-	    // even function:
+ 	    // even function:
 	    if( (par_map[iproc].at(1)>0 && ipy < deg_map[iproc].at(1)/2 + 1) || (par_map[iproc].at(1)<0 && ipy < (deg_map[iproc].at(1)+1)/2)){
 	      J(count_d, count_p) = integrals_x(idx,ipx)*integrals_y(idy,ipy);
-	      cout << "jac(" << count_d << "," << count_p << ") = " << integrals_x(idx,ipx) << " * " << integrals_y(idy,ipy) << " = " << J(count_d, count_p) << endl;
+	      if(debug) cout << "jac(" << count_d << "," << count_p << ") = " << integrals_x(idx,ipx) << " * " << integrals_y(idy,ipy) << " = " << J(count_d, count_p) << endl;
 	      p_names.emplace_back( TString(Form("f_%d_%d", ipx, ipy)) ); 
 	      count_p++;
 	    }
 	  }
-	}
+ 	}
 	count_d++;
       }
     }
@@ -312,15 +314,14 @@ int main(int argc, char* argv[])
     VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
     VectorXd delta = y-J*x;
     VectorXd pull  = b-A*x;
-    cout << delta << endl;
+    if(debug) cout << delta << endl;
     MatrixXd chi2 = pull.transpose()*pull;
     double chi2val = chi2(0,0);
     int ndof = y.size() - np;
     cout << "Chi2 = " << chi2val << endl;
     MatrixXd W = (A.transpose()*A).inverse();
     
-    count_d=0;
-    TH1D* hinfo = new TH1D("hinfo_"+iproc, "", 4, 0,4);
+    TH1D* hinfo = new TH1D("h_info_"+iproc, "", 4, 0,4);
     hinfo->SetBinContent(1, chi2val);
     hinfo->GetXaxis()->SetBinLabel(1, "chi2");
     hinfo->SetBinContent(2, ndof);
@@ -329,13 +330,14 @@ int main(int argc, char* argv[])
     hinfo->GetXaxis()->SetBinLabel(3, "npx");
     hinfo->SetBinContent(4, npy);
     hinfo->GetXaxis()->SetBinLabel(4, "npy");
-    TH2D* hdelta = (TH2D*)h->Clone("hdelta_"+iproc);
-    TH2D* hpull  = (TH2D*)h->Clone("hpull_"+iproc);
-    TH2D* hdata  = (TH2D*)h->Clone("hdata_"+iproc);
-    TH1D* hpar   = new TH1D("hpar_"+iproc, "", np, 0, np);
-    TH2D* hcov   = new TH2D("hcov_"+iproc, "", np, 0, np, np, 0, np);
-    TH2D* hcor   = new TH2D("hcor_"+iproc, "", np, 0, np, np, 0, np);
-    cout << "Start the loop..." << endl;
+    TH2D* hdelta = (TH2D*)h->Clone("h_delta_"+iproc);
+    TH2D* hpull  = (TH2D*)h->Clone("h_pull_"+iproc);
+    TH2D* hdata  = (TH2D*)h->Clone("h_data_"+iproc);
+    TH1D* hpar   = new TH1D("h_par_"+iproc, "", np, 0, np);
+    TH2D* hcov   = new TH2D("h_cov_"+iproc, "", np, 0, np, np, 0, np);
+    TH2D* hcor   = new TH2D("h_cor_"+iproc, "", np, 0, np, np, 0, np);
+
+    count_d=0;
     for(unsigned int idx = 0; idx<X_nbins; idx++){
       for(unsigned int idy = 0; idy<Y_nbins; idy++){	
 	hdelta->SetBinContent(idx+1,idy+1, delta(count_d));
@@ -344,6 +346,48 @@ int main(int argc, char* argv[])
 	count_d++;
       }
     }
+
+    cout << "Filling high-stat histo..." << endl;
+    TH2D* hdatafine = new TH2D("h_datafine_"+iproc, "", 100, 0., 1.0, 100, 0., 1.0);
+    for(unsigned int idx=1; idx<=hdatafine->GetXaxis()->GetNbins(); idx++){
+      double x_i = hdatafine->GetXaxis()->GetBinCenter(idx); 
+      for(unsigned int idy=1; idy<=hdatafine->GetYaxis()->GetNbins(); idy++){
+	double y_i = hdatafine->GetYaxis()->GetBinCenter(idy); 
+
+	// now computing the polynomial approximant
+	double val = 0.0;
+	int count_p=0;
+	for(unsigned int ipx = 0; ipx<(deg_map[iproc].at(0) + 1); ipx++){
+	  // constraint at 0
+ 	  if( ctr_map[iproc].at(0) && ipx==0){
+	    continue;
+	  }
+	  cheb_x->SetParameter("m", ipx);
+	  double totx = cheb_x->Eval(x_i); 
+	  for(unsigned int ipy = 0; ipy<deg_map[iproc].at(1) + 1; ipy++){
+	    cheb_y->SetParameter("m", ipy);
+	    double cheby1 = cheb_y->Eval(y_i); 
+	    cheb_y->SetParameter("m", deg_map[iproc].at(1) - ipy);
+	    double cheby2 = cheb_y->Eval(y_i); 
+	    // even function:
+	    if( par_map[iproc].at(1)>0 && ipy < (deg_map[iproc].at(1)/2 + 1)){
+	      double toty = cheby1 + cheby2 ;
+	      if( deg_map[iproc].at(1)%2==0 && ipy==deg_map[iproc].at(1)/2 ) toty *= 0.5;	      
+	      val += x(count_p)*totx*toty;
+	      count_p++;
+	    }
+	    // odd function
+	    else if( par_map[iproc].at(1)<0 && ipy < (deg_map[iproc].at(1)+1)/2){
+	      double toty = cheby1 - cheby2 ;
+	      val += x(count_p)*totx*toty;
+	      count_p++;
+	    }	    
+	  }
+ 	}	
+	hdatafine->SetBinContent(idx,idy, val);
+      }
+    }        
+    
     for(unsigned int ip1 = 0; ip1<np; ip1++){      
       hpar->GetXaxis()->SetBinLabel(ip1+1, p_names[ip1]);
       hpar->SetBinContent(ip1+1, x(ip1));
@@ -355,8 +399,9 @@ int main(int argc, char* argv[])
 	hcov->SetBinContent(ip1+1, ip2+1, W(ip1,ip2));
 	hcor->SetBinContent(ip1+1, ip2+1, W(ip1,ip2)/TMath::Sqrt(W(ip1,ip1)*W(ip2,ip2)));
       }
-    }    
-    fout->cd();
+    }
+    fout->mkdir(iproc);
+    fout->cd(iproc+"/");
     hinfo->Write();
     hpull->Write();
     hdelta->Write();
@@ -364,6 +409,7 @@ int main(int argc, char* argv[])
     hcov->Write();
     hcor->Write();
     hpar->Write();
+    hdatafine->Write();
   }
   
 
