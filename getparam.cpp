@@ -67,9 +67,21 @@ int main(int argc, char* argv[])
 	("dA3_y",   value<int>()->default_value(2), "max degree in y for A3")
 	("dA4_x",   value<int>()->default_value(2), "max degree in x for A4")
 	("dA4_y",   value<int>()->default_value(2), "max degree in y for A4")
+	("fUL_x",   value<int>()->default_value(2), "max degree of modifier in x of corrxy")
+	("fUL_y",   value<int>()->default_value(2), "max degree of modifier in y of corrxy")
+	("fA0_x",   value<int>()->default_value(2), "max degree of modifier in x for A0")
+	("fA0_y",   value<int>()->default_value(2), "max degree of modifier in y for A0")
+	("fA1_x",   value<int>()->default_value(2), "max degree of modifier in x for A1")
+	("fA1_y",   value<int>()->default_value(2), "max degree of modifier in y for A1")
+	("fA2_x",   value<int>()->default_value(2), "max degree of modifier in x for A2")
+	("fA2_y",   value<int>()->default_value(2), "max degree of modifier in y for A2")
+	("fA3_x",   value<int>()->default_value(2), "max degree of modifier in x for A3")
+	("fA3_y",   value<int>()->default_value(2), "max degree of modifier in y for A3")
+	("fA4_x",   value<int>()->default_value(2), "max degree of modifier in x for A4")
+	("fA4_y",   value<int>()->default_value(2), "max degree of modifier in y for A4")
 	("tag",     value<std::string>()->default_value("default"), "tag name")
-	("debug",       bool_switch()->default_value(false), "");
-
+      	("debug",   bool_switch()->default_value(false), "");
+      
       store(parse_command_line(argc, argv, desc), vm);
       notify(vm);
       if (vm.count("help")){
@@ -99,6 +111,19 @@ int main(int argc, char* argv[])
   int dA3_y   = vm["dA3_y"].as<int>();
   int dA4_x   = vm["dA4_x"].as<int>();
   int dA4_y   = vm["dA4_y"].as<int>();
+
+  int fUL_x   = vm["fUL_x"].as<int>();
+  int fUL_y   = vm["fUL_y"].as<int>();
+  int fA0_x   = vm["fA0_x"].as<int>();
+  int fA0_y   = vm["fA0_y"].as<int>();
+  int fA1_x   = vm["fA1_x"].as<int>();
+  int fA1_y   = vm["fA1_y"].as<int>();
+  int fA2_x   = vm["fA2_x"].as<int>();
+  int fA2_y   = vm["fA2_y"].as<int>();
+  int fA3_x   = vm["fA3_x"].as<int>();
+  int fA3_y   = vm["fA3_y"].as<int>();
+  int fA4_x   = vm["fA4_x"].as<int>();
+  int fA4_y   = vm["fA4_y"].as<int>();
 
   TFile *fout = TFile::Open("fout.root", "RECREATE");
 
@@ -156,6 +181,7 @@ int main(int argc, char* argv[])
   std::map<TString, std::array<int,2> > deg_map;
   std::map<TString, std::array<int,2> > par_map;
   std::map<TString, std::array<int,2> > ctr_map;
+  std::map<TString, std::array<int,2> > degf_map;
 
   //UL
   deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("UL", {dUL_x,  dUL_y}) );
@@ -180,8 +206,15 @@ int main(int argc, char* argv[])
   //A4
   deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("A4", {dA4_x,  dA4_y}) );
   par_map.insert  ( std::make_pair<TString, std::array<int,2> >("A4", {0, -1}) );
-  ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("A4", {0,  0}) ); 
-    
+  ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("A4", {0,  0}) );
+
+  degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("UL", {fUL_x,  fUL_y}) );
+  degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A0", {fA0_x,  fA0_y}) );
+  degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A1", {fA1_x,  fA1_y}) );
+  degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A2", {fA2_x,  fA2_y}) );
+  degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A3", {fA3_x,  fA3_y}) );
+  degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A4", {fA4_x,  fA4_y}) );
+  
   // loop over all histos
   for(unsigned int i=0; i <proc.size(); i++){
 
@@ -189,6 +222,7 @@ int main(int argc, char* argv[])
     cout << "Doing proc " << iproc << endl;
     TH2D* h = (TH2D*)fin->Get("histo_"+iproc);    
     cout << "Histo " << h->GetName() << "found" << endl;
+    if(iproc=="UL") h->Scale(1./ h->Integral("width"));
     
     // X-axis
     int X_nbins  = h->GetXaxis()->GetNbins();
@@ -346,6 +380,20 @@ int main(int argc, char* argv[])
 	count_d++;
       }
     }
+    
+    for(unsigned int ip1 = 0; ip1<np; ip1++){      
+      hpar->GetXaxis()->SetBinLabel(ip1+1, p_names[ip1]);
+      hpar->SetBinContent(ip1+1, x(ip1));
+      hcov->GetXaxis()->SetBinLabel(ip1+1, p_names[ip1]);
+      hcor->GetXaxis()->SetBinLabel(ip1+1, p_names[ip1]);
+      for(unsigned int ip2 = 0; ip2<np; ip2++){
+	hcov->GetYaxis()->SetBinLabel(ip2+1, p_names[ip2]);
+	hcor->GetYaxis()->SetBinLabel(ip2+1, p_names[ip2]);
+	hcov->SetBinContent(ip1+1, ip2+1, W(ip1,ip2));
+	hcor->SetBinContent(ip1+1, ip2+1, W(ip1,ip2)/TMath::Sqrt(W(ip1,ip1)*W(ip2,ip2)));
+      }
+    }
+
 
     cout << "Filling high-stat histo..." << endl;
     TH2D* hdatafine = new TH2D("h_datafine_"+iproc, "", 100, 0., 1.0, 100, 0., 1.0);
@@ -388,20 +436,45 @@ int main(int argc, char* argv[])
       }
     }        
     
-    for(unsigned int ip1 = 0; ip1<np; ip1++){      
-      hpar->GetXaxis()->SetBinLabel(ip1+1, p_names[ip1]);
-      hpar->SetBinContent(ip1+1, x(ip1));
-      hcov->GetXaxis()->SetBinLabel(ip1+1, p_names[ip1]);
-      hcor->GetXaxis()->SetBinLabel(ip1+1, p_names[ip1]);
-      for(unsigned int ip2 = 0; ip2<np; ip2++){
-	hcov->GetYaxis()->SetBinLabel(ip2+1, p_names[ip2]);
-	hcor->GetYaxis()->SetBinLabel(ip2+1, p_names[ip2]);
-	hcov->SetBinContent(ip1+1, ip2+1, W(ip1,ip2));
-	hcor->SetBinContent(ip1+1, ip2+1, W(ip1,ip2)/TMath::Sqrt(W(ip1,ip1)*W(ip2,ip2)));
-      }
-    }
     fout->mkdir(iproc);
     fout->cd(iproc+"/");
+    
+    cheb_x->SetParameter("n", degf_map[iproc].at(0) );
+    cheb_y->SetParameter("n", degf_map[iproc].at(1) );
+
+    // now computing the polynomial approximant
+    int count_pf = 0;
+    for(unsigned int ipx = 0; ipx<(degf_map[iproc].at(0) + 1); ipx++){
+      for(unsigned int ipy = 0; ipy<degf_map[iproc].at(1) + 1; ipy++){	  
+	// it's a POI
+	if( ipy < (deg_map[iproc].at(1)/2 + 1)){
+	  for(int syst=0; syst<2; syst++){
+	    TString syst_name = syst==0 ? "up" : "down";
+	    TH2D* hdatafine_p = (TH2D*)hdatafine->Clone("h_datafine_"+iproc+Form("_jac%d_",count_pf)+syst_name);
+	    for(unsigned int idx=1; idx<=hdatafine_p->GetXaxis()->GetNbins(); idx++){
+	      double x_i = hdatafine_p->GetXaxis()->GetBinCenter(idx); 
+	      cheb_x->SetParameter("m", ipx);
+	      double totx = cheb_x->Eval(x_i); 
+	      for(unsigned int idy=1; idy<=hdatafine_p->GetYaxis()->GetNbins(); idy++){
+		double y_i = hdatafine_p->GetYaxis()->GetBinCenter(idy); 
+		cheb_y->SetParameter("m", ipy);
+		double cheby1 = cheb_y->Eval(y_i); 
+		cheb_y->SetParameter("m", degf_map[iproc].at(1) - ipy);
+		double cheby2 = cheb_y->Eval(y_i);
+		double toty = cheby1 + cheby2 ;
+		if( degf_map[iproc].at(1)%2==0 && ipy==degf_map[iproc].at(1)/2 ) toty *= 0.5;	      
+		double shift = syst==0 ? +0.1 : -0.1;
+		double val = hdatafine->GetBinContent(idx,idy)*(1 + shift*totx*toty) ;
+		hdatafine_p->SetBinContent(idx,idy, val);
+	      }
+	    }
+	    hdatafine_p->Write();
+	  }
+	  count_pf++;
+	}	  
+      }	
+    }
+    
     hinfo->Write();
     hpull->Write();
     hdelta->Write();
@@ -409,13 +482,12 @@ int main(int argc, char* argv[])
     hcov->Write();
     hcor->Write();
     hpar->Write();
-    hdatafine->Write();
+    hdatafine->Write();    
   }
   
-
   fout->Close();
-  
   fin->Close();
+
 
   TRandom3* ran = new TRandom3();
   delete ran;
