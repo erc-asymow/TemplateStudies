@@ -31,7 +31,10 @@ double cheb_fct(double *var, double *par){
   double num = 0.;
   for(int i = 0; i <= par[0] ; i++){ // par[0]=n
     int sign = i%2==0 ? +1 :-1;
-    double xj = (TMath::Cos((par[0]-i)*TMath::Pi()/par[0]) + par[1])*par[2]; // par[1]=offset, par[2]=scale
+    //double xj = (TMath::Cos((par[0]-i)*TMath::Pi()/par[0]) + par[1])*par[2]; // par[1]=offset, par[2]=scale
+    double xj = TMath::Cos((par[0]-i)*TMath::Pi()/par[0]);
+    xj *= par[2];
+    xj += par[1];
     if(x==xj) return 1.0;// protect from nan      
     double val = sign/(x-xj);
     if(i==0 || i==par[0]) val *= 0.5;
@@ -129,10 +132,10 @@ int main(int argc, char* argv[])
 
   std::vector<TString> proc = {"UL",
 			       "A0",
-			       "A1",
-			       "A2",
-			       "A3",
-			       "A4"
+			       //"A1",
+			       //"A2",
+			       //"A3",
+			       //"A4"
   };
 
   // dummy file
@@ -166,17 +169,6 @@ int main(int argc, char* argv[])
 
   fin->cd();
   
-  // [0, 1]
-  TF1* cheb_x = new TF1("cheb_x", cheb_fct, 0.0, 1.0, 4); 
-  cheb_x->SetParNames("n","offset","scale","m");
-  cheb_x->SetParameter("offset", 1.0);
-  cheb_x->SetParameter("scale",  0.5);
-
-  // [-1,+1]
-  TF1* cheb_y = new TF1("cheb_y", cheb_fct, 0.0, 1.0, 4); 
-  cheb_y->SetParNames("n","offset","scale","m");
-  cheb_y->SetParameter("offset", 0.0);
-  cheb_y->SetParameter("scale",  1.0);
 
   std::map<TString, std::array<int,2> > deg_map;
   std::map<TString, std::array<int,2> > par_map;
@@ -214,6 +206,8 @@ int main(int argc, char* argv[])
   degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A2", {fA2_x,  fA2_y}) );
   degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A3", {fA3_x,  fA3_y}) );
   degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A4", {fA4_x,  fA4_y}) );
+
+  TH2D* hdatafine_UL = 0;
   
   // loop over all histos
   for(unsigned int i=0; i <proc.size(); i++){
@@ -223,37 +217,55 @@ int main(int argc, char* argv[])
     TH2D* h = (TH2D*)fin->Get("histo_"+iproc);    
     cout << "Histo " << h->GetName() << "found" << endl;
     if(iproc=="UL") h->Scale(1./ h->Integral("width"));
+
     
     // X-axis
     int X_nbins  = h->GetXaxis()->GetNbins();
     double X_min = h->GetXaxis()->GetXmin();
     double X_max = h->GetXaxis()->GetXmax();
-    double X_range = X_max-X_min;
+    double X_scale  = (X_max-X_min)*0.5;
+    double X_offset = (X_max+X_min)*0.5;
     double X_edges[X_nbins+1];
-    for(int ib = 0; ib<X_nbins; ib++) X_edges[ib] = (h->GetXaxis()->GetBinLowEdge(ib+1)+X_min)/X_range;
-    X_edges[X_nbins] = (h->GetXaxis()->GetBinUpEdge(X_nbins)+X_min)/X_range;
+    //for(int ib = 0; ib<X_nbins; ib++) X_edges[ib] = (h->GetXaxis()->GetBinLowEdge(ib+1)+X_min)/X_range;
+    //X_edges[X_nbins] = (h->GetXaxis()->GetBinUpEdge(X_nbins)+X_min)/X_range;
+    for(int ib = 0; ib<X_nbins; ib++) X_edges[ib] = h->GetXaxis()->GetBinLowEdge(ib+1);
+    X_edges[X_nbins] = h->GetXaxis()->GetBinUpEdge(X_nbins);
     if(debug) cout << "X_edges: ";
     if(debug) for(int i = 0; i <= X_nbins; i++) cout << X_edges[i] << "," ;
     if(debug) cout << endl;
     
     // Y-axis
     int Y_nbins  = h->GetYaxis()->GetNbins();
-    double Y_min = h->GetYaxis()->GetXmin();
     double Y_max = h->GetYaxis()->GetXmax();
-    double Y_range = Y_max-Y_min;
+    double Y_min = -Y_max; // assume |y| is plotted
+    double Y_scale  = (Y_max-Y_min)*0.5;
+    double Y_offset = (Y_max+Y_min)*0.5;
     double Y_edges[Y_nbins+1];
-    for(int ib = 0; ib<Y_nbins; ib++) Y_edges[ib] = (h->GetYaxis()->GetBinLowEdge(ib+1)+Y_min)/Y_range;
-    Y_edges[Y_nbins] = (h->GetYaxis()->GetBinUpEdge(Y_nbins)+Y_min)/Y_range;
+    //for(int ib = 0; ib<Y_nbins; ib++) Y_edges[ib] = (h->GetYaxis()->GetBinLowEdge(ib+1)+Y_min)/Y_range;
+    //Y_edges[Y_nbins] = (h->GetYaxis()->GetBinUpEdge(Y_nbins)+Y_min)/Y_range;
+    for(int ib = 0; ib<Y_nbins; ib++) Y_edges[ib] = h->GetYaxis()->GetBinLowEdge(ib+1);
+    Y_edges[Y_nbins] = h->GetYaxis()->GetBinUpEdge(Y_nbins) ;
     if(debug) cout << "Y_edges: ";
     if(debug) for(int i = 0; i <= Y_nbins; i++) cout << Y_edges[i] << "," ;
     if(debug) cout << endl;
-
+    
     int nd = X_nbins*Y_nbins;
     int npx = deg_map[iproc].at(0) + 1 - ctr_map[iproc].at(0);
     int npy = par_map[iproc].at(1)>0 ? (deg_map[iproc].at(1)/2 + 1) : (deg_map[iproc].at(1) + 1)/2;
     int np = npx*npy;
     if(debug) cout << "np = " << npx << " * " << npy << " = " << np << endl;
+
+    TF1* cheb_x = new TF1("cheb_x", cheb_fct, X_edges[0], X_edges[X_nbins], 4); 
+    cheb_x->SetParNames("n","offset","scale","m");
     
+    TF1* cheb_y = new TF1("cheb_y", cheb_fct, Y_edges[0], Y_edges[Y_nbins], 4); 
+    cheb_y->SetParNames("n","offset","scale","m");
+
+    cheb_x->SetParameter("offset", X_offset);
+    cheb_x->SetParameter("scale",  X_scale);
+    cheb_y->SetParameter("offset", Y_offset);
+    cheb_y->SetParameter("scale",  Y_scale);
+
     cheb_x->SetParameter("n", deg_map[iproc].at(0) );
     cheb_y->SetParameter("n", deg_map[iproc].at(1) );
     
@@ -263,79 +275,155 @@ int main(int argc, char* argv[])
     MatrixXd J(nd,np);
 
     std::vector<TString> p_names = {};
-      
-    // loop over data bins
-    cout << "Start the loop over X..." << endl;
-    MatrixXd integrals_x = MatrixXd::Zero(X_nbins, deg_map[iproc].at(0) + 1);
-    for(unsigned int idx = 0; idx<X_nbins; idx++){
-      for(unsigned int ipx = 0; ipx< (deg_map[iproc].at(0) + 1); ipx++){
-	// constraint at 0
-	if( ctr_map[iproc].at(0) && ipx==0){
-	  continue;
-	}	  
-	cheb_x->SetParameter("m", ipx);
-	double totx = cheb_x->Integral( X_edges[idx], X_edges[idx+1],1.e-12 );
-	if(debug) cout << "\tmX=" << ipx << ": int_x [" << X_edges[idx] << "," << X_edges[idx+1] << "] = " << totx << endl;
-	integrals_x(idx, ipx) = totx;
-      }       
-    }
 
-    cout << "Start the loop over Y..." << endl;
-    MatrixXd integrals_y = MatrixXd::Zero(Y_nbins, deg_map[iproc].at(1) + 1);
-    for(unsigned int idy = 0; idy<Y_nbins; idy++){
-      for(unsigned int ipy = 0; ipy<deg_map[iproc].at(1) + 1; ipy++){	    
-	cheb_y->SetParameter("m", ipy);
-	double cheby1 = cheb_y->Integral( Y_edges[idy], Y_edges[idy+1],1.e-12 ); 
-	cheb_y->SetParameter("m", deg_map[iproc].at(1) - ipy);
-	double cheby2 = cheb_y->Integral( Y_edges[idy], Y_edges[idy+1],1.e-12 ); 	    
-	// even function:
-	if( par_map[iproc].at(1)>0 && ipy < (deg_map[iproc].at(1)/2 + 1)){
-	  double toty = cheby1+cheby2 ;
-	  if(debug) cout << "\tmY=[" << ipy << "," << deg_map[iproc].at(1) - ipy << "] : int_y [" << Y_edges[idy] << "," << Y_edges[idy+1] << "] = (" << cheby1  << " + " << cheby2 << ")";
-	  if( deg_map[iproc].at(1)%2==0 && ipy==deg_map[iproc].at(1)/2 ){
-	    toty *= 0.5;
-	    if(debug) cout << "/2" << endl;
-	  }
-	  else{
-	    if(debug) cout << endl;
-	  }
-	  integrals_y(idy,ipy) = toty;
-	}
-	// odd function
-	else if( par_map[iproc].at(1)<0 && ipy < (deg_map[iproc].at(1)+1)/2){
-	  double toty = cheby1 - cheby2 ;
-	  if(debug) cout << "\tmY=[" << ipy << "," << deg_map[iproc].at(1) - ipy << "] : int_y [" << Y_edges[idy] << "," << Y_edges[idy+1] << "] = (" << cheby1  << " - " << cheby2 << ")";
-	  integrals_y(idy,ipy) = toty;
-	}
-      }	
-    }
+    // here we integrate over the bin
+    if(iproc=="UL"){
 
-    // loop over data bins and fill outer product
-    cout << "Start the final loop..." << endl;
-    for(unsigned int idx = 0; idx<X_nbins; idx++){
-      for(unsigned int idy = 0; idy<Y_nbins; idy++){
-	if(debug) cout << "Doing bin number... " << count_d << endl;
-	y(count_d) = h->GetBinContent(idx+1, idy+1);
-	y_err(count_d) = h->GetBinError(idx+1, idy+1);
-	// loop over parameters
-	int count_p=0;
-	for(unsigned int ipx = 0; ipx<(deg_map[iproc].at(0) + 1); ipx++){
+      // loop over data bins
+      cout << "Start the loop over X..." << endl;
+      MatrixXd integrals_x = MatrixXd::Zero(X_nbins, deg_map[iproc].at(0) + 1);
+      for(unsigned int idx = 0; idx<X_nbins; idx++){
+	for(unsigned int ipx = 0; ipx< (deg_map[iproc].at(0) + 1); ipx++){
 	  // constraint at 0
- 	  if( ctr_map[iproc].at(0) && ipx==0){
+	  if( ctr_map[iproc].at(0) && ipx==0){
 	    continue;
-	  }	  	  
-	  for(unsigned int ipy = 0; ipy<deg_map[iproc].at(1) + 1; ipy++){
- 	    // even function:
-	    if( (par_map[iproc].at(1)>0 && ipy < deg_map[iproc].at(1)/2 + 1) || (par_map[iproc].at(1)<0 && ipy < (deg_map[iproc].at(1)+1)/2)){
-	      J(count_d, count_p) = integrals_x(idx,ipx)*integrals_y(idy,ipy);
-	      if(debug) cout << "jac(" << count_d << "," << count_p << ") = " << integrals_x(idx,ipx) << " * " << integrals_y(idy,ipy) << " = " << J(count_d, count_p) << endl;
-	      p_names.emplace_back( TString(Form("f_%d_%d", ipx, ipy)) ); 
-	      count_p++;
+	  }	  
+	  cheb_x->SetParameter("m", ipx);
+	  double totx = cheb_x->Integral( X_edges[idx], X_edges[idx+1],1.e-12 );
+	  if(debug) cout << "\tmX=" << ipx << ": int_x [" << X_edges[idx] << "," << X_edges[idx+1] << "] = " << totx << endl;
+	  integrals_x(idx, ipx) = totx;
+	}       
+      }
+      
+      cout << "Start the loop over Y..." << endl;
+      MatrixXd integrals_y = MatrixXd::Zero(Y_nbins, deg_map[iproc].at(1) + 1);
+      for(unsigned int idy = 0; idy<Y_nbins; idy++){
+	for(unsigned int ipy = 0; ipy<deg_map[iproc].at(1) + 1; ipy++){	    
+	  cheb_y->SetParameter("m", ipy);
+	  double cheby1 = cheb_y->Integral( Y_edges[idy], Y_edges[idy+1],1.e-12 ); 
+	  cheb_y->SetParameter("m", deg_map[iproc].at(1) - ipy);
+	  double cheby2 = cheb_y->Integral( Y_edges[idy], Y_edges[idy+1],1.e-12 ); 	    
+	  // even function:
+	  if( par_map[iproc].at(1)>0 && ipy < (deg_map[iproc].at(1)/2 + 1)){
+	    double toty = cheby1+cheby2 ;
+	    if(debug) cout << "\tmY=[" << ipy << "," << deg_map[iproc].at(1) - ipy << "] : int_y [" << Y_edges[idy] << "," << Y_edges[idy+1] << "] = (" << cheby1  << " + " << cheby2 << ")";
+	    if( deg_map[iproc].at(1)%2==0 && ipy==deg_map[iproc].at(1)/2 ){
+	      toty *= 0.5;
+	      if(debug) cout << "/2" << endl;
+	    }
+	    else{
+	      if(debug) cout << endl;
+	    }
+	    integrals_y(idy,ipy) = toty;
+	  }
+	  // odd function
+	  else if( par_map[iproc].at(1)<0 && ipy < (deg_map[iproc].at(1)+1)/2){
+	    double toty = cheby1 - cheby2 ;
+	    if(debug) cout << "\tmY=[" << ipy << "," << deg_map[iproc].at(1) - ipy << "] : int_y [" << Y_edges[idy] << "," << Y_edges[idy+1] << "] = (" << cheby1  << " - " << cheby2 << ")";
+	    integrals_y(idy,ipy) = toty;
+	  }
+	}	
+      }
+      
+      // loop over data bins and fill outer product
+      cout << "Start the final loop..." << endl;
+      for(unsigned int idx = 0; idx<X_nbins; idx++){
+	for(unsigned int idy = 0; idy<Y_nbins; idy++){
+	  if(debug) cout << "Doing bin number... " << count_d << endl;
+	  y(count_d) = h->GetBinContent(idx+1, idy+1);
+	  y_err(count_d) = h->GetBinError(idx+1, idy+1);
+	  // loop over parameters
+	  int count_p=0;
+	  for(unsigned int ipx = 0; ipx<(deg_map[iproc].at(0) + 1); ipx++){
+	    // constraint at 0
+	    if( ctr_map[iproc].at(0) && ipx==0){
+	      continue;
+	    }	  	  
+	    for(unsigned int ipy = 0; ipy<deg_map[iproc].at(1) + 1; ipy++){
+	      // even function:
+	      if( (par_map[iproc].at(1)>0 && ipy < deg_map[iproc].at(1)/2 + 1) || (par_map[iproc].at(1)<0 && ipy < (deg_map[iproc].at(1)+1)/2)){
+		J(count_d, count_p) = integrals_x(idx,ipx)*integrals_y(idy,ipy);
+		if(debug) cout << "jac(" << count_d << "," << count_p << ") = " << integrals_x(idx,ipx) << " * " << integrals_y(idy,ipy) << " = " << J(count_d, count_p) << endl;
+		p_names.emplace_back( TString(Form("f_%d_%d", ipx, ipy)) ); 
+		count_p++;
+	      }
 	    }
 	  }
- 	}
-	count_d++;
+	  count_d++;
+	}
       }
+    }
+
+    // here we integrate over the UL pdf
+    else{
+
+      auto func = [hdatafine_UL,cheb_x,cheb_y](double *x, double *p)->double{
+	double x1=x[0];
+	double x2=x[1];
+	int m1 = int(p[0]);
+	int m2 = int(p[1]);
+	int d2 = int(p[2]);
+	int p2 = int(p[3]);
+	int norm = int(p[4]);
+	double pdf = hdatafine_UL->GetBinContent( hdatafine_UL->FindBin(x1,x2) );
+	if(norm>0) return pdf;
+	cheb_x->SetParameter("m", m1);
+	double totx = cheb_x->Eval(x1);
+	cheb_y->SetParameter("m", m2);
+	double cheby1 = cheb_y->Eval(x2);
+	cheb_y->SetParameter("m", d2 - m2);
+	double cheby2 = cheb_y->Eval(x2);
+	double toty = 0.0;
+	if(p2>0 && m2<(d2/2 + 1)){
+	  toty = cheby1+cheby2;
+	  if(d2%2==0 && m2==d2/2) toty *= 0.5;
+	}
+	else if(p2<0 && m2<(d2+1)/2) toty = (cheby1 - cheby2);
+	double val = totx*toty*pdf;
+	//cout << "x = " << x1 << ", y = " << x2 << ", m=(" << m1 << "," << m2 << "), totx = " << totx << ", toty = " << toty << ", val = " << val << endl; 
+	return val;
+      };
+      TF2* funcAi = new TF2("func_"+iproc, func, X_edges[0], X_edges[X_nbins],
+			    Y_edges[0], Y_edges[Y_nbins], 5 );
+		
+      // loop over data bins and fill outer product
+      for(unsigned int idx = 0; idx<X_nbins; idx++){
+	for(unsigned int idy = 0; idy<Y_nbins; idy++){
+	  if(debug) cout << "Doing bin number... " << count_d << endl;
+	  y(count_d) = h->GetBinContent(idx+1, idy+1);
+	  y_err(count_d) = h->GetBinError(idx+1, idy+1);
+	  // loop over parameters
+	  int count_p=0;
+	  for(unsigned int ipx = 0; ipx<(deg_map[iproc].at(0) + 1); ipx++){
+	    // constraint at 0
+	    if( ctr_map[iproc].at(0) && ipx==0){
+	      continue;
+	    }	  	  
+	    for(unsigned int ipy = 0; ipy<deg_map[iproc].at(1) + 1; ipy++){
+	      // even/odd function:
+	      if( (par_map[iproc].at(1)>0 && ipy < deg_map[iproc].at(1)/2 + 1) || (par_map[iproc].at(1)<0 && ipy < (deg_map[iproc].at(1)+1)/2)){
+		funcAi->SetParameter(0, ipx);
+		funcAi->SetParameter(1, ipy);
+		funcAi->SetParameter(2, deg_map[iproc].at(1));
+		funcAi->SetParameter(3, par_map[iproc].at(1));
+		funcAi->SetParameter(4, 0);
+		double val = funcAi->Integral(X_edges[idx], X_edges[idx+1], Y_edges[idy], Y_edges[idy+1], 1.e-12); 
+		//if(debug) cout << "val = " << val;
+		funcAi->SetParameter(4, 1);
+		double norm = funcAi->Integral(X_edges[idx], X_edges[idx+1], Y_edges[idy], Y_edges[idy+1], 1.e-12);		
+		//if(debug) cout << " norm = " << norm;
+		J(count_d, count_p) = val/norm;
+		if(debug) cout << "jac(" << count_d << "," << count_p << ") = " << " = " << J(count_d, count_p) << endl;
+		p_names.emplace_back( TString(Form("f_%d_%d", ipx, ipy)) ); 
+		count_p++;
+	      }
+	    }
+	  }
+	  count_d++;
+	}
+      }
+
+      
     }
 
     MatrixXd V_inv_sqrt = MatrixXd::Zero(nd, nd);
@@ -396,7 +484,7 @@ int main(int argc, char* argv[])
 
 
     cout << "Filling high-stat histo..." << endl;
-    TH2D* hdatafine = new TH2D("h_datafine_"+iproc, "", 100, 0., 1.0, 100, 0., 1.0);
+    TH2D* hdatafine = new TH2D("h_datafine_"+iproc, "", 100, X_edges[0], X_edges[X_nbins], 100, Y_edges[0], Y_edges[Y_nbins]);
     for(unsigned int idx=1; idx<=hdatafine->GetXaxis()->GetNbins(); idx++){
       double x_i = hdatafine->GetXaxis()->GetBinCenter(idx); 
       for(unsigned int idy=1; idy<=hdatafine->GetYaxis()->GetNbins(); idy++){
@@ -435,6 +523,8 @@ int main(int argc, char* argv[])
 	hdatafine->SetBinContent(idx,idy, val);
       }
     }        
+
+    if(iproc=="UL") hdatafine_UL = (TH2D*)hdatafine->Clone("hdatafine_UL");
     
     fout->mkdir(iproc);
     fout->cd(iproc+"/");
