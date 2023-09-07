@@ -31,7 +31,6 @@ double cheb_fct(double *var, double *par){
   double num = 0.;
   for(int i = 0; i <= par[0] ; i++){ // par[0]=n
     int sign = i%2==0 ? +1 :-1;
-    //double xj = (TMath::Cos((par[0]-i)*TMath::Pi()/par[0]) + par[1])*par[2]; // par[1]=offset, par[2]=scale
     double xj = TMath::Cos((par[0]-i)*TMath::Pi()/par[0]);
     xj *= par[2];
     xj += par[1];
@@ -56,10 +55,10 @@ int main(int argc, char* argv[])
       options_description desc{"Options"};
       desc.add_options()
 	("help,h",      "Help screen")
-	("nevents",     value<long>()->default_value(1000), "number of events")
-	("ntoys",       value<int>()->default_value(-1), "number of toys")
-	("dUL_x", value<int>()->default_value(2), "max degree in x of corrxy")
-	("dUL_y", value<int>()->default_value(2), "max degree in y of corrxy")
+	("nevents", value<long>()->default_value(1000), "number of events")
+	("ntoys",   value<int>()->default_value(-1), "number of toys")
+	("dUL_x",   value<int>()->default_value(2), "max degree in x of corrxy")
+	("dUL_y",   value<int>()->default_value(2), "max degree in y of corrxy")
 	("dA0_x",   value<int>()->default_value(2), "max degree in x for A0")
 	("dA0_y",   value<int>()->default_value(2), "max degree in y for A0")
 	("dA1_x",   value<int>()->default_value(2), "max degree in x for A1")
@@ -83,6 +82,11 @@ int main(int argc, char* argv[])
 	("fA4_x",   value<int>()->default_value(2), "max degree of modifier in x for A4")
 	("fA4_y",   value<int>()->default_value(2), "max degree of modifier in y for A4")
 	("tag",     value<std::string>()->default_value("default"), "tag name")
+      	("doA0",    bool_switch()->default_value(false), "")
+	("doA1",    bool_switch()->default_value(false), "")
+	("doA2",    bool_switch()->default_value(false), "")
+	("doA3",    bool_switch()->default_value(false), "")
+	("doA4",    bool_switch()->default_value(false), "")	
       	("debug",   bool_switch()->default_value(false), "");
       
       store(parse_command_line(argc, argv, desc), vm);
@@ -101,6 +105,11 @@ int main(int argc, char* argv[])
   int ntoys       = vm["ntoys"].as<int>();
   std::string tag = vm["tag"].as<std::string>();
   int debug       = vm["debug"].as<bool>();
+  int doA0        = vm["doA0"].as<bool>();
+  int doA1        = vm["doA1"].as<bool>();
+  int doA2        = vm["doA2"].as<bool>();
+  int doA3        = vm["doA3"].as<bool>();
+  int doA4        = vm["doA4"].as<bool>();
 
   int dUL_x = vm["dUL_x"].as<int>();
   int dUL_y = vm["dUL_y"].as<int>();
@@ -130,13 +139,13 @@ int main(int argc, char* argv[])
 
   TFile *fout = TFile::Open("fout.root", "RECREATE");
 
-  std::vector<TString> proc = {"UL",
-			       "A0",
-			       //"A1",
-			       //"A2",
-			       //"A3",
-			       //"A4"
-  };
+  std::vector<TString> proc = {"UL"};
+  if(doA0) proc.emplace_back("A0");
+  if(doA1) proc.emplace_back("A1");
+  if(doA2) proc.emplace_back("A2");
+  if(doA3) proc.emplace_back("A3");
+  if(doA4) proc.emplace_back("A4");
+
 
   // dummy file
   TFile* f = TFile::Open( "root/histos_default.root", "RECREATE");  
@@ -178,7 +187,7 @@ int main(int argc, char* argv[])
   //UL
   deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("UL", {dUL_x,  dUL_y}) );
   par_map.insert  ( std::make_pair<TString, std::array<int,2> >("UL", {0, +1}) );
-  ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("UL", {0,  0}) ); 
+  ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("UL", {1,  0}) ); 
   //A0
   deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("A0", {dA0_x,  dA0_y}) );
   par_map.insert  ( std::make_pair<TString, std::array<int,2> >("A0", {0, +1}) );
@@ -216,9 +225,8 @@ int main(int argc, char* argv[])
     cout << "Doing proc " << iproc << endl;
     TH2D* h = (TH2D*)fin->Get("histo_"+iproc);    
     cout << "Histo " << h->GetName() << "found" << endl;
-    if(iproc=="UL") h->Scale(1./ h->Integral("width"));
+    if(iproc=="UL") h->Scale(1./ h->Integral());
 
-    
     // X-axis
     int X_nbins  = h->GetXaxis()->GetNbins();
     double X_min = h->GetXaxis()->GetXmin();
@@ -440,7 +448,7 @@ int main(int argc, char* argv[])
     MatrixXd chi2 = pull.transpose()*pull;
     double chi2val = chi2(0,0);
     int ndof = y.size() - np;
-    cout << "Chi2 = " << chi2val << endl;
+    cout << "Chi2/ndof = " << chi2val << " / " << ndof << " = " << chi2val/ndof  << endl;
     MatrixXd W = (A.transpose()*A).inverse();
     
     TH1D* hinfo = new TH1D("h_info_"+iproc, "", 4, 0,4);
