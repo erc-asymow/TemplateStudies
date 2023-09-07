@@ -148,9 +148,9 @@ int main(int argc, char* argv[])
 
 
   // dummy file
-  TFile* f = TFile::Open( "root/histos_default.root", "RECREATE");  
+  TFile* f = TFile::Open( "root/ai_2dmap_qtbyQ_and_qt_vs_absy.root", "RECREATE");  
   for(auto pr : proc){
-    TH2D* h = new TH2D("histo_"+pr, "", 20, 0.0, 0.5, 20, 0.0, 2.5 );
+    TH2D* h = new TH2D("ang_coeff_wp_qtbyQ_vs_absy_A_"+TString(pr[1]), "", 20, 0.0, 0.5, 20, 0.0, 2.5 );
     for(int ibx=1; ibx<=h->GetXaxis()->GetNbins() ; ibx++ ){
       for(int iby=1; iby<=h->GetYaxis()->GetNbins() ; iby++ ){
 	if(pr=="A1" || pr=="A3"){
@@ -169,7 +169,7 @@ int main(int argc, char* argv[])
   }
   f->Close();
   
-  TFile* fin = TFile::Open(("root/histos_"+tag+".root").c_str(), "READ");
+  TFile* fin = TFile::Open("root/ai_2dmap_qtbyQ_and_qt_vs_absy.root", "READ");
   if(fin==0 || fin==nullptr || fin->IsZombie()){
     cout << "File NOT found" << endl;
     return 0;
@@ -223,8 +223,8 @@ int main(int argc, char* argv[])
 
     TString iproc = proc[i];
     cout << "Doing proc " << iproc << endl;
-    TH2D* h = (TH2D*)fin->Get("histo_"+iproc);    
-    cout << "Histo " << h->GetName() << "found" << endl;
+    TH2D* h = (TH2D*)fin->Get("ang_coeff_wp_qtbyQ_vs_absy_A_"+TString(iproc[1]));    
+    cout << "Histo " << h->GetName() << " found" << endl;
     if(iproc=="UL") h->Scale(1./ h->Integral());
 
     // X-axis
