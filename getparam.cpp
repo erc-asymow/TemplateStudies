@@ -81,13 +81,16 @@ int main(int argc, char* argv[])
 	("fA3_y",   value<int>()->default_value(2), "max degree of modifier in y for A3")
 	("fA4_x",   value<int>()->default_value(2), "max degree of modifier in x for A4")
 	("fA4_y",   value<int>()->default_value(2), "max degree of modifier in y for A4")
+	("x_max",   value<double>()->default_value(-1.0), "max x value for syst")
+	("y_max",   value<double>()->default_value(-1.0), "max y value for syst")
 	("tag",     value<std::string>()->default_value("default"), "tag name")
       	("doA0",    bool_switch()->default_value(false), "")
 	("doA1",    bool_switch()->default_value(false), "")
 	("doA2",    bool_switch()->default_value(false), "")
 	("doA3",    bool_switch()->default_value(false), "")
 	("doA4",    bool_switch()->default_value(false), "")	
-      	("debug",   bool_switch()->default_value(false), "");
+      	("verbose",   bool_switch()->default_value(false), "")
+	("debug",   bool_switch()->default_value(false), "");
       
       store(parse_command_line(argc, argv, desc), vm);
       notify(vm);
@@ -104,6 +107,7 @@ int main(int argc, char* argv[])
   long nevents    = vm["nevents"].as<long>();
   int ntoys       = vm["ntoys"].as<int>();
   std::string tag = vm["tag"].as<std::string>();
+  int verbose     = vm["verbose"].as<bool>();
   int debug       = vm["debug"].as<bool>();
   int doA0        = vm["doA0"].as<bool>();
   int doA1        = vm["doA1"].as<bool>();
@@ -137,6 +141,9 @@ int main(int argc, char* argv[])
   int fA4_x   = vm["fA4_x"].as<int>();
   int fA4_y   = vm["fA4_y"].as<int>();
 
+  double x_max   = vm["x_max"].as<double>();
+  double y_max   = vm["y_max"].as<double>();
+
   TFile *fout = TFile::Open("fout.root", "RECREATE");
 
   std::vector<TString> proc = {"UL"};
@@ -148,26 +155,28 @@ int main(int argc, char* argv[])
 
 
   // dummy file
-  TFile* f = TFile::Open( "root/ai_2dmap_qtbyQ_and_qt_vs_absy.root", "RECREATE");  
-  for(auto pr : proc){
-    TH2D* h = new TH2D("ang_coeff_wp_qtbyQ_vs_absy_A_"+TString(pr[1]), "", 20, 0.0, 0.5, 20, 0.0, 2.5 );
-    for(int ibx=1; ibx<=h->GetXaxis()->GetNbins() ; ibx++ ){
-      for(int iby=1; iby<=h->GetYaxis()->GetNbins() ; iby++ ){
-	if(pr=="A1" || pr=="A3"){
-	  h->SetBinContent(ibx,iby, 10000.*iby/h->GetYaxis()->GetNbins()*ibx/h->GetXaxis()->GetNbins());
+  if(debug){
+    TFile* f = TFile::Open( "root/ai_2dmap_qtbyQ_and_qt_vs_absy.root", "RECREATE");  
+    for(auto& pr : proc){
+      TH2D* h = new TH2D("ang_coeff_wp_qtbyQ_vs_absy_A_"+TString(pr[1]), "", 20, 0.0, 0.5, 20, 0.0, 2.5 );
+      for(int ibx=1; ibx<=h->GetXaxis()->GetNbins() ; ibx++ ){
+	for(int iby=1; iby<=h->GetYaxis()->GetNbins() ; iby++ ){
+	  if(pr=="A1" || pr=="A3"){
+	    h->SetBinContent(ibx,iby, 10000.*iby/h->GetYaxis()->GetNbins()*ibx/h->GetXaxis()->GetNbins());
+	  }
+	  else if(pr=="UL" || pr=="A0" || pr=="A2"){
+	    h->SetBinContent(ibx,iby, 10000.*ibx/h->GetXaxis()->GetNbins());
+	  }
+	  else if(pr=="A4"){
+	    h->SetBinContent(ibx,iby, 10000.*iby/h->GetYaxis()->GetNbins());
+	  }
+	  h->SetBinError(ibx,iby, TMath::Sqrt( h->GetBinContent(ibx,iby)));
 	}
-	else if(pr=="UL" || pr=="A0" || pr=="A2"){
-	  h->SetBinContent(ibx,iby, 10000.*ibx/h->GetXaxis()->GetNbins());
-	}
-	else if(pr=="A4"){
-	  h->SetBinContent(ibx,iby, 10000.*iby/h->GetYaxis()->GetNbins());
-	}
-	h->SetBinError(ibx,iby, TMath::Sqrt( h->GetBinContent(ibx,iby)));
       }
+      h->Write();
     }
-    h->Write();
+    f->Close();
   }
-  f->Close();
   
   TFile* fin = TFile::Open("root/ai_2dmap_qtbyQ_and_qt_vs_absy.root", "READ");
   if(fin==0 || fin==nullptr || fin->IsZombie()){
@@ -178,7 +187,6 @@ int main(int argc, char* argv[])
 
   fin->cd();
   
-
   std::map<TString, std::array<int,2> > deg_map;
   std::map<TString, std::array<int,2> > par_map;
   std::map<TString, std::array<int,2> > ctr_map;
@@ -203,7 +211,7 @@ int main(int argc, char* argv[])
   //A3
   deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("A3", {dA3_x,  dA3_y}) );
   par_map.insert  ( std::make_pair<TString, std::array<int,2> >("A3", {0, +1}) );
-  ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("A3", {1,  0}) ); 
+  ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("A3", {1,  1}) ); 
   //A4
   deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("A4", {dA4_x,  dA4_y}) );
   par_map.insert  ( std::make_pair<TString, std::array<int,2> >("A4", {0, -1}) );
@@ -224,6 +232,10 @@ int main(int argc, char* argv[])
     TString iproc = proc[i];
     cout << "Doing proc " << iproc << endl;
     TH2D* h = (TH2D*)fin->Get("ang_coeff_wp_qtbyQ_vs_absy_A_"+TString(iproc[1]));    
+    if(h==0){
+      cout << "Histo not found. Continue." << endl;
+      continue;
+    }
     cout << "Histo " << h->GetName() << " found" << endl;
     if(iproc=="UL") h->Scale(1./ h->Integral());
 
@@ -238,9 +250,9 @@ int main(int argc, char* argv[])
     //X_edges[X_nbins] = (h->GetXaxis()->GetBinUpEdge(X_nbins)+X_min)/X_range;
     for(int ib = 0; ib<X_nbins; ib++) X_edges[ib] = h->GetXaxis()->GetBinLowEdge(ib+1);
     X_edges[X_nbins] = h->GetXaxis()->GetBinUpEdge(X_nbins);
-    if(debug) cout << "X_edges: ";
-    if(debug) for(int i = 0; i <= X_nbins; i++) cout << X_edges[i] << "," ;
-    if(debug) cout << endl;
+    if(verbose) cout << "X_edges: ";
+    if(verbose) for(int i = 0; i <= X_nbins; i++) cout << X_edges[i] << "," ;
+    if(verbose) cout << endl;
     
     // Y-axis
     int Y_nbins  = h->GetYaxis()->GetNbins();
@@ -253,15 +265,18 @@ int main(int argc, char* argv[])
     //Y_edges[Y_nbins] = (h->GetYaxis()->GetBinUpEdge(Y_nbins)+Y_min)/Y_range;
     for(int ib = 0; ib<Y_nbins; ib++) Y_edges[ib] = h->GetYaxis()->GetBinLowEdge(ib+1);
     Y_edges[Y_nbins] = h->GetYaxis()->GetBinUpEdge(Y_nbins) ;
-    if(debug) cout << "Y_edges: ";
-    if(debug) for(int i = 0; i <= Y_nbins; i++) cout << Y_edges[i] << "," ;
-    if(debug) cout << endl;
+    if(verbose) cout << "Y_edges: ";
+    if(verbose) for(int i = 0; i <= Y_nbins; i++) cout << Y_edges[i] << "," ;
+    if(verbose) cout << endl;
     
+    assert( ctr_map[iproc].at(0) || (ctr_map[iproc].at(1) && deg_map[iproc].at(1)%2==0));
+
     int nd = X_nbins*Y_nbins;
     int npx = deg_map[iproc].at(0) + 1 - ctr_map[iproc].at(0);
     int npy = par_map[iproc].at(1)>0 ? (deg_map[iproc].at(1)/2 + 1) : (deg_map[iproc].at(1) + 1)/2;
+    if( ctr_map[iproc].at(1) ) npy--;
     int np = npx*npy;
-    if(debug) cout << "np = " << npx << " * " << npy << " = " << np << endl;
+    if(verbose) cout << "np = " << npx << " * " << npy << " = " << np << endl;
 
     TF1* cheb_x = new TF1("cheb_x", cheb_fct, X_edges[0], X_edges[X_nbins], 4); 
     cheb_x->SetParNames("n","offset","scale","m");
@@ -298,7 +313,7 @@ int main(int argc, char* argv[])
 	  }	  
 	  cheb_x->SetParameter("m", ipx);
 	  double totx = cheb_x->Integral( X_edges[idx], X_edges[idx+1],1.e-12 );
-	  if(debug) cout << "\tmX=" << ipx << ": int_x [" << X_edges[idx] << "," << X_edges[idx+1] << "] = " << totx << endl;
+	  if(verbose) cout << "\tmX=" << ipx << ": int_x [" << X_edges[idx] << "," << X_edges[idx+1] << "] = " << totx << endl;
 	  integrals_x(idx, ipx) = totx;
 	}       
       }
@@ -312,22 +327,22 @@ int main(int argc, char* argv[])
 	  cheb_y->SetParameter("m", deg_map[iproc].at(1) - ipy);
 	  double cheby2 = cheb_y->Integral( Y_edges[idy], Y_edges[idy+1],1.e-12 ); 	    
 	  // even function:
-	  if( par_map[iproc].at(1)>0 && ipy < (deg_map[iproc].at(1)/2 + 1)){
+	  if( par_map[iproc].at(1)>0 && ipy < (deg_map[iproc].at(1)/2 + 1 - ctr_map[iproc].at(1)) ){
 	    double toty = cheby1+cheby2 ;
-	    if(debug) cout << "\tmY=[" << ipy << "," << deg_map[iproc].at(1) - ipy << "] : int_y [" << Y_edges[idy] << "," << Y_edges[idy+1] << "] = (" << cheby1  << " + " << cheby2 << ")";
+	    if(verbose) cout << "\tmY=[" << ipy << "," << deg_map[iproc].at(1) - ipy << "] : int_y [" << Y_edges[idy] << "," << Y_edges[idy+1] << "] = (" << cheby1  << " + " << cheby2 << ")";
 	    if( deg_map[iproc].at(1)%2==0 && ipy==deg_map[iproc].at(1)/2 ){
 	      toty *= 0.5;
-	      if(debug) cout << "/2" << endl;
+	      if(verbose) cout << "/2" << endl;
 	    }
 	    else{
-	      if(debug) cout << endl;
+	      if(verbose) cout << endl;
 	    }
 	    integrals_y(idy,ipy) = toty;
 	  }
 	  // odd function
 	  else if( par_map[iproc].at(1)<0 && ipy < (deg_map[iproc].at(1)+1)/2){
 	    double toty = cheby1 - cheby2 ;
-	    if(debug) cout << "\tmY=[" << ipy << "," << deg_map[iproc].at(1) - ipy << "] : int_y [" << Y_edges[idy] << "," << Y_edges[idy+1] << "] = (" << cheby1  << " - " << cheby2 << ")";
+	    if(verbose) cout << "\tmY=[" << ipy << "," << deg_map[iproc].at(1) - ipy << "] : int_y [" << Y_edges[idy] << "," << Y_edges[idy+1] << "] = (" << cheby1  << " - " << cheby2 << ")";
 	    integrals_y(idy,ipy) = toty;
 	  }
 	}	
@@ -337,7 +352,7 @@ int main(int argc, char* argv[])
       cout << "Start the final loop..." << endl;
       for(unsigned int idx = 0; idx<X_nbins; idx++){
 	for(unsigned int idy = 0; idy<Y_nbins; idy++){
-	  if(debug) cout << "Doing bin number... " << count_d << endl;
+	  if(verbose) cout << "Doing bin number... " << count_d << endl;
 	  y(count_d) = h->GetBinContent(idx+1, idy+1);
 	  y_err(count_d) = h->GetBinError(idx+1, idy+1);
 	  // loop over parameters
@@ -349,9 +364,10 @@ int main(int argc, char* argv[])
 	    }	  	  
 	    for(unsigned int ipy = 0; ipy<deg_map[iproc].at(1) + 1; ipy++){
 	      // even function:
-	      if( (par_map[iproc].at(1)>0 && ipy < deg_map[iproc].at(1)/2 + 1) || (par_map[iproc].at(1)<0 && ipy < (deg_map[iproc].at(1)+1)/2)){
+	      if( (par_map[iproc].at(1)>0 && ipy < (deg_map[iproc].at(1)/2 + 1 - ctr_map[iproc].at(1))) 
+		  || (par_map[iproc].at(1)<0 && ipy < (deg_map[iproc].at(1)+1)/2)){
 		J(count_d, count_p) = integrals_x(idx,ipx)*integrals_y(idy,ipy);
-		if(debug) cout << "jac(" << count_d << "," << count_p << ") = " << integrals_x(idx,ipx) << " * " << integrals_y(idy,ipy) << " = " << J(count_d, count_p) << endl;
+		if(verbose) cout << "jac(" << count_d << "," << count_p << ") = " << integrals_x(idx,ipx) << " * " << integrals_y(idy,ipy) << " = " << J(count_d, count_p) << endl;
 		p_names.emplace_back( TString(Form("f_%d_%d", ipx, ipy)) ); 
 		count_p++;
 	      }
@@ -364,6 +380,8 @@ int main(int argc, char* argv[])
 
     // here we integrate over the UL pdf
     else{
+      // check that UL is there
+      assert(hdatafine_UL!=0);
 
       auto func = [hdatafine_UL,cheb_x,cheb_y](double *x, double *p)->double{
 	double x1=x[0];
@@ -397,7 +415,7 @@ int main(int argc, char* argv[])
       // loop over data bins and fill outer product
       for(unsigned int idx = 0; idx<X_nbins; idx++){
 	for(unsigned int idy = 0; idy<Y_nbins; idy++){
-	  if(debug) cout << "Doing bin number... " << count_d << endl;
+	  if(verbose) cout << "Doing bin number... " << count_d << endl;
 	  y(count_d) = h->GetBinContent(idx+1, idy+1);
 	  y_err(count_d) = h->GetBinError(idx+1, idy+1);
 	  // loop over parameters
@@ -409,19 +427,20 @@ int main(int argc, char* argv[])
 	    }	  	  
 	    for(unsigned int ipy = 0; ipy<deg_map[iproc].at(1) + 1; ipy++){
 	      // even/odd function:
-	      if( (par_map[iproc].at(1)>0 && ipy < deg_map[iproc].at(1)/2 + 1) || (par_map[iproc].at(1)<0 && ipy < (deg_map[iproc].at(1)+1)/2)){
+	      if( (par_map[iproc].at(1)>0 && ipy < (deg_map[iproc].at(1)/2 + 1 - ctr_map[iproc].at(1))) || 
+		  (par_map[iproc].at(1)<0 && ipy < (deg_map[iproc].at(1)+1)/2)){
 		funcAi->SetParameter(0, ipx);
 		funcAi->SetParameter(1, ipy);
 		funcAi->SetParameter(2, deg_map[iproc].at(1));
 		funcAi->SetParameter(3, par_map[iproc].at(1));
 		funcAi->SetParameter(4, 0);
 		double val = funcAi->Integral(X_edges[idx], X_edges[idx+1], Y_edges[idy], Y_edges[idy+1], 1.e-12); 
-		//if(debug) cout << "val = " << val;
+		//if(verbose) cout << "val = " << val;
 		funcAi->SetParameter(4, 1);
 		double norm = funcAi->Integral(X_edges[idx], X_edges[idx+1], Y_edges[idy], Y_edges[idy+1], 1.e-12);		
-		//if(debug) cout << " norm = " << norm;
+		//if(verbose) cout << " norm = " << norm;
 		J(count_d, count_p) = val/norm;
-		if(debug) cout << "jac(" << count_d << "," << count_p << ") = " << " = " << J(count_d, count_p) << endl;
+		if(verbose) cout << "jac(" << count_d << "," << count_p << ") = " << " = " << J(count_d, count_p) << endl;
 		p_names.emplace_back( TString(Form("f_%d_%d", ipx, ipy)) ); 
 		count_p++;
 	      }
@@ -444,7 +463,7 @@ int main(int argc, char* argv[])
     VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
     VectorXd delta = y-J*x;
     VectorXd pull  = b-A*x;
-    if(debug) cout << delta << endl;
+    if(verbose) cout << delta << endl;
     MatrixXd chi2 = pull.transpose()*pull;
     double chi2val = chi2(0,0);
     int ndof = y.size() - np;
@@ -514,7 +533,7 @@ int main(int argc, char* argv[])
 	    cheb_y->SetParameter("m", deg_map[iproc].at(1) - ipy);
 	    double cheby2 = cheb_y->Eval(y_i); 
 	    // even function:
-	    if( par_map[iproc].at(1)>0 && ipy < (deg_map[iproc].at(1)/2 + 1)){
+	    if( par_map[iproc].at(1)>0 && ipy < (deg_map[iproc].at(1)/2 + 1 - ctr_map[iproc].at(1))){
 	      double toty = cheby1 + cheby2 ;
 	      if( deg_map[iproc].at(1)%2==0 && ipy==deg_map[iproc].at(1)/2 ) toty *= 0.5;	      
 	      val += x(count_p)*totx*toty;
@@ -540,6 +559,18 @@ int main(int argc, char* argv[])
     cheb_x->SetParameter("n", degf_map[iproc].at(0) );
     cheb_y->SetParameter("n", degf_map[iproc].at(1) );
 
+    if(x_max>0.){
+      cheb_x->SetParameter("scale",  x_max*0.5 );
+      cheb_x->SetParameter("offset", x_max*0.5 );
+    }
+    else x_max = X_max;
+    if(y_max>0.){
+      cheb_y->SetParameter("scale",  y_max );
+      cheb_y->SetParameter("offset", 0.0 );
+    } 
+    else y_max = Y_max; 
+
+
     // now computing the polynomial approximant
     int count_pf = 0;
     for(unsigned int ipx = 0; ipx<(degf_map[iproc].at(0) + 1); ipx++){
@@ -550,10 +581,14 @@ int main(int argc, char* argv[])
 	    TString syst_name = syst==0 ? "up" : "down";
 	    TH2D* hdatafine_p = (TH2D*)hdatafine->Clone("h_datafine_"+iproc+Form("_jac%d_",count_pf)+syst_name);
 	    for(unsigned int idx=1; idx<=hdatafine_p->GetXaxis()->GetNbins(); idx++){
+	      // restrict to fiducial phase-space
+	      if( hdatafine_p->GetXaxis()->GetBinLowEdge(idx) > x_max ) continue;
 	      double x_i = hdatafine_p->GetXaxis()->GetBinCenter(idx); 
 	      cheb_x->SetParameter("m", ipx);
 	      double totx = cheb_x->Eval(x_i); 
 	      for(unsigned int idy=1; idy<=hdatafine_p->GetYaxis()->GetNbins(); idy++){
+		// restrict to fiducial phase-space
+		if( hdatafine_p->GetYaxis()->GetBinLowEdge(idy) > y_max ) continue;
 		double y_i = hdatafine_p->GetYaxis()->GetBinCenter(idy); 
 		cheb_y->SetParameter("m", ipy);
 		double cheby1 = cheb_y->Eval(y_i); 
