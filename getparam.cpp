@@ -434,10 +434,10 @@ int main(int argc, char* argv[])
 		funcAi->SetParameter(2, deg_map[iproc].at(1));
 		funcAi->SetParameter(3, par_map[iproc].at(1));
 		funcAi->SetParameter(4, 0);
-		double val = funcAi->Integral(X_edges[idx], X_edges[idx+1], Y_edges[idy], Y_edges[idy+1], 1.e-12); 
+		double val = funcAi->Integral(X_edges[idx], X_edges[idx+1], Y_edges[idy], Y_edges[idy+1], 1.e-6); 
 		//if(verbose) cout << "val = " << val;
 		funcAi->SetParameter(4, 1);
-		double norm = funcAi->Integral(X_edges[idx], X_edges[idx+1], Y_edges[idy], Y_edges[idy+1], 1.e-12);		
+		double norm = funcAi->Integral(X_edges[idx], X_edges[idx+1], Y_edges[idy], Y_edges[idy+1], 1.e-6);		
 		//if(verbose) cout << " norm = " << norm;
 		J(count_d, count_p) = val/norm;
 		if(verbose) cout << "jac(" << count_d << "," << count_p << ") = " << " = " << J(count_d, count_p) << endl;
@@ -511,7 +511,7 @@ int main(int argc, char* argv[])
 
 
     cout << "Filling high-stat histo..." << endl;
-    TH2D* hdatafine = new TH2D("h_datafine_"+iproc, "", 100, X_edges[0], X_edges[X_nbins], 100, Y_edges[0], Y_edges[Y_nbins]);
+    TH2D* hdatafine = new TH2D("h_pdffine_"+iproc, "", 100, X_edges[0], X_edges[X_nbins], 100, Y_edges[0], Y_edges[Y_nbins]);
     for(unsigned int idx=1; idx<=hdatafine->GetXaxis()->GetNbins(); idx++){
       double x_i = hdatafine->GetXaxis()->GetBinCenter(idx); 
       for(unsigned int idy=1; idy<=hdatafine->GetYaxis()->GetNbins(); idy++){
@@ -551,7 +551,8 @@ int main(int argc, char* argv[])
       }
     }        
 
-    if(iproc=="UL") hdatafine_UL = (TH2D*)hdatafine->Clone("hdatafine_UL");
+    if(iproc=="UL")
+      hdatafine_UL = (TH2D*)hdatafine->Clone("hdatafine_UL");
     
     fout->mkdir(iproc);
     fout->cd(iproc+"/");
@@ -570,6 +571,14 @@ int main(int argc, char* argv[])
     } 
     else y_max = Y_max; 
 
+    auto funcUL_p = [hdatafine_UL](double* x, double* p)->double{
+      double val = 0.0;
+      double x1 = x[0];
+      double x2 = x[1];
+      val = hdatafine_UL->GetBinContent( hdatafine_UL->FindBin(x1,x2) );      
+      return val;      
+    };
+    TF2* funcUL_data_p = new TF2("funcUL_data_"+iproc, funcUL_p, X_edges[0], X_edges[X_nbins], Y_edges[0], Y_edges[Y_nbins], 0 );
 
     // now computing the polynomial approximant
     int count_pf = 0;
@@ -579,7 +588,7 @@ int main(int argc, char* argv[])
 	if( ipy < (deg_map[iproc].at(1)/2 + 1)){
 	  for(int syst=0; syst<2; syst++){
 	    TString syst_name = syst==0 ? "up" : "down";
-	    TH2D* hdatafine_p = (TH2D*)hdatafine->Clone("h_datafine_"+iproc+Form("_jac%d_",count_pf)+syst_name);
+	    TH2D* hdatafine_p = (TH2D*)hdatafine->Clone("h_pdffine_"+iproc+Form("_jac%d_",count_pf)+syst_name);
 	    for(unsigned int idx=1; idx<=hdatafine_p->GetXaxis()->GetNbins(); idx++){
 	      // restrict to fiducial phase-space
 	      if( hdatafine_p->GetXaxis()->GetBinLowEdge(idx) > x_max ) continue;
@@ -602,12 +611,36 @@ int main(int argc, char* argv[])
 	      }
 	    }
 	    hdatafine_p->Write();
+	    
+	    auto funcAi_p = [hdatafine_p,hdatafine_UL](double* x, double* p)->double{
+	      double val = 0.0;
+	      double x1 = x[0];
+	      double x2 = x[1];
+	      //cout << x1 << "," << x2 << " => " << hdatafine_p->GetBinContent( hdatafine_p->FindBin(x1,x2) ) << " * " << hdatafine_UL->GetBinContent( hdatafine_UL->FindBin(x1,x2) ) << endl;
+	      val = hdatafine_p->GetBinContent( hdatafine_p->FindBin(x1,x2) )*hdatafine_UL->GetBinContent( hdatafine_UL->FindBin(x1,x2) );
+	      return val;      
+	    };
+	    TF2* funcAi_data_p = new TF2("funcAi_data_"+iproc+Form("_jac%d_",count_pf)+syst_name, funcAi_p, X_edges[0], X_edges[X_nbins], Y_edges[0], Y_edges[Y_nbins], 0 );
+	    
+	    TH2D* hdata_p = (TH2D*)h->Clone("h_data_"+iproc+Form("_jac%d_",count_pf)+syst_name);
+	    for(unsigned int idx = 0; idx<X_nbins; idx++){
+	      for(unsigned int idy = 0; idy<Y_nbins; idy++){
+		double val = 0.0;
+		double den = funcUL_data_p->Integral(X_edges[idx], X_edges[idx+1], Y_edges[idy], Y_edges[idy+1], 1.e-6);
+		if(iproc=="UL")
+		  val = den;
+		else
+		  val = den>0. ? funcAi_data_p->Integral(X_edges[idx], X_edges[idx+1], Y_edges[idy], Y_edges[idy+1], 1.e-6)/den : 0.0;
+		hdata_p->SetBinContent(idx+1,idy+1, val);
+	      }
+	    }
+	    hdata_p->Write();	    	    	    
 	  }
 	  count_pf++;
 	}	  
       }	
-    }
-    
+    }   
+
     hinfo->Write();
     hpull->Write();
     hdelta->Write();
