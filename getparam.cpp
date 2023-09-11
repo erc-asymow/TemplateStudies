@@ -57,33 +57,48 @@ int main(int argc, char* argv[])
 	("help,h",      "Help screen")
 	("nevents", value<long>()->default_value(1000), "number of events")
 	("ntoys",   value<int>()->default_value(-1), "number of toys")
-	("dUL_x",   value<int>()->default_value(2), "max degree in x of corrxy")
-	("dUL_y",   value<int>()->default_value(2), "max degree in y of corrxy")
-	("dA0_x",   value<int>()->default_value(2), "max degree in x for A0")
-	("dA0_y",   value<int>()->default_value(2), "max degree in y for A0")
-	("dA1_x",   value<int>()->default_value(2), "max degree in x for A1")
-	("dA1_y",   value<int>()->default_value(2), "max degree in y for A1")
-	("dA2_x",   value<int>()->default_value(2), "max degree in x for A2")
-	("dA2_y",   value<int>()->default_value(2), "max degree in y for A2")
-	("dA3_x",   value<int>()->default_value(2), "max degree in x for A3")
-	("dA3_y",   value<int>()->default_value(2), "max degree in y for A3")
-	("dA4_x",   value<int>()->default_value(2), "max degree in x for A4")
-	("dA4_y",   value<int>()->default_value(2), "max degree in y for A4")
-	("fUL_x",   value<int>()->default_value(2), "max degree of modifier in x of corrxy")
-	("fUL_y",   value<int>()->default_value(2), "max degree of modifier in y of corrxy")
-	("fA0_x",   value<int>()->default_value(2), "max degree of modifier in x for A0")
-	("fA0_y",   value<int>()->default_value(2), "max degree of modifier in y for A0")
-	("fA1_x",   value<int>()->default_value(2), "max degree of modifier in x for A1")
-	("fA1_y",   value<int>()->default_value(2), "max degree of modifier in y for A1")
-	("fA2_x",   value<int>()->default_value(2), "max degree of modifier in x for A2")
-	("fA2_y",   value<int>()->default_value(2), "max degree of modifier in y for A2")
-	("fA3_x",   value<int>()->default_value(2), "max degree of modifier in x for A3")
-	("fA3_y",   value<int>()->default_value(2), "max degree of modifier in y for A3")
-	("fA4_x",   value<int>()->default_value(2), "max degree of modifier in x for A4")
-	("fA4_y",   value<int>()->default_value(2), "max degree of modifier in y for A4")
+	("extrabinsX",   value<int>()->default_value(10), "pdf x granularity")
+	("extrabinsY",   value<int>()->default_value(10), "pdf y granularity")
+	("dULx",   value<int>()->default_value(2), "max degree in x of corrxy")
+	("dULy",   value<int>()->default_value(2), "max degree in y of corrxy")
+	("dA0x",   value<int>()->default_value(2), "max degree in x for A0")
+	("dA0y",   value<int>()->default_value(2), "max degree in y for A0")
+	("dA1x",   value<int>()->default_value(2), "max degree in x for A1")
+	("dA1y",   value<int>()->default_value(2), "max degree in y for A1")
+	("dA2x",   value<int>()->default_value(2), "max degree in x for A2")
+	("dA2y",   value<int>()->default_value(2), "max degree in y for A2")
+	("dA3x",   value<int>()->default_value(2), "max degree in x for A3")
+	("dA3y",   value<int>()->default_value(2), "max degree in y for A3")
+	("dA4x",   value<int>()->default_value(2), "max degree in x for A4")
+	("dA4y",   value<int>()->default_value(2), "max degree in y for A4")
+	("cULx",   value<int>()->default_value(1), "constraint in x of corrxy")
+	("cULy",   value<int>()->default_value(0), "constraint in y of corrxy")
+	("cA0x",   value<int>()->default_value(1), "constraint to 0 in x=0 for A0")
+	("cA0y",   value<int>()->default_value(0), "constraint to 0 in y=0 for A0")
+	("cA1x",   value<int>()->default_value(1), "constraint to 0 in x=0 for A1")
+	("cA1y",   value<int>()->default_value(0), "constraint to 0 in y=0 for A1")
+	("cA2x",   value<int>()->default_value(1), "constraint to 0 in x=0 for A2")
+	("cA2y",   value<int>()->default_value(0), "constraint to 0 in y=0 for A2")
+	("cA3x",   value<int>()->default_value(1), "constraint to 0 in x=0 for A3")
+	("cA3y",   value<int>()->default_value(1), "constraint to 0 in y=0 for A3")
+	("cA4x",   value<int>()->default_value(0), "constraint to 0 in x=0 for A4")
+	("cA4y",   value<int>()->default_value(0), "constraint to 0 in y=0 for A4")
+	("fULx",   value<int>()->default_value(2), "max degree of modifier in x of corrxy")
+	("fULy",   value<int>()->default_value(2), "max degree of modifier in y of corrxy")
+	("fA0x",   value<int>()->default_value(2), "max degree of modifier in x for A0")
+	("fA0y",   value<int>()->default_value(2), "max degree of modifier in y for A0")
+	("fA1x",   value<int>()->default_value(2), "max degree of modifier in x for A1")
+	("fA1y",   value<int>()->default_value(2), "max degree of modifier in y for A1")
+	("fA2x",   value<int>()->default_value(2), "max degree of modifier in x for A2")
+	("fA2y",   value<int>()->default_value(2), "max degree of modifier in y for A2")
+	("fA3x",   value<int>()->default_value(2), "max degree of modifier in x for A3")
+	("fA3y",   value<int>()->default_value(2), "max degree of modifier in y for A3")
+	("fA4x",   value<int>()->default_value(2), "max degree of modifier in x for A4")
+	("fA4y",   value<int>()->default_value(2), "max degree of modifier in y for A4")
 	("x_max",   value<double>()->default_value(-1.0), "max x value for syst")
 	("y_max",   value<double>()->default_value(-1.0), "max y value for syst")
 	("tag",     value<std::string>()->default_value("default"), "tag name")
+	("run",     value<std::string>()->default_value("wp"), "process name")
       	("doA0",    bool_switch()->default_value(false), "")
 	("doA1",    bool_switch()->default_value(false), "")
 	("doA2",    bool_switch()->default_value(false), "")
@@ -106,7 +121,15 @@ int main(int argc, char* argv[])
 
   long nevents    = vm["nevents"].as<long>();
   int ntoys       = vm["ntoys"].as<int>();
+  int extrabinsX  = vm["extrabinsX"].as<int>();
+  int extrabinsY  = vm["extrabinsY"].as<int>();
   std::string tag = vm["tag"].as<std::string>();
+  std::string run = vm["run"].as<std::string>();
+  TString run2 = "";
+  if(run=="wp")      run2="wplus";
+  else if(run=="wm") run2="wminus";
+  else if(run=="z")  run2="z";
+  
   int verbose     = vm["verbose"].as<bool>();
   int debug       = vm["debug"].as<bool>();
   int doA0        = vm["doA0"].as<bool>();
@@ -115,36 +138,49 @@ int main(int argc, char* argv[])
   int doA3        = vm["doA3"].as<bool>();
   int doA4        = vm["doA4"].as<bool>();
 
-  int dUL_x = vm["dUL_x"].as<int>();
-  int dUL_y = vm["dUL_y"].as<int>();
-  int dA0_x   = vm["dA0_x"].as<int>();
-  int dA0_y   = vm["dA0_y"].as<int>();
-  int dA1_x   = vm["dA1_x"].as<int>();
-  int dA1_y   = vm["dA1_y"].as<int>();
-  int dA2_x   = vm["dA2_x"].as<int>();
-  int dA2_y   = vm["dA2_y"].as<int>();
-  int dA3_x   = vm["dA3_x"].as<int>();
-  int dA3_y   = vm["dA3_y"].as<int>();
-  int dA4_x   = vm["dA4_x"].as<int>();
-  int dA4_y   = vm["dA4_y"].as<int>();
+  int dULx = vm["dULx"].as<int>();
+  int dULy = vm["dULy"].as<int>();
+  int dA0x   = vm["dA0x"].as<int>();
+  int dA0y   = vm["dA0y"].as<int>();
+  int dA1x   = vm["dA1x"].as<int>();
+  int dA1y   = vm["dA1y"].as<int>();
+  int dA2x   = vm["dA2x"].as<int>();
+  int dA2y   = vm["dA2y"].as<int>();
+  int dA3x   = vm["dA3x"].as<int>();
+  int dA3y   = vm["dA3y"].as<int>();
+  int dA4x   = vm["dA4x"].as<int>();
+  int dA4y   = vm["dA4y"].as<int>();
 
-  int fUL_x   = vm["fUL_x"].as<int>();
-  int fUL_y   = vm["fUL_y"].as<int>();
-  int fA0_x   = vm["fA0_x"].as<int>();
-  int fA0_y   = vm["fA0_y"].as<int>();
-  int fA1_x   = vm["fA1_x"].as<int>();
-  int fA1_y   = vm["fA1_y"].as<int>();
-  int fA2_x   = vm["fA2_x"].as<int>();
-  int fA2_y   = vm["fA2_y"].as<int>();
-  int fA3_x   = vm["fA3_x"].as<int>();
-  int fA3_y   = vm["fA3_y"].as<int>();
-  int fA4_x   = vm["fA4_x"].as<int>();
-  int fA4_y   = vm["fA4_y"].as<int>();
+  int cULx   = vm["cULx"].as<int>();
+  int cULy   = vm["cULy"].as<int>();
+  int cA0x   = vm["cA0x"].as<int>();
+  int cA0y   = vm["cA0y"].as<int>();
+  int cA1x   = vm["cA1x"].as<int>();
+  int cA1y   = vm["cA1y"].as<int>();
+  int cA2x   = vm["cA2x"].as<int>();
+  int cA2y   = vm["cA2y"].as<int>();
+  int cA3x   = vm["cA3x"].as<int>();
+  int cA3y   = vm["cA3y"].as<int>();
+  int cA4x   = vm["cA4x"].as<int>();
+  int cA4y   = vm["cA4y"].as<int>();
+
+  int fULx   = vm["fULx"].as<int>();
+  int fULy   = vm["fULy"].as<int>();
+  int fA0x   = vm["fA0x"].as<int>();
+  int fA0y   = vm["fA0y"].as<int>();
+  int fA1x   = vm["fA1x"].as<int>();
+  int fA1y   = vm["fA1y"].as<int>();
+  int fA2x   = vm["fA2x"].as<int>();
+  int fA2y   = vm["fA2y"].as<int>();
+  int fA3x   = vm["fA3x"].as<int>();
+  int fA3y   = vm["fA3y"].as<int>();
+  int fA4x   = vm["fA4x"].as<int>();
+  int fA4y   = vm["fA4y"].as<int>();
 
   double x_max   = vm["x_max"].as<double>();
   double y_max   = vm["y_max"].as<double>();
 
-  TFile *fout = TFile::Open("fout.root", "RECREATE");
+  TFile *fout = TFile::Open(("fout_"+tag+".root").c_str(), "RECREATE");
 
   std::vector<TString> proc = {"UL"};
   if(doA0) proc.emplace_back("A0");
@@ -156,9 +192,12 @@ int main(int argc, char* argv[])
 
   // dummy file
   if(debug){
-    TFile* f = TFile::Open( "root/ai_2dmap_qtbyQ_and_qt_vs_absy.root", "RECREATE");  
+    TFile* f = TFile::Open( "root/all_ai_2dmaps_only_qtbyQ_and_qt_vs_absy_debug.root", "RECREATE");  
     for(auto& pr : proc){
-      TH2D* h = new TH2D("ang_coeff_wp_qtbyQ_vs_absy_A_"+TString(pr[1]), "", 20, 0.0, 0.5, 20, 0.0, 2.5 );
+      TString hname = pr=="UL" ?
+	run2+"_ptqVgen_2d_y_vs_qt_differential_ul" :
+	"ang_coeff_"+TString(run.c_str())+"_qtbyQ_vs_absy_A_"+TString(pr[1]);
+      TH2D* h = new TH2D(hname, "", 20, 0.0, 0.5, 20, 0.0, 2.5 );
       for(int ibx=1; ibx<=h->GetXaxis()->GetNbins() ; ibx++ ){
 	for(int iby=1; iby<=h->GetYaxis()->GetNbins() ; iby++ ){
 	  if(pr=="A1" || pr=="A3"){
@@ -179,7 +218,7 @@ int main(int argc, char* argv[])
     f->Close();
   }
   
-  TFile* fin = TFile::Open("root/ai_2dmap_qtbyQ_and_qt_vs_absy.root", "READ");
+  TFile* fin = TFile::Open(TString("root/all_ai_2dmaps_only_qtbyQ_and_qt_vs_absy")+(debug ? "_debug.root" : ".root"), "READ");
   if(fin==0 || fin==nullptr || fin->IsZombie()){
     cout << "File NOT found" << endl;
     return 0;
@@ -194,36 +233,36 @@ int main(int argc, char* argv[])
   std::map<TString, std::array<int,2> > degf_map;
 
   //UL
-  deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("UL", {dUL_x,  dUL_y}) );
+  deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("UL", {dULx,  dULy}) );
   par_map.insert  ( std::make_pair<TString, std::array<int,2> >("UL", {0, +1}) );
-  ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("UL", {0,  0}) ); 
+  ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("UL", {cULx,  cULy}) ); 
   //A0
-  deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("A0", {dA0_x,  dA0_y}) );
+  deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("A0", {dA0x,  dA0y}) );
   par_map.insert  ( std::make_pair<TString, std::array<int,2> >("A0", {0, +1}) );
-  ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("A0", {1,  0}) ); 
+  ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("A0", {cA0x,  cA0y}) ); 
   //A1
-  deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("A1", {dA1_x,  dA1_y}) );
+  deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("A1", {dA1x,  dA1y}) );
   par_map.insert  ( std::make_pair<TString, std::array<int,2> >("A1", {0, -1}) );
-  ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("A1", {1,  0}) ); 
+  ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("A1", {cA1x,  cA1y}) ); 
   //A2
-  deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("A2", {dA2_x,  dA2_y}) );
+  deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("A2", {dA2x,  dA2y}) );
   par_map.insert  ( std::make_pair<TString, std::array<int,2> >("A2", {0, +1}) );
-  ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("A2", {1,  0}) ); 
+  ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("A2", {cA2x,  cA2y}) ); 
   //A3
-  deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("A3", {dA3_x,  dA3_y}) );
+  deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("A3", {dA3x,  dA3y}) );
   par_map.insert  ( std::make_pair<TString, std::array<int,2> >("A3", {0, +1}) );
-  ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("A3", {1,  1}) ); 
+  ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("A3", {cA3x,  cA3y}) ); 
   //A4
-  deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("A4", {dA4_x,  dA4_y}) );
+  deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("A4", {dA4x,  dA4y}) );
   par_map.insert  ( std::make_pair<TString, std::array<int,2> >("A4", {0, -1}) );
-  ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("A4", {0,  0}) );
+  ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("A4", {cA4x,  cA4y}) );
 
-  degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("UL", {fUL_x,  fUL_y}) );
-  degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A0", {fA0_x,  fA0_y}) );
-  degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A1", {fA1_x,  fA1_y}) );
-  degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A2", {fA2_x,  fA2_y}) );
-  degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A3", {fA3_x,  fA3_y}) );
-  degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A4", {fA4_x,  fA4_y}) );
+  degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("UL", {fULx,  fULy}) );
+  degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A0", {fA0x,  fA0y}) );
+  degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A1", {fA1x,  fA1y}) );
+  degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A2", {fA2x,  fA2y}) );
+  degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A3", {fA3x,  fA3y}) );
+  degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A4", {fA4x,  fA4y}) );
 
   TH2D* hpdf_UL = 0;
   TH2D* hpdf2data_UL = 0;
@@ -233,7 +272,10 @@ int main(int argc, char* argv[])
 
     TString iproc = proc[i];
     cout << "Doing proc " << iproc << endl;
-    TH2D* h = (TH2D*)fin->Get("ang_coeff_wp_qtbyQ_vs_absy_A_"+TString(iproc[1]));    
+    TString hname = iproc=="UL" ?
+      run2+"_ptqVgen_2d_y_vs_qt_differential_ul" :
+      "ang_coeff_"+TString(run.c_str())+"_qtbyQ_vs_absy_A_"+TString(iproc[1]);
+    TH2D* h = (TH2D*)fin->Get(hname);    
     if(h==0){
       cout << "Histo not found. Continue." << endl;
       continue;
@@ -519,7 +561,6 @@ int main(int argc, char* argv[])
 
 
     cout << "Filling high-stat histo..." << endl;
-    int extrabinsX = 10;
     double X_edges_pdf[X_nbins*extrabinsX+1];
     for(unsigned int il=0; il<X_nbins; il++){
       for(unsigned int ih=0; ih<extrabinsX; ih++)
@@ -530,7 +571,6 @@ int main(int argc, char* argv[])
       for(unsigned int ih=0; ih<=X_nbins*extrabinsX; ih++) cout << X_edges_pdf[ih] << ", ";
       cout << endl;
     }
-    int extrabinsY = 10;
     double Y_edges_pdf[Y_nbins*extrabinsY+1];
     for(unsigned int il=0; il<Y_nbins; il++){
       for(unsigned int ih=0; ih<extrabinsY; ih++)
@@ -638,11 +678,16 @@ int main(int argc, char* argv[])
       for(unsigned int ipy = 0; ipy<degf_map[iproc].at(1) + 1; ipy++){	  
 	// it's a POI
 	if( ipy < (deg_map[iproc].at(1)/2 + 1)){
-	  for(int syst=0; syst<2; syst++){
-	    TString syst_name = syst==0 ? "up" : "down";
+	  for(int syst=0; syst<3; syst++){
+	    TString syst_name = "";
+	    if(syst==0) syst_name = "";
+	    else if(syst==1) syst_name = "Up";
+	    else if(syst==2) syst_name = "Down";
 
 	    // save pdf of varied f_syst as fine-grained TH2D
-	    TH2D* hpdf_p = (TH2D*)hpdf->Clone("h_pdf_"+iproc+Form("_jac%d_",count_pf)+syst_name);
+	    TH2D* hpdf_p = (TH2D*)hpdf->Clone( syst==0 ?
+					       "h_pdf_"+iproc+Form("_jac%d",count_pf) :
+					       "h_pdf_"+iproc+Form("_syst%d",count_pf)+syst_name);
 	    for(unsigned int idx=1; idx<=hpdf_p->GetXaxis()->GetNbins(); idx++){
 	      // restrict to fiducial phase-space
 	      if( hpdf_p->GetXaxis()->GetBinLowEdge(idx) > x_max ) continue;
@@ -659,15 +704,23 @@ int main(int argc, char* argv[])
 		double cheby2 = cheb_y->Eval(y_i);
 		double toty = cheby1 + cheby2 ;
 		if( degf_map[iproc].at(1)%2==0 && ipy==degf_map[iproc].at(1)/2 ) toty *= 0.5;	      
-		double shift = syst==0 ? +0.1 : -0.1;
-		double val = hpdf->GetBinContent(idx,idy)*(1 + shift*totx*toty) ;
+		double val = 0.0;
+		if(syst==0)
+		  val = hpdf->GetBinContent(idx,idy)*totx*toty ;
+		else{
+		  double shift = syst==1 ? +0.1 : -0.1;
+		  val = hpdf->GetBinContent(idx,idy)*(1 + shift*totx*toty) ;
+		}
 		hpdf_p->SetBinContent(idx,idy, val);
 	      }
 	    }
 	    hpdf_p->Write();
 
 	    // save data expected of varied f_syst as binned density
-	    TH2D* hpdf2data_p_j = (TH2D*)h->Clone("h_pdf2data_"+iproc+Form("_jac%d_",count_pf)+syst_name);        
+	    TH2D* hpdf2data_p_j = (TH2D*)h->Clone( syst==0 ?
+						   "h_pdf2data_"+iproc+Form("_jac%d",count_pf) :
+						   "h_pdf2data_"+iproc+Form("_syst%d",count_pf)+syst_name
+						   );        
 	    for(unsigned int idx = 0; idx<X_nbins; idx++){
 	      double xl = X_edges[idx];
 	      double xh = X_edges[idx+1];
