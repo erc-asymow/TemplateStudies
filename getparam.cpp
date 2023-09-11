@@ -166,6 +166,7 @@ int main(int argc, char* argv[])
 	  }
 	  else if(pr=="UL" || pr=="A0" || pr=="A2"){
 	    h->SetBinContent(ibx,iby, 10000.*ibx/h->GetXaxis()->GetNbins());
+	    //h->SetBinContent(ibx,iby, 10000.);
 	  }
 	  else if(pr=="A4"){
 	    h->SetBinContent(ibx,iby, 10000.*iby/h->GetYaxis()->GetNbins());
@@ -195,7 +196,7 @@ int main(int argc, char* argv[])
   //UL
   deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("UL", {dUL_x,  dUL_y}) );
   par_map.insert  ( std::make_pair<TString, std::array<int,2> >("UL", {0, +1}) );
-  ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("UL", {1,  0}) ); 
+  ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("UL", {0,  0}) ); 
   //A0
   deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("A0", {dA0_x,  dA0_y}) );
   par_map.insert  ( std::make_pair<TString, std::array<int,2> >("A0", {0, +1}) );
@@ -224,7 +225,8 @@ int main(int argc, char* argv[])
   degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A3", {fA3_x,  fA3_y}) );
   degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A4", {fA4_x,  fA4_y}) );
 
-  TH2D* hdatafine_UL = 0;
+  TH2D* hpdf_UL = 0;
+  TH2D* hpdf2data_UL = 0;
   
   // loop over all histos
   for(unsigned int i=0; i <proc.size(); i++){
@@ -269,7 +271,7 @@ int main(int argc, char* argv[])
     if(verbose) for(int i = 0; i <= Y_nbins; i++) cout << Y_edges[i] << "," ;
     if(verbose) cout << endl;
     
-    assert( ctr_map[iproc].at(0) || (ctr_map[iproc].at(1) && deg_map[iproc].at(1)%2==0));
+    assert( ctr_map[iproc].at(1)==0 || (ctr_map[iproc].at(1) && deg_map[iproc].at(1)%2==0));
 
     int nd = X_nbins*Y_nbins;
     int npx = deg_map[iproc].at(0) + 1 - ctr_map[iproc].at(0);
@@ -381,9 +383,9 @@ int main(int argc, char* argv[])
     // here we integrate over the UL pdf
     else{
       // check that UL is there
-      assert(hdatafine_UL!=0);
+      assert(hpdf_UL!=0);
 
-      auto func = [hdatafine_UL,cheb_x,cheb_y](double *x, double *p)->double{
+      auto func = [hpdf_UL,cheb_x,cheb_y](double *x, double *p)->double{
 	double x1=x[0];
 	double x2=x[1];
 	int m1 = int(p[0]);
@@ -391,7 +393,7 @@ int main(int argc, char* argv[])
 	int d2 = int(p[2]);
 	int p2 = int(p[3]);
 	int norm = int(p[4]);
-	double pdf = hdatafine_UL->GetBinContent( hdatafine_UL->FindBin(x1,x2) );
+	double pdf = hpdf_UL->GetBinContent( hpdf_UL->FindBin(x1,x2) );
 	if(norm>0) return pdf;
 	cheb_x->SetParameter("m", m1);
 	double totx = cheb_x->Eval(x1);
@@ -434,10 +436,10 @@ int main(int argc, char* argv[])
 		funcAi->SetParameter(2, deg_map[iproc].at(1));
 		funcAi->SetParameter(3, par_map[iproc].at(1));
 		funcAi->SetParameter(4, 0);
-		double val = funcAi->Integral(X_edges[idx], X_edges[idx+1], Y_edges[idy], Y_edges[idy+1], 1.e-6); 
+		double val = funcAi->Integral(X_edges[idx], X_edges[idx+1], Y_edges[idy], Y_edges[idy+1], 1.e-8); 
 		//if(verbose) cout << "val = " << val;
 		funcAi->SetParameter(4, 1);
-		double norm = funcAi->Integral(X_edges[idx], X_edges[idx+1], Y_edges[idy], Y_edges[idy+1], 1.e-6);		
+		double norm = funcAi->Integral(X_edges[idx], X_edges[idx+1], Y_edges[idy], Y_edges[idy+1], 1.e-8);		
 		//if(verbose) cout << " norm = " << norm;
 		J(count_d, count_p) = val/norm;
 		if(verbose) cout << "jac(" << count_d << "," << count_p << ") = " << " = " << J(count_d, count_p) << endl;
@@ -448,9 +450,7 @@ int main(int argc, char* argv[])
 	  }
 	  count_d++;
 	}
-      }
-
-      
+      }      
     }
 
     MatrixXd V_inv_sqrt = MatrixXd::Zero(nd, nd);
@@ -482,9 +482,13 @@ int main(int argc, char* argv[])
     TH2D* hdelta = (TH2D*)h->Clone("h_delta_"+iproc);
     TH2D* hpull  = (TH2D*)h->Clone("h_pull_"+iproc);
     TH2D* hdata  = (TH2D*)h->Clone("h_data_"+iproc);
+    TH2D* hexp   = (TH2D*)h->Clone("h_exp_"+iproc);
     TH1D* hpar   = new TH1D("h_par_"+iproc, "", np, 0, np);
     TH2D* hcov   = new TH2D("h_cov_"+iproc, "", np, 0, np, np, 0, np);
     TH2D* hcor   = new TH2D("h_cor_"+iproc, "", np, 0, np, np, 0, np);
+
+    //std::cout << "The matrix J.row is of size "
+    //	      << J.row(0).rows() << "x" << J.row(0).cols() << std::endl;
 
     count_d=0;
     for(unsigned int idx = 0; idx<X_nbins; idx++){
@@ -492,6 +496,10 @@ int main(int argc, char* argv[])
 	hdelta->SetBinContent(idx+1,idy+1, delta(count_d));
 	hpull->SetBinContent(idx+1,idy+1,  pull(count_d));
 	hdata->SetBinContent(idx+1,idy+1,  y(count_d));
+	hdata->SetBinError(idx+1,idy+1,  y_err(count_d));
+	hexp->SetBinContent(idx+1,idy+1,  y(count_d)-delta(count_d));
+	double exp_err = (J.row(count_d)*W*J.row(count_d).transpose())(0,0);
+	hexp->SetBinError(idx+1,idy+1, exp_err>0. ? TMath::Sqrt(exp_err) : 0.0);
 	count_d++;
       }
     }
@@ -511,11 +519,35 @@ int main(int argc, char* argv[])
 
 
     cout << "Filling high-stat histo..." << endl;
-    TH2D* hdatafine = new TH2D("h_pdffine_"+iproc, "", 100, X_edges[0], X_edges[X_nbins], 100, Y_edges[0], Y_edges[Y_nbins]);
-    for(unsigned int idx=1; idx<=hdatafine->GetXaxis()->GetNbins(); idx++){
-      double x_i = hdatafine->GetXaxis()->GetBinCenter(idx); 
-      for(unsigned int idy=1; idy<=hdatafine->GetYaxis()->GetNbins(); idy++){
-	double y_i = hdatafine->GetYaxis()->GetBinCenter(idy); 
+    int extrabinsX = 10;
+    double X_edges_pdf[X_nbins*extrabinsX+1];
+    for(unsigned int il=0; il<X_nbins; il++){
+      for(unsigned int ih=0; ih<extrabinsX; ih++)
+	X_edges_pdf[il*extrabinsX + ih] = X_edges[il] + double(ih)/extrabinsX*(X_edges[il+1] - X_edges[il]);
+    }
+    X_edges_pdf[X_nbins*extrabinsX] = X_edges[X_nbins];
+    if(verbose){
+      for(unsigned int ih=0; ih<=X_nbins*extrabinsX; ih++) cout << X_edges_pdf[ih] << ", ";
+      cout << endl;
+    }
+    int extrabinsY = 10;
+    double Y_edges_pdf[Y_nbins*extrabinsY+1];
+    for(unsigned int il=0; il<Y_nbins; il++){
+      for(unsigned int ih=0; ih<extrabinsY; ih++)
+	Y_edges_pdf[il*extrabinsY + ih] = Y_edges[il] + double(ih)/extrabinsY*(Y_edges[il+1] - Y_edges[il]);
+    }
+    Y_edges_pdf[Y_nbins*extrabinsY] = Y_edges[Y_nbins];
+    if(verbose){
+      for(unsigned int ih=0; ih<=Y_nbins*extrabinsY; ih++) cout << Y_edges_pdf[ih] << ", ";
+      cout << endl;
+    }
+          
+    //TH2D* hpdf = new TH2D("h_pdf_"+iproc, "", 100, X_edges[0], X_edges[X_nbins], 100, Y_edges[0], Y_edges[Y_nbins]);
+    TH2D* hpdf = new TH2D("h_pdf_"+iproc, "", X_nbins*extrabinsX, X_edges_pdf, Y_nbins*extrabinsY, Y_edges_pdf);
+    for(unsigned int idx=1; idx<=hpdf->GetXaxis()->GetNbins(); idx++){
+      double x_i = hpdf->GetXaxis()->GetBinCenter(idx); 
+      for(unsigned int idy=1; idy<=hpdf->GetYaxis()->GetNbins(); idy++){
+	double y_i = hpdf->GetYaxis()->GetBinCenter(idy); 
 
 	// now computing the polynomial approximant
 	double val = 0.0;
@@ -547,12 +579,12 @@ int main(int argc, char* argv[])
 	    }	    
 	  }
  	}	
-	hdatafine->SetBinContent(idx,idy, val);
+	hpdf->SetBinContent(idx,idy, val);
       }
     }        
 
     if(iproc=="UL")
-      hdatafine_UL = (TH2D*)hdatafine->Clone("hdatafine_UL");
+      hpdf_UL = (TH2D*)hpdf->Clone("hpdf_UL");
     
     fout->mkdir(iproc);
     fout->cd(iproc+"/");
@@ -571,15 +603,35 @@ int main(int argc, char* argv[])
     } 
     else y_max = Y_max; 
 
-    auto funcUL_p = [hdatafine_UL](double* x, double* p)->double{
-      double val = 0.0;
-      double x1 = x[0];
-      double x2 = x[1];
-      val = hdatafine_UL->GetBinContent( hdatafine_UL->FindBin(x1,x2) );      
-      return val;      
-    };
-    TF2* funcUL_data_p = new TF2("funcUL_data_"+iproc, funcUL_p, X_edges[0], X_edges[X_nbins], Y_edges[0], Y_edges[Y_nbins], 0 );
-
+    TH2D* hpdf2data_p = (TH2D*)h->Clone("h_pdf2data_"+iproc);        
+    for(unsigned int idx = 0; idx<X_nbins; idx++){
+      double xl = X_edges[idx];
+      double xh = X_edges[idx+1];
+      for(unsigned int idy = 0; idy<Y_nbins; idy++){
+	double yl = Y_edges[idy];
+	double yh = Y_edges[idy+1];
+	double val = 0.0;
+	for(unsigned int idfx = 0; idfx<hpdf->GetXaxis()->GetNbins(); idfx++){
+	  if(!(hpdf->GetXaxis()->GetBinCenter(idfx+1)>=xl && hpdf->GetXaxis()->GetBinCenter(idfx+1)<=xh)) continue;
+	  for(unsigned int idfy = 0; idfy<hpdf->GetYaxis()->GetNbins(); idfy++){
+	    if(!(hpdf->GetYaxis()->GetBinCenter(idfy+1)>=yl && hpdf->GetYaxis()->GetBinCenter(idfy+1)<=yh)) continue;
+	    val += hpdf->GetBinContent(idfx+1,idfy+1)*
+	      (iproc=="UL" ? 1.0 : hpdf_UL->GetBinContent(idfx+1,idfy+1))*
+	      hpdf->GetXaxis()->GetBinWidth(idfx+1)*
+	      hpdf->GetYaxis()->GetBinWidth(idfy+1);
+	  }
+	}
+	if(iproc!="UL"){
+	  //cout << idx << "," << idy << " -> " << val << "/" << hpdf2data_UL->GetBinContent(idx+1,idy+1) << endl;
+	  val /= hpdf2data_UL->GetBinContent(idx+1,idy+1);
+	}
+	hpdf2data_p->SetBinContent(idx+1,idy+1, val); 
+      }
+    }
+    hpdf2data_p->Write();
+    if( iproc=="UL" ) hpdf2data_UL = (TH2D*)hpdf2data_p->Clone("hpdf2data_"+iproc);
+    
+    
     // now computing the polynomial approximant
     int count_pf = 0;
     for(unsigned int ipx = 0; ipx<(degf_map[iproc].at(0) + 1); ipx++){
@@ -588,17 +640,19 @@ int main(int argc, char* argv[])
 	if( ipy < (deg_map[iproc].at(1)/2 + 1)){
 	  for(int syst=0; syst<2; syst++){
 	    TString syst_name = syst==0 ? "up" : "down";
-	    TH2D* hdatafine_p = (TH2D*)hdatafine->Clone("h_pdffine_"+iproc+Form("_jac%d_",count_pf)+syst_name);
-	    for(unsigned int idx=1; idx<=hdatafine_p->GetXaxis()->GetNbins(); idx++){
+
+	    // save pdf of varied f_syst as fine-grained TH2D
+	    TH2D* hpdf_p = (TH2D*)hpdf->Clone("h_pdf_"+iproc+Form("_jac%d_",count_pf)+syst_name);
+	    for(unsigned int idx=1; idx<=hpdf_p->GetXaxis()->GetNbins(); idx++){
 	      // restrict to fiducial phase-space
-	      if( hdatafine_p->GetXaxis()->GetBinLowEdge(idx) > x_max ) continue;
-	      double x_i = hdatafine_p->GetXaxis()->GetBinCenter(idx); 
+	      if( hpdf_p->GetXaxis()->GetBinLowEdge(idx) > x_max ) continue;
+	      double x_i = hpdf_p->GetXaxis()->GetBinCenter(idx); 
 	      cheb_x->SetParameter("m", ipx);
 	      double totx = cheb_x->Eval(x_i); 
-	      for(unsigned int idy=1; idy<=hdatafine_p->GetYaxis()->GetNbins(); idy++){
+	      for(unsigned int idy=1; idy<=hpdf_p->GetYaxis()->GetNbins(); idy++){
 		// restrict to fiducial phase-space
-		if( hdatafine_p->GetYaxis()->GetBinLowEdge(idy) > y_max ) continue;
-		double y_i = hdatafine_p->GetYaxis()->GetBinCenter(idy); 
+		if( hpdf_p->GetYaxis()->GetBinLowEdge(idy) > y_max ) continue;
+		double y_i = hpdf_p->GetYaxis()->GetBinCenter(idy); 
 		cheb_y->SetParameter("m", ipy);
 		double cheby1 = cheb_y->Eval(y_i); 
 		cheb_y->SetParameter("m", degf_map[iproc].at(1) - ipy);
@@ -606,36 +660,40 @@ int main(int argc, char* argv[])
 		double toty = cheby1 + cheby2 ;
 		if( degf_map[iproc].at(1)%2==0 && ipy==degf_map[iproc].at(1)/2 ) toty *= 0.5;	      
 		double shift = syst==0 ? +0.1 : -0.1;
-		double val = hdatafine->GetBinContent(idx,idy)*(1 + shift*totx*toty) ;
-		hdatafine_p->SetBinContent(idx,idy, val);
+		double val = hpdf->GetBinContent(idx,idy)*(1 + shift*totx*toty) ;
+		hpdf_p->SetBinContent(idx,idy, val);
 	      }
 	    }
-	    hdatafine_p->Write();
-	    
-	    auto funcAi_p = [hdatafine_p,hdatafine_UL](double* x, double* p)->double{
-	      double val = 0.0;
-	      double x1 = x[0];
-	      double x2 = x[1];
-	      //cout << x1 << "," << x2 << " => " << hdatafine_p->GetBinContent( hdatafine_p->FindBin(x1,x2) ) << " * " << hdatafine_UL->GetBinContent( hdatafine_UL->FindBin(x1,x2) ) << endl;
-	      val = hdatafine_p->GetBinContent( hdatafine_p->FindBin(x1,x2) )*hdatafine_UL->GetBinContent( hdatafine_UL->FindBin(x1,x2) );
-	      return val;      
-	    };
-	    TF2* funcAi_data_p = new TF2("funcAi_data_"+iproc+Form("_jac%d_",count_pf)+syst_name, funcAi_p, X_edges[0], X_edges[X_nbins], Y_edges[0], Y_edges[Y_nbins], 0 );
-	    
-	    TH2D* hdata_p = (TH2D*)h->Clone("h_data_"+iproc+Form("_jac%d_",count_pf)+syst_name);
+	    hpdf_p->Write();
+
+	    // save data expected of varied f_syst as binned density
+	    TH2D* hpdf2data_p_j = (TH2D*)h->Clone("h_pdf2data_"+iproc+Form("_jac%d_",count_pf)+syst_name);        
 	    for(unsigned int idx = 0; idx<X_nbins; idx++){
+	      double xl = X_edges[idx];
+	      double xh = X_edges[idx+1];
 	      for(unsigned int idy = 0; idy<Y_nbins; idy++){
+		double yl = Y_edges[idy];
+		double yh = Y_edges[idy+1];
 		double val = 0.0;
-		double den = funcUL_data_p->Integral(X_edges[idx], X_edges[idx+1], Y_edges[idy], Y_edges[idy+1], 1.e-6);
-		if(iproc=="UL")
-		  val = den;
-		else
-		  val = den>0. ? funcAi_data_p->Integral(X_edges[idx], X_edges[idx+1], Y_edges[idy], Y_edges[idy+1], 1.e-6)/den : 0.0;
-		hdata_p->SetBinContent(idx+1,idy+1, val);
+		for(unsigned int idfx = 0; idfx<hpdf_p->GetXaxis()->GetNbins(); idfx++){
+		  if(!(hpdf_p->GetXaxis()->GetBinCenter(idfx+1)>=xl && hpdf_p->GetXaxis()->GetBinCenter(idfx+1)<=xh)) continue;
+		  for(unsigned int idfy = 0; idfy<hpdf_p->GetYaxis()->GetNbins(); idfy++){
+		    if(!(hpdf_p->GetYaxis()->GetBinCenter(idfy+1)>=yl && hpdf_p->GetYaxis()->GetBinCenter(idfy+1)<=yh)) continue;
+		    val += hpdf_p->GetBinContent(idfx+1,idfy+1)*
+		      (iproc=="UL" ? 1.0 : hpdf_UL->GetBinContent(idfx+1,idfy+1))*
+		      hpdf_p->GetXaxis()->GetBinWidth(idfx+1)*
+		      hpdf_p->GetYaxis()->GetBinWidth(idfy+1);
+		  }
+		}
+		if(iproc!="UL"){
+		  val /= hpdf2data_UL->GetBinContent(idx+1,idy+1);
+		}
+		hpdf2data_p_j->SetBinContent(idx+1,idy+1, val); 
 	      }
 	    }
-	    hdata_p->Write();	    	    	    
+	    hpdf2data_p_j->Write();
 	  }
+	  
 	  count_pf++;
 	}	  
       }	
@@ -645,10 +703,11 @@ int main(int argc, char* argv[])
     hpull->Write();
     hdelta->Write();
     hdata->Write();
+    hexp->Write();
     hcov->Write();
     hcor->Write();
     hpar->Write();
-    hdatafine->Write();    
+    hpdf->Write();    
   }
   
   fout->Close();
