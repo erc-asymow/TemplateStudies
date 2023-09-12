@@ -424,8 +424,10 @@ int main(int argc, char* argv[])
 
     // here we integrate over the UL pdf
     else{
+
       // check that UL is there
       assert(hpdf_UL!=0);
+      assert(hpdf2data_UL!=0);
 
       auto func = [hpdf_UL,cheb_x,cheb_y](double *x, double *p)->double{
 	double x1=x[0];
@@ -434,9 +436,12 @@ int main(int argc, char* argv[])
 	int m2 = int(p[1]);
 	int d2 = int(p[2]);
 	int p2 = int(p[3]);
-	int norm = int(p[4]);
+	//int norm = int(p[4]);
 	double pdf = hpdf_UL->GetBinContent( hpdf_UL->FindBin(x1,x2) );
-	if(norm>0) return pdf;
+	//if(norm>0){
+	//cout << "x = " << x1 << ", y = " << x2 << ", m=(" << m1 << "," << m2 << ")"", val = " << val << endl; 
+	//return pdf;
+	///}
 	cheb_x->SetParameter("m", m1);
 	double totx = cheb_x->Eval(x1);
 	cheb_y->SetParameter("m", m2);
@@ -450,7 +455,7 @@ int main(int argc, char* argv[])
 	}
 	else if(p2<0 && m2<(d2+1)/2) toty = (cheby1 - cheby2);
 	double val = totx*toty*pdf;
-	//cout << "x = " << x1 << ", y = " << x2 << ", m=(" << m1 << "," << m2 << "), totx = " << totx << ", toty = " << toty << ", val = " << val << endl; 
+	//cout << "x = " << x1 << ", y = " << x2 << ", m=(" << m1 << "," << m2 << "), totx = " << totx << ", toty = " << toty << ", pdf = " << pdf << ", val = " << val << endl; 
 	return val;
       };
       TF2* funcAi = new TF2("func_"+iproc, func, X_edges[0], X_edges[X_nbins],
@@ -458,7 +463,11 @@ int main(int argc, char* argv[])
 		
       // loop over data bins and fill outer product
       for(unsigned int idx = 0; idx<X_nbins; idx++){
+	double xl = X_edges[idx];
+	double xh = X_edges[idx+1];
 	for(unsigned int idy = 0; idy<Y_nbins; idy++){
+	  double yl = Y_edges[idy];
+	  double yh = Y_edges[idy+1];
 	  if(verbose) cout << "Doing bin number... " << count_d << endl;
 	  y(count_d) = h->GetBinContent(idx+1, idy+1);
 	  y_err(count_d) = h->GetBinError(idx+1, idy+1);
@@ -477,11 +486,12 @@ int main(int argc, char* argv[])
 		funcAi->SetParameter(1, ipy);
 		funcAi->SetParameter(2, deg_map[iproc].at(1));
 		funcAi->SetParameter(3, par_map[iproc].at(1));
-		funcAi->SetParameter(4, 0);
-		double val = funcAi->Integral(X_edges[idx], X_edges[idx+1], Y_edges[idy], Y_edges[idy+1], 1.e-8); 
+		//funcAi->SetParameter(4, 0);
+		double val = funcAi->Integral(xl, xh, yl, yh, 1.e-6); 
 		//if(verbose) cout << "val = " << val;
-		funcAi->SetParameter(4, 1);
-		double norm = funcAi->Integral(X_edges[idx], X_edges[idx+1], Y_edges[idy], Y_edges[idy+1], 1.e-8);		
+		//funcAi->SetParameter(4, 1);
+		//double norm = funcAi->Integral(X_edges[idx], X_edges[idx+1], Y_edges[idy], Y_edges[idy+1], 1.e-6);		
+		double norm = hpdf2data_UL->GetBinContent( idx+1, idy+1 );
 		//if(verbose) cout << " norm = " << norm;
 		J(count_d, count_p) = val/norm;
 		if(verbose) cout << "jac(" << count_d << "," << count_p << ") = " << " = " << J(count_d, count_p) << endl;
@@ -512,17 +522,20 @@ int main(int argc, char* argv[])
     cout << "Chi2/ndof = " << chi2val << " / " << ndof << " = " << chi2val/ndof  << endl;
     MatrixXd W = (A.transpose()*A).inverse();
     
-    TH1D* hinfo = new TH1D("h_info_"+iproc, "", 4, 0,4);
+    TH1D* hinfo = new TH1D("h_info_"+iproc, "", 5, 0,5);
     hinfo->SetBinContent(1, chi2val);
     hinfo->GetXaxis()->SetBinLabel(1, "chi2");
     hinfo->SetBinContent(2, ndof);
     hinfo->GetXaxis()->SetBinLabel(2, "ndof");
-    hinfo->SetBinContent(3, npx);
-    hinfo->GetXaxis()->SetBinLabel(3, "npx");
-    hinfo->SetBinContent(4, npy);
-    hinfo->GetXaxis()->SetBinLabel(4, "npy");
+    hinfo->SetBinContent(3, TMath::Prob(chi2val,ndof));
+    hinfo->GetXaxis()->SetBinLabel(3, "pvalue");
+    hinfo->SetBinContent(4, npx);
+    hinfo->GetXaxis()->SetBinLabel(4, "npx");
+    hinfo->SetBinContent(5, npy);
+    hinfo->GetXaxis()->SetBinLabel(5, "npy");
     TH2D* hdelta = (TH2D*)h->Clone("h_delta_"+iproc);
     TH2D* hpull  = (TH2D*)h->Clone("h_pull_"+iproc);
+    TH2D* hratio = (TH2D*)h->Clone("h_ratio_"+iproc);
     TH2D* hdata  = (TH2D*)h->Clone("h_data_"+iproc);
     TH2D* hexp   = (TH2D*)h->Clone("h_exp_"+iproc);
     TH1D* hpar   = new TH1D("h_par_"+iproc, "", np, 0, np);
@@ -537,6 +550,8 @@ int main(int argc, char* argv[])
       for(unsigned int idy = 0; idy<Y_nbins; idy++){	
 	hdelta->SetBinContent(idx+1,idy+1, delta(count_d));
 	hpull->SetBinContent(idx+1,idy+1,  pull(count_d));
+	hratio->SetBinContent(idx+1,idy+1, y(count_d)!=0. ? (y(count_d)-delta(count_d))/y(count_d) : 1.0 );	
+	hratio->SetBinError(idx+1,idy+1, y(count_d)!=0. ? y_err(count_d)/y(count_d) : 0.0 );	
 	hdata->SetBinContent(idx+1,idy+1,  y(count_d));
 	hdata->SetBinError(idx+1,idy+1,  y_err(count_d));
 	hexp->SetBinContent(idx+1,idy+1,  y(count_d)-delta(count_d));
@@ -754,6 +769,7 @@ int main(int argc, char* argv[])
 
     hinfo->Write();
     hpull->Write();
+    hratio->Write();
     hdelta->Write();
     hdata->Write();
     hexp->Write();
