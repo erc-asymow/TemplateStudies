@@ -83,20 +83,22 @@ int main(int argc, char* argv[])
 	("cA3y",   value<int>()->default_value(1), "constraint to 0 in y=0 for A3")
 	("cA4x",   value<int>()->default_value(0), "constraint to 0 in x=0 for A4")
 	("cA4y",   value<int>()->default_value(0), "constraint to 0 in y=0 for A4")
-	("fULx",   value<int>()->default_value(2), "max degree of modifier in x of corrxy")
-	("fULy",   value<int>()->default_value(2), "max degree of modifier in y of corrxy")
-	("fA0x",   value<int>()->default_value(2), "max degree of modifier in x for A0")
-	("fA0y",   value<int>()->default_value(2), "max degree of modifier in y for A0")
-	("fA1x",   value<int>()->default_value(2), "max degree of modifier in x for A1")
-	("fA1y",   value<int>()->default_value(2), "max degree of modifier in y for A1")
-	("fA2x",   value<int>()->default_value(2), "max degree of modifier in x for A2")
-	("fA2y",   value<int>()->default_value(2), "max degree of modifier in y for A2")
-	("fA3x",   value<int>()->default_value(2), "max degree of modifier in x for A3")
-	("fA3y",   value<int>()->default_value(2), "max degree of modifier in y for A3")
-	("fA4x",   value<int>()->default_value(2), "max degree of modifier in x for A4")
-	("fA4y",   value<int>()->default_value(2), "max degree of modifier in y for A4")
-	("x_max",   value<double>()->default_value(-1.0), "max x value for syst")
-	("y_max",   value<double>()->default_value(-1.0), "max y value for syst")
+	("fULx",   value<int>()->default_value(-1), "max degree of modifier in x of corrxy")
+	("fULy",   value<int>()->default_value(-1), "max degree of modifier in y of corrxy")
+	("fA0x",   value<int>()->default_value(-1), "max degree of modifier in x for A0")
+	("fA0y",   value<int>()->default_value(-1), "max degree of modifier in y for A0")
+	("fA1x",   value<int>()->default_value(-1), "max degree of modifier in x for A1")
+	("fA1y",   value<int>()->default_value(-1), "max degree of modifier in y for A1")
+	("fA2x",   value<int>()->default_value(-1), "max degree of modifier in x for A2")
+	("fA2y",   value<int>()->default_value(-1), "max degree of modifier in y for A2")
+	("fA3x",   value<int>()->default_value(-1), "max degree of modifier in x for A3")
+	("fA3y",   value<int>()->default_value(-1), "max degree of modifier in y for A3")
+	("fA4x",   value<int>()->default_value(-1), "max degree of modifier in x for A4")
+	("fA4y",   value<int>()->default_value(-1), "max degree of modifier in y for A4")
+	("x_max",   value<double>()->default_value(-1.0), "max x value for fit")
+	("y_max",  value<double>()->default_value(-1.0), "max y value for fit")
+	("xf_max",  value<double>()->default_value(-1.0), "max x value for syst")
+	("yf_max",  value<double>()->default_value(-1.0), "max y value for syst")
 	("tag",     value<std::string>()->default_value("default"), "tag name")
 	("run",     value<std::string>()->default_value("wp"), "process name")
       	("doA0",    bool_switch()->default_value(false), "")
@@ -179,6 +181,8 @@ int main(int argc, char* argv[])
 
   double x_max   = vm["x_max"].as<double>();
   double y_max   = vm["y_max"].as<double>();
+  double xf_max  = vm["xf_max"].as<double>();
+  double yf_max  = vm["yf_max"].as<double>();
 
   TFile *fout = TFile::Open(("fout_"+tag+".root").c_str(), "RECREATE");
 
@@ -192,10 +196,10 @@ int main(int argc, char* argv[])
 
   // dummy file
   if(debug){
-    TFile* f = TFile::Open( "root/all_ai_2dmaps_only_qtbyQ_and_qt_vs_absy_debug.root", "RECREATE");  
+    TFile* f = TFile::Open( "root/file_qtbyQ_and_qt_vs_absy_v2_debug.root", "RECREATE");  
     for(auto& pr : proc){
       TString hname = pr=="UL" ?
-	run2+"_ptqVgen_2d_y_vs_qt_differential_ul" :
+	run2+"_ptqVgen_2d_absY_vs_qtbyQ_differential_ul" :
 	"ang_coeff_"+TString(run.c_str())+"_qtbyQ_vs_absy_A_"+TString(pr[1]);
       TH2D* h = new TH2D(hname, "", 20, 0.0, 0.5, 20, 0.0, 2.5 );
       for(int ibx=1; ibx<=h->GetXaxis()->GetNbins() ; ibx++ ){
@@ -218,7 +222,7 @@ int main(int argc, char* argv[])
     f->Close();
   }
   
-  TFile* fin = TFile::Open(TString("root/all_ai_2dmaps_only_qtbyQ_and_qt_vs_absy")+(debug ? "_debug.root" : ".root"), "READ");
+  TFile* fin = TFile::Open(TString("root/file_qtbyQ_and_qt_vs_absy_v2")+(debug ? "_debug.root" : ".root"), "READ");
   if(fin==0 || fin==nullptr || fin->IsZombie()){
     cout << "File NOT found" << endl;
     return 0;
@@ -273,7 +277,7 @@ int main(int argc, char* argv[])
     TString iproc = proc[i];
     cout << "Doing proc " << iproc << endl;
     TString hname = iproc=="UL" ?
-      run2+"_ptqVgen_2d_y_vs_qt_differential_ul" :
+      run2+"_ptqVgen_2d_absY_vs_qtbyQ_differential_ul" :
       "ang_coeff_"+TString(run.c_str())+"_qtbyQ_vs_absy_A_"+TString(iproc[1]);
     TH2D* h = (TH2D*)fin->Get(hname);    
     if(h==0){
@@ -287,6 +291,10 @@ int main(int argc, char* argv[])
     int X_nbins  = h->GetXaxis()->GetNbins();
     double X_min = h->GetXaxis()->GetXmin();
     double X_max = h->GetXaxis()->GetXmax();
+    if(x_max>0.){
+      X_nbins = h->GetXaxis()->FindBin(x_max);
+      X_max = h->GetXaxis()->GetBinUpEdge(X_nbins);
+    }
     double X_scale  = (X_max-X_min)*0.5;
     double X_offset = (X_max+X_min)*0.5;
     double X_edges[X_nbins+1];
@@ -301,6 +309,10 @@ int main(int argc, char* argv[])
     // Y-axis
     int Y_nbins  = h->GetYaxis()->GetNbins();
     double Y_max = h->GetYaxis()->GetXmax();
+    if(y_max>0.){
+      Y_nbins = h->GetYaxis()->FindBin(y_max);
+      Y_max = h->GetYaxis()->GetBinUpEdge(Y_nbins);
+    }
     double Y_min = -Y_max; // assume |y| is plotted
     double Y_scale  = (Y_max-Y_min)*0.5;
     double Y_offset = (Y_max+Y_min)*0.5;
@@ -651,16 +663,16 @@ int main(int argc, char* argv[])
     cheb_x->SetParameter("n", degf_map[iproc].at(0) );
     cheb_y->SetParameter("n", degf_map[iproc].at(1) );
 
-    if(x_max>0.){
-      cheb_x->SetParameter("scale",  x_max*0.5 );
-      cheb_x->SetParameter("offset", x_max*0.5 );
+    if(xf_max>0.){
+      cheb_x->SetParameter("scale",  xf_max*0.5 );
+      cheb_x->SetParameter("offset", xf_max*0.5 );
     }
-    else x_max = X_max;
-    if(y_max>0.){
-      cheb_y->SetParameter("scale",  y_max );
+    else xf_max = X_max;
+    if(yf_max>0.){
+      cheb_y->SetParameter("scale",  yf_max );
       cheb_y->SetParameter("offset", 0.0 );
     } 
-    else y_max = Y_max; 
+    else yf_max = Y_max; 
 
     TH2D* hpdf2data_p = (TH2D*)h->Clone("h_pdf2data_"+iproc);        
     for(unsigned int idx = 0; idx<X_nbins; idx++){
@@ -708,14 +720,15 @@ int main(int argc, char* argv[])
 					       "h_pdf_"+iproc+Form("_jac%d",count_pf) :
 					       "h_pdf_"+iproc+Form("_syst%d",count_pf)+syst_name);
 	    for(unsigned int idx=1; idx<=hpdf_p->GetXaxis()->GetNbins(); idx++){
-	      // restrict to fiducial phase-space
-	      if( hpdf_p->GetXaxis()->GetBinLowEdge(idx) > x_max ) continue;
 	      double x_i = hpdf_p->GetXaxis()->GetBinCenter(idx); 
 	      cheb_x->SetParameter("m", ipx);
 	      double totx = cheb_x->Eval(x_i); 
 	      for(unsigned int idy=1; idy<=hpdf_p->GetYaxis()->GetNbins(); idy++){
 		// restrict to fiducial phase-space
-		if( hpdf_p->GetYaxis()->GetBinLowEdge(idy) > y_max ) continue;
+		if( (hpdf_p->GetXaxis()->GetBinLowEdge(idx) > x_max) || (hpdf_p->GetYaxis()->GetBinLowEdge(idy) > y_max) ){
+		  hpdf_p->SetBinContent(idx,idy, syst==0 ? 0.0 : hpdf->GetBinContent(idx,idy));
+		  continue;
+		}
 		double y_i = hpdf_p->GetYaxis()->GetBinCenter(idy); 
 		cheb_y->SetParameter("m", ipy);
 		double cheby1 = cheb_y->Eval(y_i); 
@@ -764,8 +777,7 @@ int main(int argc, char* argv[])
 	      }
 	    }
 	    hpdf2data_p_j->Write();
-	  }
-	  
+	  }	  
 	  count_pf++;
 	}	  
       }	
