@@ -101,11 +101,13 @@ int main(int argc, char* argv[])
 	("yf_max",  value<double>()->default_value(-1.0), "max y value for syst")
 	("tag",     value<std::string>()->default_value("default"), "tag name")
 	("run",     value<std::string>()->default_value("wp"), "process name")
+	("xvar",    value<std::string>()->default_value("qtbyQ"), "variable x name")
       	("doA0",    bool_switch()->default_value(false), "")
 	("doA1",    bool_switch()->default_value(false), "")
 	("doA2",    bool_switch()->default_value(false), "")
 	("doA3",    bool_switch()->default_value(false), "")
 	("doA4",    bool_switch()->default_value(false), "")	
+      	("interpolate",   bool_switch()->default_value(false), "")
       	("verbose",   bool_switch()->default_value(false), "")
 	("debug",   bool_switch()->default_value(false), "");
       
@@ -127,12 +129,14 @@ int main(int argc, char* argv[])
   int extrabinsY  = vm["extrabinsY"].as<int>();
   std::string tag = vm["tag"].as<std::string>();
   std::string run = vm["run"].as<std::string>();
+  std::string xvar = vm["xvar"].as<std::string>();
   TString run2 = "";
   if(run=="wp")      run2="wplus";
   else if(run=="wm") run2="wminus";
   else if(run=="z")  run2="z";
   
   int verbose     = vm["verbose"].as<bool>();
+  int interpolate = vm["interpolate"].as<bool>();
   int debug       = vm["debug"].as<bool>();
   int doA0        = vm["doA0"].as<bool>();
   int doA1        = vm["doA1"].as<bool>();
@@ -196,11 +200,12 @@ int main(int argc, char* argv[])
 
   // dummy file
   if(debug){
-    TFile* f = TFile::Open( "root/file_qtbyQ_and_qt_vs_absy_v2_debug.root", "RECREATE");  
+    TFile* f = TFile::Open( "root/file_qtbyQ_and_qt_vs_absy_v3_debug.root", "RECREATE");  
     for(auto& pr : proc){
       TString hname = pr=="UL" ?
-	run2+"_ptqVgen_2d_absY_vs_qtbyQ_differential_ul" :
-	"ang_coeff_"+TString(run.c_str())+"_qtbyQ_vs_absy_A_"+TString(pr[1]);
+	run2+(xvar=="qtbyQ" ? "_ptqVgen" : "_ptVgen")+"_2d_absY_vs_"+TString(xvar.c_str())+"_differential_ul" :
+	"ang_coeff_"+TString(run.c_str())+"_"+TString(xvar.c_str())+"_vs_absy_A_"+TString(pr[1]);
+      
       TH2D* h = new TH2D(hname, "", 20, 0.0, 0.5, 20, 0.0, 2.5 );
       for(int ibx=1; ibx<=h->GetXaxis()->GetNbins() ; ibx++ ){
 	for(int iby=1; iby<=h->GetYaxis()->GetNbins() ; iby++ ){
@@ -222,7 +227,7 @@ int main(int argc, char* argv[])
     f->Close();
   }
   
-  TFile* fin = TFile::Open(TString("root/file_qtbyQ_and_qt_vs_absy_v2")+(debug ? "_debug.root" : ".root"), "READ");
+  TFile* fin = TFile::Open(TString("root/file_qtbyQ_and_qt_vs_absy_v3")+(debug ? "_debug.root" : ".root"), "READ");
   if(fin==0 || fin==nullptr || fin->IsZombie()){
     cout << "File NOT found" << endl;
     return 0;
@@ -269,6 +274,7 @@ int main(int argc, char* argv[])
   degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A4", {fA4x,  fA4y}) );
 
   TH2D* hpdf_UL = 0;
+  TH2D* h_interpol_UL = 0;
   TH2D* hpdf2data_UL = 0;
   
   // loop over all histos
@@ -277,7 +283,7 @@ int main(int argc, char* argv[])
     TString iproc = proc[i];
     cout << "Doing proc " << iproc << endl;
     TString hname = iproc=="UL" ?
-      run2+"_ptqVgen_2d_absY_vs_qtbyQ_differential_ul" :
+      run2+(xvar=="qtbyQ" ? "_ptqVgen" : "_ptVgen")+"_2d_absY_vs_"+TString(xvar.c_str())+"_differential_ul" :
       "ang_coeff_"+TString(run.c_str())+"_qtbyQ_vs_absy_A_"+TString(iproc[1]);
     TH2D* h = (TH2D*)fin->Get(hname);    
     if(h==0){
@@ -285,8 +291,21 @@ int main(int argc, char* argv[])
       continue;
     }
     cout << "Histo " << h->GetName() << " found" << endl;
-    if(iproc=="UL") h->Scale(1./ h->Integral());
 
+    if(iproc=="UL"){
+      h->Scale(1./ h->Integral());
+      if(interpolate){
+	h_interpol_UL = (TH2D*)h->Clone("h_interpol_UL");
+	for(int ibx=1; ibx<=h->GetXaxis()->GetNbins(); ibx++){
+	  for(int iby=1; iby<=h->GetYaxis()->GetNbins(); iby++){
+	    h_interpol_UL->SetBinContent(ibx,iby, h->GetBinContent(ibx,iby)/
+					 (h->GetXaxis()->GetBinWidth(ibx)*
+					  h->GetYaxis()->GetBinWidth(iby)));
+	  }
+	}
+      }
+    }
+    
     // X-axis
     int X_nbins  = h->GetXaxis()->GetNbins();
     double X_min = h->GetXaxis()->GetXmin();
@@ -327,6 +346,8 @@ int main(int argc, char* argv[])
     
     assert( ctr_map[iproc].at(1)==0 || (ctr_map[iproc].at(1) && deg_map[iproc].at(1)%2==0));
 
+    TH2D* hdummy = new TH2D("hdummy_"+iproc, iproc+";q_{T}/Q or q_{T};|y|", X_nbins, X_edges, Y_nbins, Y_edges );
+    
     int nd = X_nbins*Y_nbins;
     int npx = deg_map[iproc].at(0) + 1 - ctr_map[iproc].at(0);
     int npy = par_map[iproc].at(1)>0 ? (deg_map[iproc].at(1)/2 + 1) : (deg_map[iproc].at(1) + 1)/2;
@@ -549,11 +570,11 @@ int main(int argc, char* argv[])
     hinfo->GetXaxis()->SetBinLabel(6, "dx");
     hinfo->SetBinContent(7, deg_map[iproc].at(1));
     hinfo->GetXaxis()->SetBinLabel(7, "dy");
-    TH2D* hdelta = (TH2D*)h->Clone("h_delta_"+iproc);
-    TH2D* hpull  = (TH2D*)h->Clone("h_pull_"+iproc);
-    TH2D* hratio = (TH2D*)h->Clone("h_ratio_"+iproc);
-    TH2D* hdata  = (TH2D*)h->Clone("h_data_"+iproc);
-    TH2D* hexp   = (TH2D*)h->Clone("h_exp_"+iproc);
+    TH2D* hdelta = (TH2D*)hdummy->Clone("h_delta_"+iproc);
+    TH2D* hpull  = (TH2D*)hdummy->Clone("h_pull_"+iproc);
+    TH2D* hratio = (TH2D*)hdummy->Clone("h_ratio_"+iproc);
+    TH2D* hdata  = (TH2D*)hdummy->Clone("h_data_"+iproc);
+    TH2D* hexp   = (TH2D*)hdummy->Clone("h_exp_"+iproc);
     TH1D* hpar   = new TH1D("h_par_"+iproc, "", np, 0, np);
     TH2D* hcov   = new TH2D("h_cov_"+iproc, "", np, 0, np, np, 0, np);
     TH2D* hcor   = new TH2D("h_cor_"+iproc, "", np, 0, np, np, 0, np);
@@ -613,7 +634,6 @@ int main(int argc, char* argv[])
       cout << endl;
     }
           
-    //TH2D* hpdf = new TH2D("h_pdf_"+iproc, "", 100, X_edges[0], X_edges[X_nbins], 100, Y_edges[0], Y_edges[Y_nbins]);
     TH2D* hpdf = new TH2D("h_pdf_"+iproc, "", X_nbins*extrabinsX, X_edges_pdf, Y_nbins*extrabinsY, Y_edges_pdf);
     for(unsigned int idx=1; idx<=hpdf->GetXaxis()->GetNbins(); idx++){
       double x_i = hpdf->GetXaxis()->GetBinCenter(idx); 
@@ -649,7 +669,8 @@ int main(int argc, char* argv[])
 	      count_p++;
 	    }	    
 	  }
- 	}	
+ 	}
+	if(interpolate) val = h_interpol_UL->Interpolate(x_i,y_i);
 	hpdf->SetBinContent(idx,idy, val);
       }
     }        
@@ -674,7 +695,7 @@ int main(int argc, char* argv[])
     } 
     else yf_max = Y_max; 
 
-    TH2D* hpdf2data_p = (TH2D*)h->Clone("h_pdf2data_"+iproc);        
+    TH2D* hpdf2data_p = (TH2D*)hdummy->Clone("h_pdf2data_"+iproc);        
     for(unsigned int idx = 0; idx<X_nbins; idx++){
       double xl = X_edges[idx];
       double xh = X_edges[idx+1];
@@ -749,10 +770,10 @@ int main(int argc, char* argv[])
 	    hpdf_p->Write();
 
 	    // save data expected of varied f_syst as binned density
-	    TH2D* hpdf2data_p_j = (TH2D*)h->Clone( syst==0 ?
-						   "h_pdf2data_"+iproc+Form("_jac%d",count_pf) :
-						   "h_pdf2data_"+iproc+Form("_syst%d",count_pf)+syst_name
-						   );        
+	    TH2D* hpdf2data_p_j = (TH2D*)hdummy->Clone( syst==0 ?
+							"h_pdf2data_"+iproc+Form("_jac%d",count_pf) :
+							"h_pdf2data_"+iproc+Form("_syst%d",count_pf)+syst_name
+							);        
 	    for(unsigned int idx = 0; idx<X_nbins; idx++){
 	      double xl = X_edges[idx];
 	      double xh = X_edges[idx+1];
