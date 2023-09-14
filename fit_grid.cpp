@@ -5,6 +5,7 @@
 #include "TF1.h"
 #include "TF2.h"
 #include "TFitResultPtr.h"
+#include "TRandom3.h"
 #include <TStopwatch.h>
 #include <TGraphErrors.h>
 #include <iostream>
@@ -24,12 +25,14 @@ using namespace boost::program_options;
 
 constexpr double MW = 80.;
 constexpr int NMAX  = 1000;
-constexpr int NMASS = 50;
+constexpr int NMASS = 3;
 constexpr double DELTAM = 0.200;
 
 int main(int argc, char* argv[])
 {
 
+  TRandom3* ran = new TRandom3();
+  
   TStopwatch sw;
   sw.Start();
 
@@ -44,6 +47,7 @@ int main(int argc, char* argv[])
 	("degs_corr_y", value<int>()->default_value(2), "max degree in y of corrxy")
 	("rebinX",   value<int>()->default_value(-1), "rebin X axis")
 	("rebinY",   value<int>()->default_value(-1), "rebin Y axis")
+	("prior",   value<float>()->default_value(0.5), "prior")
 	("jUL",   bool_switch()->default_value(false), "")
 	("j0",    bool_switch()->default_value(false), "")
 	("j1",    bool_switch()->default_value(false), "")
@@ -77,6 +81,7 @@ int main(int argc, char* argv[])
   std::string post_tag = vm["post_tag"].as<std::string>();
   std::string run = vm["run"].as<std::string>();
   int degs_corr_x = vm["degs_corr_x"].as<int>();
+  float prior_sigma = vm["prior"].as<float>();
   int degs_corr_y = vm["degs_corr_y"].as<int>();
   int rebinX      = vm["rebinX"].as<int>();
   int rebinY      = vm["rebinY"].as<int>();
@@ -233,7 +238,7 @@ int main(int argc, char* argv[])
   TFile* fout = TFile::Open(("root/fit_"+tag+"_"+run+fit_tag+"_"+post_tag+".root").c_str(), "RECREATE");
   //cout << "Commons done. Output file opened." << endl;
 
-  double xx_mass[NMASS], yy_chi2[NMASS], exx_mass[NMASS], eyy_chi2[NMASS];
+  double xx_mass[NMASS], yy_chi2[NMASS], yy_chi22[NMASS], exx_mass[NMASS], eyy_chi2[NMASS];
   // mass specific
   for(int m=-1; m<NMASS; m++){
 
@@ -248,14 +253,53 @@ int main(int argc, char* argv[])
     for(unsigned int ix = 1; ix<=nx; ix++ ){
       for(unsigned int iy = 1; iy<=ny; iy++ ){
 	y(bin_counter) = all_histos[0]->GetBinContent(ix,iy)-hMC->GetBinContent(ix,iy);
+	//y(bin_counter) = hMC->GetBinContent(ix,iy);
 	bin_counter++;
       }
     }
     
+    MatrixXd invVp = MatrixXd::Zero(poi_counter,poi_counter);
+    MatrixXd Vp = MatrixXd::Zero(poi_counter,poi_counter);
+    for(unsigned int ix = 0; ix<poi_counter ; ix++){
+      for(unsigned int iy = 0; iy<poi_counter ; iy++){
+	if(ix==iy){
+	  invVp(ix,iy) = 1./(prior_sigma*prior_sigma);
+	  Vp(ix,iy) = (prior_sigma*prior_sigma);
+	}
+      }
+    }   
+
     //cout << inv_V << endl;
     MatrixXd A = inv_sqrtV*jac;
     MatrixXd b = inv_sqrtV*y;
-    VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
+
+    MatrixXd B = A.transpose()*A + invVp;
+    VectorXd g = -A.transpose()*b;
+
+    //VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
+    VectorXd x = B.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(-g);        
+    MatrixXd prior = x.transpose()*invVp*x;
+
+    MatrixXd invCp = (A.transpose()*A + invVp);
+    MatrixXd Cp = invCp.inverse();
+    MatrixXd Vp2 = Cp;
+    for(unsigned int xp = 0 ; xp<poi_counter; xp++){
+      for(unsigned int yp = 0 ; yp<poi_counter; yp++){
+	if(xp==yp)
+	  Vp2(xp,yp) = Vp(xp,yp);
+	else{
+	  Vp2(xp,yp) = Cp(xp,yp)/TMath::Sqrt(Cp(xp,xp)*Cp(yp,yp))*TMath::Sqrt(Vp(xp,xp)*Vp(yp,yp));
+	  //Vp2(xp,yp) = ran->Uniform(-0.99,0)*TMath::Sqrt(Vp(xp,xp)*Vp(yp,yp));
+	}
+      }
+    }
+    MatrixXd invVp2 = Vp2.inverse();
+
+    MatrixXd B2 = A.transpose()*A + invVp2;
+    VectorXd x2 = B2.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(-g);        
+    MatrixXd prior2 = x2.transpose()*invVp2*x2;
+
+
     MatrixXd C = (jac.transpose()*inv_V*jac).inverse();
     MatrixXd rho( C.rows(), C.rows() ) ;
     for(unsigned int ir = 0; ir<C.rows(); ir++){
@@ -296,7 +340,8 @@ int main(int argc, char* argv[])
     //eigensolver.eigenvectors();
    
     MatrixXd chi2old = b.transpose()*b;
-    MatrixXd chi2 = ((b - A*x).transpose())*(b-A*x);
+    MatrixXd chi2 = ((b - A*x).transpose())*(b-A*x) + prior;
+    MatrixXd chi22 = ((b - A*x2).transpose())*(b-A*x2) + prior2;
     int ndof = nbins-poi_counter;
     double chi2norm = chi2(0,0)/ndof;
 
@@ -304,16 +349,30 @@ int main(int argc, char* argv[])
       xx_mass[m] = MW - DELTAM*0.5 + DELTAM/NMASS*m; 
       exx_mass[m] = 0.0;
       yy_chi2[m] = chi2(0,0);
+      yy_chi22[m] = chi22(0,0);
       eyy_chi2[m] = 0.0;
     }
 
     VectorXd pulls(x.size());
     for(unsigned int ip = 0; ip<pulls.size(); ip++){
       pulls(ip) = x(ip) / TMath::Sqrt(C(ip,ip));
+      //cout << x(ip) << " +/- " << TMath::Sqrt(C(ip,ip)) << endl;
     }
     //cout << pulls << endl;
 
-    if(m<0) cout << "chi2     : " << chi2old(0,0) << " --> " << chi2 << "; ndof = " << ndof << " => chi2/ndof = " << chi2norm << endl; 
+    if(m<0){
+      for(unsigned int ip = 0; ip<pulls.size(); ip++){
+	cout << ip << ": " <<  TMath::Sqrt(1./invVp(ip,ip)) << " --> " << TMath::Sqrt(Cp(ip,ip)) << endl;
+      }
+    }
+    if(m<0 || true){
+      cout << "chi2     : " << chi2old(0,0) << " --> " << chi2 << "; ndof = " << ndof << " => chi2/ndof = " << chi2norm << endl; 
+      cout << "From prior += " << prior(0,0) << endl;
+    }
+    {
+      cout << "chi22     : " << chi2old(0,0) << " --> " << chi22 << endl;
+      cout << "From prior += " << prior2(0,0) << endl;
+    }
 
     fout->cd();
     if(m<0){
@@ -356,6 +415,8 @@ int main(int argc, char* argv[])
 
   TGraphErrors* chi2_fit = new TGraphErrors(NMASS,xx_mass,yy_chi2,exx_mass,eyy_chi2);
   chi2_fit->Write("chi2_vs_mass");
+  TGraphErrors* chi22_fit = new TGraphErrors(NMASS,xx_mass,yy_chi22,exx_mass,eyy_chi2);
+  chi22_fit->Write("chi22_vs_mass");
   fout->Close();
   fin->Close();
 
@@ -367,11 +428,24 @@ int main(int argc, char* argv[])
   float deltaM = 1./TMath::Sqrt(param2);
   float biasM = -param1/param2*0.5;
   float pullM = (MW-biasM)/deltaM; 
-  cout << "dM = " << deltaM*1e+03 << " MeV" 
+  cout << "from 1: dM = " << deltaM*1e+03 << " MeV" 
        << " -- bias: " << (MW-biasM)*1e+03  << " MeV"
        << ", pull: " << pullM 
        << endl;
-  
+
+  chi22_fit->Fit("pol2", "Q");
+  TF1* parabola2 = chi22_fit->GetFunction("pol2");
+  float param02 = parabola2->GetParameter(0); 
+  float param12 = parabola2->GetParameter(1); 
+  float param22 = parabola2->GetParameter(2); 
+  float deltaM2 = 1./TMath::Sqrt(param22);
+  float biasM2 = -param12/param22*0.5;
+  float pullM2 = (MW-biasM2)/deltaM2; 
+  cout << "from 2: dM = " << deltaM2*1e+03 << " MeV" 
+       << " -- bias: " << (MW-biasM2)*1e+03  << " MeV"
+       << ", pull: " << pullM2 
+       << endl;
+
   sw.Stop();
   std::cout << "Real time: " << sw.RealTime() << " seconds " << "(CPU time:  " << sw.CpuTime() << " seconds)" << std::endl;
   return 1;

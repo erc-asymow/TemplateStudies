@@ -31,18 +31,19 @@ sample_sizes = {
     '1G':    1000000000,
     '4G':    4000000000,
     '10G':  10000000000,
-    #'40G':  40000000000,
+    ##'40G':  40000000000,
     ##'200G': 200000000000,
 }
 
 fit_opts = {
-    #'ADDMC_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert',
-    #'FBB_ULA0A1A2A3A4'         : ' --jUL --j0 --j1 --j2 --j3 --j4 --compute_deltachi2 --with_offset',
-    #'ADDMCFBB_ULA0A1A2A3A4'    : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --compute_deltachi2 --with_offset',
-    #'ADDMCJACEXT_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --jacobians_from_external',
-    #'ADDMCHMCEXT_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --hMC_from_external',
-    'ADDMCHMCEXTSCALED_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --hMC_from_external',
-    #'ULA0A1A2A3A4' :       ' --jUL --j0 --j1 --j2 --j3 --j4',
+    'ULA0A1A2A3A4' :       ' --jUL --j0 --j1 --j2 --j3 --j4',
+    'ADDMC_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert',
+    'FBB_ULA0A1A2A3A4'         : ' --jUL --j0 --j1 --j2 --j3 --j4 --compute_deltachi2 --with_offset',
+    'ADDMCFBB_ULA0A1A2A3A4'    : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --compute_deltachi2 --with_offset',
+    'ADDMCJACEXT_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --jacobians_from_external',
+    'ADDMCHMCEXT_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --hMC_from_external',
+    ##'ADDMCHMCEXTSCALED_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --hMC_from_external',
+    #'ADDMCMASSUNCERT_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --hMC_from_external --jacobians_from_external --add_mass_uncert=1.0',
     #'ADDMC_ULA0A1A2A4':    ' --jUL --j0 --j1 --j2 --j4 --add_MC_uncert',
     #'ULA0A1A2A4' :         ' --jUL --j0 --j1 --j2 --j4',
     #'ADDMC_ULA0A1A2A3':    ' --jUL --j0 --j1 --j2 --j3 --add_MC_uncert',
@@ -138,7 +139,7 @@ pol_syst['A2']   = [2,2]
 pol_syst['A2']   = [2,2]
 pol_syst['A3']   = [2,2]
 pol_syst['A4']   = [2,2]
-pol_systs.append( pol_syst )
+#pol_systs.append( pol_syst )
 
 pol_syst = copy.deepcopy(pol_default)
 pol_syst['run'] = "corr"
@@ -216,6 +217,8 @@ pol_syst['A2']   = [8,6]
 pol_syst['A3']   = [8,6]
 pol_syst['A4']   = [8,6]
 #pol_systs.append( pol_syst )
+
+pol_default = pol_syst
 
 if args.algo=='jac2':
     command  = './jac2 --nevents='+str(args.nevents) +' --tag='+args.tag+' --run='+pol_default['run']
@@ -316,8 +319,11 @@ elif args.algo=='fit_systs_vsN':
                 if (args.rebinX>0 or args.rebinY>0):
                     command += ' --rebinX='+str(args.rebinX)+' --rebinY='+str(args.rebinY)
                 command += fit_opts[opt]+' --post_tag='+args.post_tag+'_'+opt            
-                if 'hMC_from_external' in command:
+                if 'hMC_from_external' in command and 'jacobians_from_external' not in command:
                     command += ' --scale_MC_uncert='+str(math.sqrt(1.0e+10/sample_sizes[size]))
+                if 'add_mass_uncert' in command:
+                    command += ' --scale_mass_uncert='+str(math.sqrt(1.0e+10/sample_sizes[size]))
+                #command += ' --verbose'
                 print(command)
                 if not args.dryrun:
                     os.system(command)   
@@ -367,7 +373,7 @@ elif args.algo=='fit_fast':
     os.system(command) 
 
 elif args.algo=='fit_grid_fast':
-    command  = './fit_grid --nevents='+str(args.nevents) +' --tag='+args.tag+' --run=grid --post_tag='+args.post_tag
+    command  = './fit_grid --nevents='+str(args.nevents) +' --prior=0.50 --tag='+args.tag+' --run=grid --post_tag='+args.post_tag
     for k in pol_default.keys():
         if 'corr' not in k: continue
         command += ' --degs_'+k+'_x='+str(pol_default[k][0])+' --degs_'+k+'_y='+str(pol_default[k][1])
