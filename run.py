@@ -373,7 +373,7 @@ elif args.algo=='fit_fast':
     os.system(command) 
 
 elif args.algo=='fit_grid_fast':
-    command  = './fit_grid --nevents='+str(args.nevents) +' --prior=0.50 --tag='+args.tag+' --run=grid --post_tag='+args.post_tag
+    command  = './fit_grid --nevents='+str(args.nevents) +' --prior=10.5 --tag='+args.tag+' --run=grid --post_tag='+args.post_tag
     for k in pol_default.keys():
         if 'corr' not in k: continue
         command += ' --degs_'+k+'_x='+str(pol_default[k][0])+' --degs_'+k+'_y='+str(pol_default[k][1])

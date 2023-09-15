@@ -211,6 +211,10 @@ int main(int argc, char* argv[])
 
   //cout << "Jacobians filled." << endl;
 
+  VectorXd y0(nbins);
+  VectorXd x0(poi_counter);
+  double x0norm = 1.0;
+  MatrixXd invVp0 =  MatrixXd::Zero(poi_counter,poi_counter);
   MatrixXd inv_sqrtV(nbins, nbins);
   MatrixXd inv_V(nbins, nbins);
   for(unsigned int ix = 0; ix<nbins; ix++ ){
@@ -224,11 +228,13 @@ int main(int argc, char* argv[])
     for(unsigned int iy = 1; iy<=ny; iy++ ){
       inv_sqrtV(bin_counter,bin_counter) = 1./TMath::Sqrt(hwMC->GetBinContent(ix,iy));
       inv_V(bin_counter,bin_counter) = 1./hwMC->GetBinContent(ix,iy);
+      y0(bin_counter) = all_histos[2]->GetBinContent(ix,iy) - all_histos[0]->GetBinContent(ix,iy);
       bin_counter++;
     }
   }
   //cout << "V matrix filled" << endl;
-
+  
+  
   // plotting
   vector<string> fit_tags = {"UL", "0", "1", "2", "3", "4" };
   string fit_tag = "";
@@ -237,7 +243,7 @@ int main(int argc, char* argv[])
   }
   TFile* fout = TFile::Open(("root/fit_"+tag+"_"+run+fit_tag+"_"+post_tag+".root").c_str(), "RECREATE");
   //cout << "Commons done. Output file opened." << endl;
-
+  
   double xx_mass[NMASS], yy_chi2[NMASS], yy_chi22[NMASS], exx_mass[NMASS], eyy_chi2[NMASS];
   // mass specific
   for(int m=-1; m<NMASS; m++){
@@ -280,6 +286,45 @@ int main(int argc, char* argv[])
     VectorXd x = B.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(-g);        
     MatrixXd prior = x.transpose()*invVp*x;
 
+    if(m==-1){
+      cout << "Doing x0" << endl;
+      x0 = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(inv_sqrtV*y0);
+      x0norm = x0.norm();
+      // to be checked
+      x0 /= x0norm;
+      std::vector<VectorXd> new_eigenvecs;
+      new_eigenvecs.emplace_back(x0);
+      //for(unsigned int iv=0; iv<poi_counter-1; iv++){
+      for(unsigned int iv=1; iv<poi_counter; iv++){
+	//cout << "Doing eigenvector " << iv << endl;
+	VectorXd vi = Eigen::VectorXd::Zero(poi_counter);
+	vi(iv) = 1.0;
+	VectorXd ui = vi;
+	for(unsigned int jv=0; jv<new_eigenvecs.size(); jv++){
+	  VectorXd update = vi.dot(new_eigenvecs[jv])*new_eigenvecs[jv];
+	  ui -= update;
+	}
+	if(ui.norm()>0.) ui /= ui.norm();
+	new_eigenvecs.emplace_back(ui);
+      }
+      //cout << "Check orthogonality:" << endl;
+      //for(unsigned int jv=0; jv<new_eigenvecs.size(); jv++){
+      //for(unsigned int kv=0; kv<new_eigenvecs.size(); kv++){
+      //  cout << "(" << jv << "," << kv << "): " << new_eigenvecs[jv].dot(new_eigenvecs[kv]) << endl;
+      //}      
+      //}
+      for(unsigned int jv=0; jv<new_eigenvecs.size(); jv++){
+	invVp0 += (jv==0 ? 1./prior_sigma/prior_sigma/x0norm/x0norm :
+		   1.0/prior_sigma/prior_sigma)*new_eigenvecs[jv]*new_eigenvecs[jv].transpose();
+      }
+      MatrixXd Vp0 = invVp0.inverse();
+      for(unsigned int xp = 0 ; xp<poi_counter; xp++){
+	for(unsigned int yp = 0 ; yp<poi_counter; yp++){
+	  if(xp==yp) cout << "(" << xp << "," << yp << ") => " << TMath::Sqrt(Vp0(xp,yp)) << endl;
+	}
+      }
+    }
+    
     MatrixXd invCp = (A.transpose()*A + invVp);
     MatrixXd Cp = invCp.inverse();
     MatrixXd Vp2 = Cp;
@@ -288,12 +333,13 @@ int main(int argc, char* argv[])
 	if(xp==yp)
 	  Vp2(xp,yp) = Vp(xp,yp);
 	else{
-	  Vp2(xp,yp) = Cp(xp,yp)/TMath::Sqrt(Cp(xp,xp)*Cp(yp,yp))*TMath::Sqrt(Vp(xp,xp)*Vp(yp,yp));
-	  //Vp2(xp,yp) = ran->Uniform(-0.99,0)*TMath::Sqrt(Vp(xp,xp)*Vp(yp,yp));
+	  //Vp2(xp,yp) = Cp(xp,yp)/TMath::Sqrt(Cp(xp,xp)*Cp(yp,yp))*TMath::Sqrt(Vp(xp,xp)*Vp(yp,yp));
+	  Vp2(xp,yp) = ran->Uniform(-0.99,0.99)*TMath::Sqrt(Vp(xp,xp)*Vp(yp,yp));
 	}
       }
     }
-    MatrixXd invVp2 = Vp2.inverse();
+    //MatrixXd invVp2 = Vp2.inverse();
+    MatrixXd invVp2 = invVp0;
 
     MatrixXd B2 = A.transpose()*A + invVp2;
     VectorXd x2 = B2.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(-g);        
