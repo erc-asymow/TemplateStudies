@@ -171,7 +171,8 @@ int main(int argc, char* argv[])
     cout << endl;
   }
   poi_counter = active_pois.size();
-  
+
+
   
   // common
   TH2D* hw   = fin->Get<TH2D>("h");
@@ -215,6 +216,7 @@ int main(int argc, char* argv[])
   VectorXd x0(poi_counter);
   double x0norm = 1.0;
   MatrixXd invVp0 =  MatrixXd::Zero(poi_counter,poi_counter);
+  MatrixXd Vp0 =  MatrixXd::Zero(poi_counter,poi_counter);
   MatrixXd inv_sqrtV(nbins, nbins);
   MatrixXd inv_V(nbins, nbins);
   for(unsigned int ix = 0; ix<nbins; ix++ ){
@@ -243,6 +245,10 @@ int main(int argc, char* argv[])
   }
   TFile* fout = TFile::Open(("root/fit_"+tag+"_"+run+fit_tag+"_"+post_tag+".root").c_str(), "RECREATE");
   //cout << "Commons done. Output file opened." << endl;
+
+  TH1D* hx0  = new TH1D("x0", "", poi_counter, 0, poi_counter);
+  TH2D* hVp0 = new TH2D("Vp0", "", poi_counter, 0, poi_counter, poi_counter, 0, poi_counter);
+  TH2D* hCp0 = new TH2D("Cp0", "", poi_counter, 0, poi_counter, poi_counter, 0, poi_counter);
   
   double xx_mass[NMASS], yy_chi2[NMASS], yy_chi22[NMASS], exx_mass[NMASS], eyy_chi2[NMASS];
   // mass specific
@@ -289,7 +295,16 @@ int main(int argc, char* argv[])
     if(m==-1){
       cout << "Doing x0" << endl;
       x0 = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(inv_sqrtV*y0);
+      for(unsigned int ix=0; ix<poi_counter;ix++){
+	hx0->SetBinContent(ix+1,x0(ix));
+      }
+
+      //x0 = Eigen::VectorXd::Zero(poi_counter);
+      //x0(0) = 1.;
+      //x0(1) = -1.;
+      
       x0norm = x0.norm();
+      cout << "x0norm = " << x0norm << endl;
       // to be checked
       x0 /= x0norm;
       std::vector<VectorXd> new_eigenvecs;
@@ -304,22 +319,58 @@ int main(int argc, char* argv[])
 	  VectorXd update = vi.dot(new_eigenvecs[jv])*new_eigenvecs[jv];
 	  ui -= update;
 	}
-	if(ui.norm()>0.) ui /= ui.norm();
+	if(ui.norm()>0.){
+	  ui /= ui.norm();
+	}
+	cout << iv << " norm is " << ui.norm() << endl;	  
 	new_eigenvecs.emplace_back(ui);
       }
       //cout << "Check orthogonality:" << endl;
+      for(unsigned int jv=0; jv<new_eigenvecs.size(); jv++){
+	cout << "eigen " << jv << ": " << new_eigenvecs[jv] << endl;
+      }
       //for(unsigned int jv=0; jv<new_eigenvecs.size(); jv++){
       //for(unsigned int kv=0; kv<new_eigenvecs.size(); kv++){
       //  cout << "(" << jv << "," << kv << "): " << new_eigenvecs[jv].dot(new_eigenvecs[kv]) << endl;
       //}      
       //}
+      //x0norm = 1.0;
       for(unsigned int jv=0; jv<new_eigenvecs.size(); jv++){
 	invVp0 += (jv==0 ? 1./prior_sigma/prior_sigma/x0norm/x0norm :
 		   1.0/prior_sigma/prior_sigma)*new_eigenvecs[jv]*new_eigenvecs[jv].transpose();
+	Vp0 += (jv==0 ? prior_sigma*prior_sigma*x0norm*x0norm :
+		prior_sigma*prior_sigma )*new_eigenvecs[jv]*new_eigenvecs[jv].transpose();
       }
-      MatrixXd Vp0 = invVp0.inverse();
+
+      //Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver0(invVp0);
+      //std::cout << "The eigenvalues of invVp0 are:\n" << eigensolver0.eigenvalues() << std::endl;
+      //Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver1(Vp0);
+      //std::cout << "The eigenvalues of Vp0 are:\n" << eigensolver1.eigenvalues() << std::endl;
+      //std::cout << "The eigenvector 0 of invVp0 are:\n" << std::endl;
+      //cout << eigensolver0.eigenvectors().col(0) << endl;
+      //std::cout << "The eigenvector n-1 of Vp0 are:\n" << std::endl;
+      //cout << eigensolver1.eigenvectors().col(poi_counter-1) << endl;
+      
+      //MatrixXd Vp0 = invVp0.inverse();
+      MatrixXd Vp0scaled = MatrixXd::Zero(poi_counter,poi_counter); 
       for(unsigned int xp = 0 ; xp<poi_counter; xp++){
 	for(unsigned int yp = 0 ; yp<poi_counter; yp++){
+	  //Vp0scaled(xp,yp) = Vp0(xp,yp)/TMath::Sqrt(Vp0(xp,xp)*Vp0(yp,yp))*prior_sigma*prior_sigma;
+	  Vp0scaled(xp,yp) = xp==yp ? Vp0(xp,yp) : 0.0;
+	}
+      }
+      Vp0 = Vp0scaled;
+      invVp0 = Vp0.inverse();
+
+
+      //Vp0 = invVp0.inverse();
+      //Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver2(Vp0);
+      //std::cout << "The eigenvalues of invVp0^-1 are:\n" << eigensolver2.eigenvalues() << std::endl;
+      
+      for(unsigned int xp = 0 ; xp<poi_counter; xp++){
+	for(unsigned int yp = 0 ; yp<poi_counter; yp++){
+	  hVp0->SetBinContent(xp+1,yp+1,Vp0(xp,yp));
+	  hCp0->SetBinContent(xp+1,yp+1, Vp0(xp,yp)/TMath::Sqrt(Vp0(xp,xp))/TMath::Sqrt(Vp0(yp,yp)) );
 	  if(xp==yp) cout << "(" << xp << "," << yp << ") => " << TMath::Sqrt(Vp0(xp,yp)) << endl;
 	}
       }
@@ -457,6 +508,12 @@ int main(int argc, char* argv[])
       if(m<0) fit->Write(("fit_"+name).c_str());
       if(m<0) fitMC->Write(("fitMC_"+name).c_str());
     }
+    if(m<0){
+      hx0->Write();
+      hVp0->Write();
+      hCp0->Write();
+    }
+      
   }
 
   TGraphErrors* chi2_fit = new TGraphErrors(NMASS,xx_mass,yy_chi2,exx_mass,eyy_chi2);
