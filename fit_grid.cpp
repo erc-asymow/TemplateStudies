@@ -48,6 +48,8 @@ int main(int argc, char* argv[])
 	("rebinX",   value<int>()->default_value(-1), "rebin X axis")
 	("rebinY",   value<int>()->default_value(-1), "rebin Y axis")
 	("prior",   value<float>()->default_value(0.5), "prior")
+	("extraprior",   value<float>()->default_value(1.0), "extraprior")
+	("diagonal",   bool_switch()->default_value(false), "")
 	("jUL",   bool_switch()->default_value(false), "")
 	("j0",    bool_switch()->default_value(false), "")
 	("j1",    bool_switch()->default_value(false), "")
@@ -82,9 +84,11 @@ int main(int argc, char* argv[])
   std::string run = vm["run"].as<std::string>();
   int degs_corr_x = vm["degs_corr_x"].as<int>();
   float prior_sigma = vm["prior"].as<float>();
+  float extraprior_sigma = vm["extraprior"].as<float>();
   int degs_corr_y = vm["degs_corr_y"].as<int>();
   int rebinX      = vm["rebinX"].as<int>();
   int rebinY      = vm["rebinY"].as<int>();
+  int diagonal  = vm["diagonal"].as<bool>();
   int jUL  = vm["jUL"].as<bool>();
   int j0   = vm["j0"].as<bool>();
   int j1   = vm["j1"].as<bool>();
@@ -247,6 +251,7 @@ int main(int argc, char* argv[])
   //cout << "Commons done. Output file opened." << endl;
 
   TH1D* hx0  = new TH1D("x0", "", poi_counter, 0, poi_counter);
+  TH1D* hsp  = new TH1D("sigmas", "", poi_counter, 0, poi_counter);
   TH2D* hVp0 = new TH2D("Vp0", "", poi_counter, 0, poi_counter, poi_counter, 0, poi_counter);
   TH2D* hCp0 = new TH2D("Cp0", "", poi_counter, 0, poi_counter, poi_counter, 0, poi_counter);
   
@@ -292,9 +297,14 @@ int main(int argc, char* argv[])
     VectorXd x = B.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(-g);        
     MatrixXd prior = x.transpose()*invVp*x;
 
+    
     if(m==-1){
       cout << "Doing x0" << endl;
       x0 = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(inv_sqrtV*y0);
+      //for(unsigned int ix=0; ix<poi_counter;ix++){
+      //if(x0(ix)>0.) x0(ix) = std::min(x0(ix), 80.);
+      //else x0(ix) = std::max(x0(ix), -80.);
+      //}
       for(unsigned int ix=0; ix<poi_counter;ix++){
 	hx0->SetBinContent(ix+1,x0(ix));
       }
@@ -304,7 +314,7 @@ int main(int argc, char* argv[])
       //x0(1) = -1.;
       
       x0norm = x0.norm();
-      cout << "x0norm = " << x0norm << endl;
+      //cout << "x0norm = " << x0norm << endl;
       // to be checked
       x0 /= x0norm;
       std::vector<VectorXd> new_eigenvecs;
@@ -322,12 +332,12 @@ int main(int argc, char* argv[])
 	if(ui.norm()>0.){
 	  ui /= ui.norm();
 	}
-	cout << iv << " norm is " << ui.norm() << endl;	  
+	//cout << iv << " norm is " << ui.norm() << endl;	  
 	new_eigenvecs.emplace_back(ui);
       }
       //cout << "Check orthogonality:" << endl;
       for(unsigned int jv=0; jv<new_eigenvecs.size(); jv++){
-	cout << "eigen " << jv << ": " << new_eigenvecs[jv] << endl;
+	//cout << "eigen " << jv << ": " << new_eigenvecs[jv] << endl;
       }
       //for(unsigned int jv=0; jv<new_eigenvecs.size(); jv++){
       //for(unsigned int kv=0; kv<new_eigenvecs.size(); kv++){
@@ -336,9 +346,9 @@ int main(int argc, char* argv[])
       //}
       //x0norm = 1.0;
       for(unsigned int jv=0; jv<new_eigenvecs.size(); jv++){
-	invVp0 += (jv==0 ? 1./prior_sigma/prior_sigma/x0norm/x0norm :
+	invVp0 += (jv==0 ? 1./prior_sigma/prior_sigma/x0norm/x0norm*extraprior_sigma :
 		   1.0/prior_sigma/prior_sigma)*new_eigenvecs[jv]*new_eigenvecs[jv].transpose();
-	Vp0 += (jv==0 ? prior_sigma*prior_sigma*x0norm*x0norm :
+	Vp0 += (jv==0 ? prior_sigma*prior_sigma*x0norm*x0norm/extraprior_sigma :
 		prior_sigma*prior_sigma )*new_eigenvecs[jv]*new_eigenvecs[jv].transpose();
       }
 
@@ -352,16 +362,17 @@ int main(int argc, char* argv[])
       //cout << eigensolver1.eigenvectors().col(poi_counter-1) << endl;
       
       //MatrixXd Vp0 = invVp0.inverse();
-      MatrixXd Vp0scaled = MatrixXd::Zero(poi_counter,poi_counter); 
-      for(unsigned int xp = 0 ; xp<poi_counter; xp++){
-	for(unsigned int yp = 0 ; yp<poi_counter; yp++){
-	  //Vp0scaled(xp,yp) = Vp0(xp,yp)/TMath::Sqrt(Vp0(xp,xp)*Vp0(yp,yp))*prior_sigma*prior_sigma;
-	  Vp0scaled(xp,yp) = xp==yp ? Vp0(xp,yp) : 0.0;
+      if(diagonal){
+	MatrixXd Vp0scaled = MatrixXd::Zero(poi_counter,poi_counter); 
+	for(unsigned int xp = 0 ; xp<poi_counter; xp++){
+	  for(unsigned int yp = 0 ; yp<poi_counter; yp++){
+	    //Vp0scaled(xp,yp) = Vp0(xp,yp)/TMath::Sqrt(Vp0(xp,xp)*Vp0(yp,yp))*prior_sigma*prior_sigma;
+	    Vp0scaled(xp,yp) = xp==yp ? Vp0(xp,yp) : 0.0;
+	  }
 	}
+	Vp0 = Vp0scaled;
+	invVp0 = Vp0.inverse();
       }
-      Vp0 = Vp0scaled;
-      invVp0 = Vp0.inverse();
-
 
       //Vp0 = invVp0.inverse();
       //Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver2(Vp0);
@@ -371,12 +382,21 @@ int main(int argc, char* argv[])
 	for(unsigned int yp = 0 ; yp<poi_counter; yp++){
 	  hVp0->SetBinContent(xp+1,yp+1,Vp0(xp,yp));
 	  hCp0->SetBinContent(xp+1,yp+1, Vp0(xp,yp)/TMath::Sqrt(Vp0(xp,xp))/TMath::Sqrt(Vp0(yp,yp)) );
-	  if(xp==yp) cout << "(" << xp << "," << yp << ") => " << TMath::Sqrt(Vp0(xp,yp)) << endl;
+	  //if(xp==yp) cout << "(" << xp << "," << yp << ") => " << TMath::Sqrt(Vp0(xp,yp)) << endl;
 	}
       }
     }
+
+    // temporray overwrite
+    //if(m==1){
+    //for(unsigned int ix=0; ix<poi_counter;ix++){
+    //	hx0->SetBinContent(ix+1,x(ix));
+    //}
+    //}
+
     
     MatrixXd invCp = (A.transpose()*A + invVp);
+    //MatrixXd invCp = (A.transpose()*A);
     MatrixXd Cp = invCp.inverse();
     MatrixXd Vp2 = Cp;
     for(unsigned int xp = 0 ; xp<poi_counter; xp++){
@@ -460,6 +480,7 @@ int main(int argc, char* argv[])
     if(m<0){
       for(unsigned int ip = 0; ip<pulls.size(); ip++){
 	cout << ip << ": " <<  TMath::Sqrt(1./invVp(ip,ip)) << " --> " << TMath::Sqrt(Cp(ip,ip)) << endl;
+	hsp->SetBinContent(ip+1, TMath::Sqrt(Cp(ip,ip)) );
       }
     }
     if(m<0 || true){
@@ -508,8 +529,13 @@ int main(int argc, char* argv[])
       if(m<0) fit->Write(("fit_"+name).c_str());
       if(m<0) fitMC->Write(("fitMC_"+name).c_str());
     }
+
+    // temporray
+    //if(m==1)  hx0->Write();
+
     if(m<0){
       hx0->Write();
+      hsp->Write();
       hVp0->Write();
       hCp0->Write();
     }

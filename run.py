@@ -373,14 +373,14 @@ elif args.algo=='fit_fast':
     os.system(command) 
 
 elif args.algo=='fit_grid_fast':
-    command  = './fit_grid --nevents='+str(args.nevents) +' --prior=10.5 --tag='+args.tag+' --run=grid --post_tag='+args.post_tag
+    command  = './fit_grid --nevents='+str(args.nevents) +' --prior=10000 --extraprior=10 --tag='+args.tag+' --run=grid --post_tag='+args.post_tag
     for k in pol_default.keys():
         if 'corr' not in k: continue
         command += ' --degs_'+k+'_x='+str(pol_default[k][0])+' --degs_'+k+'_y='+str(pol_default[k][1])
     if (args.rebinX>0 or args.rebinY>0):
         command += ' --rebinX='+str(args.rebinX)+' --rebinY='+str(args.rebinY)
     fit_opts = ['jUL', 'j0', 'j1', 'j2', 'j3', 'j4']
-    #fit_opts = ['jUL', 'j0', 'j1']
+    #fit_opts = ['jUL']
     for i in range(len(fit_opts)):
         command += (' --'+fit_opts[i])
     print(command)
