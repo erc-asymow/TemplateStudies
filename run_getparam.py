@@ -5,12 +5,15 @@ import copy
 import math
 import ROOT
 
+from multiprocessing import Process
+   
 parser = argparse.ArgumentParser(description='run')
 
 parser.add_argument('--none', action='store_true'  , help = 'none')
 parser.add_argument('--dryrun', action='store_true'  , help = 'dry run')
 parser.add_argument('--algo',   default='all'        , help = 'algo')
 parser.add_argument('--batch', action='store_true'  , help = 'bath')
+parser.add_argument('--mt', action='store_true'  , help = 'mt')
 
 args = parser.parse_args()
 
@@ -132,7 +135,7 @@ procs = {
 }
 
 #allowed_procs = ["A1","A2","A3","A4"]
-allowed_procs = ["A2"]
+allowed_procs = ["A2","A3", "A4"]
 
 def plot_pvals(fnames=[], metric="pvals", proc="wp"):
     ROOT.gStyle.SetPadRightMargin(0.15)
@@ -145,7 +148,7 @@ def plot_pvals(fnames=[], metric="pvals", proc="wp"):
             continue
         if metric=="pvalue":
             histo.SetMaximum(1.0)
-            histo.SetMinimum(0.05)
+            histo.SetMinimum(0.01)
             histo.SetTitle(fname[0]+' '+fname[1].split('_')[0]+', FOM: p-value')
         elif metric=="ratio":
             histo.SetMaximum(0.02)
@@ -182,30 +185,52 @@ def plot_pvals(fnames=[], metric="pvals", proc="wp"):
     else:
         input()
 
-fnames = []
-counter = 0
-for iproc in procs.keys():
-    if iproc not in allowed_procs:
-        continue
-    for dx in procs[iproc]['deg_x']:
-        for dy in procs[iproc]['deg_y']:
-            for opt in procs[iproc]['opts'].keys():
-                fname = procs[iproc]['opts'][opt]['tag']+'_x'+str(dx)+'_y'+str(dy)
-                counter += 1
-                if args.algo=='run':
-                    command = './getparam --tag='+fname+' '+procs[iproc]['opts'][opt]['cmd']+' --d'+iproc+'x='+str(dx)+' --d'+iproc+'y='+str(dy)
-                    print(command)
-                    if args.dryrun:
-                        continue
-                    else:                        
-                        os.system(command)
-                elif args.algo=='plot':
-                    fnames.append([iproc,fname])
 
-if args.algo=='plot':
-    #plot_pvals(fnames, metric="pvals", proc="wp")
-    for fom in ['pvalue', 'delta']:
-        for iproc in ["wp","wm","z"]:
-            plot_pvals(fnames, metric=fom, proc=iproc)
-    
-print('Submitted %d proc' % counter)
+def run_one_opt(procs,iproc,opt):
+        for dx in procs[iproc]['deg_x']:
+            for dy in procs[iproc]['deg_y']:
+                fname = procs[iproc]['opts'][opt]['tag']+'_x'+str(dx)+'_y'+str(dy)
+                command = './getparam --tag='+fname+' '+procs[iproc]['opts'][opt]['cmd']+' --d'+iproc+'x='+str(dx)+' --d'+iproc+'y='+str(dy)
+                os.system(command)                
+
+def run_all(procs):
+    ps = []        
+    fnames = []
+    counter = 0
+    for iproc in procs.keys():
+        if iproc not in allowed_procs:
+            continue
+        for opt in procs[iproc]['opts'].keys():
+            if args.mt:
+                p = Process(target=run_one_opt, args=(procs,iproc,opt))
+                p.start()
+                ps.append(p)
+                continue
+            for dx in procs[iproc]['deg_x']:
+                for dy in procs[iproc]['deg_y']:
+                    fname = procs[iproc]['opts'][opt]['tag']+'_x'+str(dx)+'_y'+str(dy)
+                    counter += 1
+                    if args.algo=='run':
+                        command = './getparam --tag='+fname+' '+procs[iproc]['opts'][opt]['cmd']+' --d'+iproc+'x='+str(dx)+' --d'+iproc+'y='+str(dy)
+                        print(command)
+                        if args.dryrun:
+                            continue
+                        else:                        
+                            os.system(command)
+                    elif args.algo=='plot':
+                        fnames.append([iproc,fname])
+    if args.algo=='run' and args.mt:    
+        for p in ps: 
+            p.join()
+    print('Submitted %d proc' % counter)
+    return fnames
+
+
+if __name__ == '__main__':    
+    fnames = run_all(procs)
+    if args.algo=='plot':
+        #plot_pvals(fnames, metric="pvals", proc="wp")
+        for fom in ['pvalue', 'delta']:
+            for iproc in ["wp","wm","z"]:
+                plot_pvals(fnames, metric=fom, proc=iproc)
+      
