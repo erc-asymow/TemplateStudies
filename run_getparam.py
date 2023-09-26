@@ -131,7 +131,8 @@ procs = {
      },
 }
 
-allowed_procs = ["A1","A2","A3","A4"]
+#allowed_procs = ["A1","A2","A3","A4"]
+allowed_procs = ["A2"]
 
 def plot_pvals(fnames=[], metric="pvals", proc="wp"):
     ROOT.gStyle.SetPadRightMargin(0.15)
