@@ -25,91 +25,91 @@ if args.batch:
 
 procs = {
      'A0' : {
-         'deg_x' : [2,3,4,5,6,7,8,9,10,11],
-         'deg_y' : [2,4,6,8,10,12,14],
+         'deg_x' : [2,3,4,5,6,7,8],
+         'deg_y' : [2,4,6,8,10,12],
          'opts'   : {
              'opt1' : {
-                 'cmd' : '--run=wp --extrabinsX=5 --extrabinsY=5 --cULx=1 --dULx=20 --dULy=10 --doA0 --cA0x=0',
+                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA0 --cA0x=0',
                  'tag' : 'wp_A0'
              },
              'opt2' : {
-                 'cmd' : '--run=wm --extrabinsX=5 --extrabinsY=5 --cULx=1 --dULx=20 --dULy=10 --doA0 --cA0x=0',
+                 'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA0 --cA0x=0',
                  'tag' : 'wm_A0'
              },
              'opt3' : {
-                 'cmd' : '--run=z --extrabinsX=5 --extrabinsY=5 --cULx=1 --dULx=20 --dULy=10 --doA0 --cA0x=0',
+                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA0 --cA0x=0',
                  'tag' : 'z_A0'
              },
          },
      },
     'A1' : {
-         'deg_x' : [1,2,3,4,5,6,7,8,9,10,11],
-         'deg_y' : [1,3,5,7,9,11],
+         'deg_x' : [1,2,3,4,5,6,7,8],
+         'deg_y' : [1,3,5,7,9],
          'opts'   : {
              'opt1' : {
-                 'cmd' : '--run=wp --extrabinsX=5 --extrabinsY=5 --cULx=1 --dULx=20 --dULy=10 --doA1 --cA1x=1',
+                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA1 --cA1x=1',
                  'tag' : 'wp_A1'
              },
              'opt2' : {
-                 'cmd' : '--run=wm --extrabinsX=5 --extrabinsY=5 --cULx=1 --dULx=20 --dULy=10 --doA1 --cA1x=1',
+                 'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA1 --cA1x=1',
                  'tag' : 'wm_A1'
              },
              'opt3' : {
-                 'cmd' : '--run=z --extrabinsX=5 --extrabinsY=5 --cULx=1 --dULx=20 --dULy=10 --doA1 --cA1x=1',
+                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA1 --cA1x=1',
                  'tag' : 'z_A1'
              },
          },
      },
      'A2' : {
-         'deg_x' : [2,3,4,5,6,7,8,9,10,11],
-         'deg_y' : [2,4,6,8,10,12,14],
+         'deg_x' : [2,3,4,5,6,7,8],
+         'deg_y' : [2,4,6,8,10,12],
          'opts'   : {
              'opt1' : {
-                 'cmd' : '--run=wp --extrabinsX=5 --extrabinsY=5 --cULx=1 --dULx=20 --dULy=10 --doA2 --cA2x=1',
+                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA2 --cA2x=1',
                  'tag' : 'wp_A2'
              },
              'opt2' : {
-                 'cmd' : '--run=wm --extrabinsX=5 --extrabinsY=5 --cULx=1 --dULx=20 --dULy=10 --doA2 --cA2x=1',
+                 'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA2 --cA2x=1',
                  'tag' : 'wm_A2'
              },
              'opt3' : {
-                 'cmd' : '--run=z --extrabinsX=5 --extrabinsY=5 --cULx=1 --dULx=20 --dULy=10 --doA2 --cA2x=1',
+                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA2 --cA2x=1',
                  'tag' : 'z_A2'
              },
          },
      },
     'A3' : {
-         'deg_x' : [2,3,4,5,6,7,8,9,10,11],
-         'deg_y' : [2,4,6,8,10,12,14],
+         'deg_x' : [2,3,4,5,6,7,8],
+         'deg_y' : [2,4,6,8,10,12],
          'opts'   : {
              'opt1' : {
-                 'cmd' : '--run=wp --extrabinsX=5 --extrabinsY=5 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1',
+                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1 --cA3y=0',
                  'tag' : 'wp_A3'
              },
              'opt2' : {
-                 'cmd' : '--run=wm --extrabinsX=5 --extrabinsY=5 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1',
+                 'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1 --cA3y=0',
                  'tag' : 'wm_A3'
              },
              'opt3' : {
-                 'cmd' : '--run=z --extrabinsX=5 --extrabinsY=5 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1',
+                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1 --cA3y=0',
                  'tag' : 'z_A3'
              },
          },
      },
     'A4' : {
-         'deg_x' : [2,3,4,5,6,7,8,9,10,11],
-         'deg_y' : [1,3,5,7,9,11],
+         'deg_x' : [2,3,4,5,6,7,8],
+         'deg_y' : [1,3,5,7,9,11,13],
          'opts'   : {
              'opt1' : {
-                 'cmd' : '--run=wp --extrabinsX=5 --extrabinsY=5 --cULx=1 --dULx=20 --dULy=10 --doA4 --cA4x=0',
+                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA4 --cA4x=0',
                  'tag' : 'wp_A4'
              },
              'opt2' : {
-                 'cmd' : '--run=wm --extrabinsX=5 --extrabinsY=5 --cULx=1 --dULx=20 --dULy=10 --doA4 --cA4x=0',
+                 'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA4 --cA4x=0',
                  'tag' : 'wm_A4'
              },
              'opt3' : {
-                 'cmd' : '--run=z --extrabinsX=5 --extrabinsY=5 --cULx=1 --dULx=20 --dULy=10 --doA4 --cA4x=0',
+                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA4 --cA4x=0',
                  'tag' : 'z_A4'
              },
          },
@@ -134,12 +134,12 @@ procs = {
      },
 }
 
-#allowed_procs = ["A1","A2","A3","A4"]
-allowed_procs = ["A2","A3", "A4"]
+#allowed_procs = ["A0","A1","A2","A3","A4"]
+allowed_procs = ["A4"]
 
 def plot_pvals(fnames=[], metric="pvals", proc="wp"):
     ROOT.gStyle.SetPadRightMargin(0.15)
-    histo = ROOT.TH2D('histo_pvals', '', 30, 0,30,20,0,20)
+    histo = ROOT.TH2D('histo_pvals', '', 15, 0,15,15,0,15)
     histo.GetXaxis().SetTitle("deg_{x}")
     histo.GetYaxis().SetTitle("deg_{y}")
     histo.SetStats(0)
@@ -185,6 +185,21 @@ def plot_pvals(fnames=[], metric="pvals", proc="wp"):
     else:
         input()
 
+def plot_pulls(ifnames, proc="wp"):
+    ROOT.gStyle.SetPadRightMargin(0.15)
+    f = ROOT.TFile('fout_'+ifnames[1]+'.root', 'READ')        
+    print(f.GetName())
+    h = f.Get(ifnames[0]+'/h_pull_'+ifnames[0])
+    h.SetTitle(fname[0]+' '+fname[1].split('_')[0]+', pulls')
+    c = ROOT.TCanvas("c", "canvas", 600, 600);
+    c.cd()
+    h.Draw("colz")    
+    outname = 'pulls_'+ifnames[0][0]+'_'+proc+'.png'
+    if args.batch:
+        print('Saving image as '+outname)
+        c.SaveAs(outname)
+    else:
+        input()
 
 def run_one_opt(procs,iproc,opt):
         for dx in procs[iproc]['deg_x']:
@@ -230,7 +245,7 @@ if __name__ == '__main__':
     fnames = run_all(procs)
     if args.algo=='plot':
         #plot_pvals(fnames, metric="pvals", proc="wp")
-        for fom in ['pvalue', 'delta']:
+        for fom in ['pvalue']:
             for iproc in ["wp","wm","z"]:
                 plot_pvals(fnames, metric=fom, proc=iproc)
       
