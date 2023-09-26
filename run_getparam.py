@@ -14,6 +14,7 @@ parser.add_argument('--dryrun', action='store_true'  , help = 'dry run')
 parser.add_argument('--algo',   default='all'        , help = 'algo')
 parser.add_argument('--batch', action='store_true'  , help = 'bath')
 parser.add_argument('--mt', action='store_true'  , help = 'mt')
+parser.add_argument('--jac', action='store_true'  , help = 'jac')
 
 args = parser.parse_args()
 
@@ -26,7 +27,7 @@ if args.batch:
 procs = {
      'A0' : {
          'deg_x' : [2,3,4,5,6,7,8],
-         'deg_y' : [2,4,6,8,10,12],
+         'deg_y' : [2,4,6,8,10,12], 
          'opts'   : {
              'opt1' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA0 --cA0x=0',
@@ -147,21 +148,23 @@ procs = {
     'UL' : {
         'deg_y' : [6,8,10,12,14],
         'deg_x' : [8,10,12,14,16,18,20,22,24,26],
+        'fit_deg_y' : [2,3,4],
+        'fit_deg_x' : [1,2,3],
         'opts'   : {
              'opt1' : {
-                 'cmd' : '--cULx=1 --run=wp --extrabinsX=5 --extrabinsY=5',
+                 'cmd' : '--cULx=1 --run=wp --extrabinsX=10 --extrabinsY=10',
                  'tag' : 'wp_UL',
                  'nom_deg_x' : 20,
                  'nom_deg_y' : 10,
              },
              'opt2' : {
-                 'cmd' : '--cULx=1 --run=wm --extrabinsX=5 --extrabinsY=5',
+                 'cmd' : '--cULx=1 --run=wm --extrabinsX=10 --extrabinsY=10',
                  'tag' : 'wm_UL',
                  'nom_deg_x' : 20,
                  'nom_deg_y' : 10,
              },
              'opt3' : {
-                 'cmd' : '--cULx=1 --run=z --extrabinsX=5 --extrabinsY=5',
+                 'cmd' : '--cULx=1 --run=z --extrabinsX=10 --extrabinsY=10',
                  'tag' : 'z_UL',
                  'nom_deg_x' : 20,
                  'nom_deg_y' : 10,
@@ -170,8 +173,8 @@ procs = {
      },
 }
 
-allowed_procs = ["UL","A0","A1","A2","A3","A4"]
-#allowed_procs = ["A0"]
+#allowed_procs = ["UL","A0","A1","A2","A3","A4"]
+allowed_procs = ["UL"]
 
 def plot_pvals(fnames=[], metric="pvals", proc="wp"):
     ROOT.gStyle.SetPadRightMargin(0.15)
@@ -334,7 +337,17 @@ def run_one_opt(procs,iproc,opt):
             for dy in procs[iproc]['deg_y']:
                 fname = procs[iproc]['opts'][opt]['tag']+'_x'+str(dx)+'_y'+str(dy)
                 command = './getparam --tag='+fname+' '+procs[iproc]['opts'][opt]['cmd']+' --d'+iproc+'x='+str(dx)+' --d'+iproc+'y='+str(dy)
-                os.system(command)                
+                os.system(command)
+
+def run_one_opt_jac(procs,iproc,opt):
+        for dx in procs[iproc]['fit_deg_x']:
+            for dy in procs[iproc]['fit_deg_y']:
+                fname = procs[iproc]['opts'][opt]['tag']+'_x'+str(dx)+'_y'+str(dy)
+                command = './getparam --tag=jac_'+fname+' '+procs[iproc]['opts'][opt]['cmd']+\
+                    ' --f'+iproc+'x='+str(dx)+' --f'+iproc+'y='+str(dy)+\
+                    ' --d'+iproc+'x='+str(procs[iproc]['opts'][opt]['nom_deg_x'])+' --d'+iproc+'y='+str(procs[iproc]['opts'][opt]['nom_deg_y'])+\
+                    ' --xf_max=0.40 --yf_max=3.50'
+                os.system(command)     
 
 def run_all(procs):
     ps = []        
@@ -345,16 +358,27 @@ def run_all(procs):
             continue
         for opt in procs[iproc]['opts'].keys():
             if args.mt:
-                p = Process(target=run_one_opt, args=(procs,iproc,opt))
-                p.start()
-                ps.append(p)
+                if args.jac:
+                    p = Process(target=run_one_opt_jac, args=(procs,iproc,opt))
+                    p.start()
+                    ps.append(p)
+                else:
+                    p = Process(target=run_one_opt, args=(procs,iproc,opt))
+                    p.start()
+                    ps.append(p)
                 continue
-            for dx in procs[iproc]['deg_x']:
-                for dy in procs[iproc]['deg_y']:
+            for dx in procs[iproc][('fit_' if args.jac else '')+'deg_x']:
+                for dy in procs[iproc][('fit_' if args.jac else '')+'deg_y']:
                     fname = procs[iproc]['opts'][opt]['tag']+'_x'+str(dx)+'_y'+str(dy)
                     counter += 1
                     if args.algo=='run':
-                        command = './getparam --tag='+fname+' '+procs[iproc]['opts'][opt]['cmd']+' --d'+iproc+'x='+str(dx)+' --d'+iproc+'y='+str(dy)
+                        if args.jac: 
+                            command = './getparam --tag=jac_'+fname+' '+procs[iproc]['opts'][opt]['cmd']+\
+                                ' --f'+iproc+'x='+str(dx)+' --f'+iproc+'y='+str(dy)+\
+                                ' --d'+iproc+'x='+str(procs[iproc]['opts'][opt]['nom_deg_x'])+' --d'+iproc+'y='+str(procs[iproc]['opts'][opt]['nom_deg_y'])+\
+                                ' --xf_max=0.40 --yf_max=3.50'
+                        else:
+                            command = './getparam --tag='+fname+' '+procs[iproc]['opts'][opt]['cmd']+' --d'+iproc+'x='+str(dx)+' --d'+iproc+'y='+str(dy)                            
                         print(command)
                         if args.dryrun:
                             continue
