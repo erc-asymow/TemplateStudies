@@ -99,7 +99,8 @@ int main(int argc, char* argv[])
 	("y_max",  value<double>()->default_value(-1.0), "max y value for fit")
 	("xf_max",  value<double>()->default_value(-1.0), "max x value for syst")
 	("yf_max",  value<double>()->default_value(-1.0), "max y value for syst")
-	("tag",     value<std::string>()->default_value("default"), "tag name")
+	("outtag",     value<std::string>()->default_value("default"), "tag name")
+	("intag",     value<std::string>()->default_value("default"), "tag name")
 	("run",     value<std::string>()->default_value("wp"), "process name")
 	("xvar",    value<std::string>()->default_value("qtbyQ"), "variable x name")
       	("doA0",    bool_switch()->default_value(false), "")
@@ -112,6 +113,7 @@ int main(int argc, char* argv[])
 	("savePdf2data",  bool_switch()->default_value(false), "")
 	("saveJac",   bool_switch()->default_value(false), "")
 	("saveSyst",  bool_switch()->default_value(false), "")
+      	("runfit",   bool_switch()->default_value(false), "")
       	("verbose",   bool_switch()->default_value(false), "")
 	("debug",   bool_switch()->default_value(false), "");
       
@@ -131,7 +133,8 @@ int main(int argc, char* argv[])
   int ntoys       = vm["ntoys"].as<int>();
   int extrabinsX  = vm["extrabinsX"].as<int>();
   int extrabinsY  = vm["extrabinsY"].as<int>();
-  std::string tag = vm["tag"].as<std::string>();
+  std::string outtag = vm["outtag"].as<std::string>();
+  std::string intag = vm["intag"].as<std::string>();
   std::string run = vm["run"].as<std::string>();
   std::string xvar = vm["xvar"].as<std::string>();
   TString run2 = "";
@@ -140,6 +143,7 @@ int main(int argc, char* argv[])
   else if(run=="z")  run2="z";
   
   int verbose      = vm["verbose"].as<bool>();
+  int runfit       = vm["runfit"].as<bool>();
   int interpolate  = vm["interpolate"].as<bool>();
   int savePdf      = vm["savePdf"].as<bool>();
   int savePdf2data = vm["savePdf2data"].as<bool>();
@@ -196,7 +200,7 @@ int main(int argc, char* argv[])
   double xf_max  = vm["xf_max"].as<double>();
   double yf_max  = vm["yf_max"].as<double>();
 
-  TFile *fout = TFile::Open(("fout_"+tag+".root").c_str(), "RECREATE");
+  TFile *fout = TFile::Open(("fout_"+outtag+".root").c_str(), "RECREATE");
 
   std::vector<TString> proc = {"UL"};
   if(doA0) proc.emplace_back("A0");
@@ -205,6 +209,120 @@ int main(int argc, char* argv[])
   if(doA3) proc.emplace_back("A3");
   if(doA4) proc.emplace_back("A4");
 
+  if(runfit){
+    
+    TFile* fin_nom  = TFile::Open("root/file_qtbyQ_and_qt_vs_absy_v3.root", "READ");
+    if(fin_nom==0){
+      cout << "Cannot find nominal file" << endl;
+      return 0;
+    }
+    TString hname =  run2+(xvar=="qtbyQ" ? "_ptqVgen" : "_ptVgen")+"_2d_absY_vs_"+TString(xvar.c_str())+"_differential_ul";
+    TH2D* h_nom = (TH2D*)fin_nom->Get(hname);    
+    if(h_nom==0){
+      cout << "Nominal histo not found. Continue." << endl;
+      return 0;
+    }
+
+    int nbinsX = 0;
+    for(unsigned int idx=1; idx<=h_nom->GetXaxis()->GetNbins(); idx++){
+      if( h_nom->GetXaxis()->GetBinLowEdge(idx) >= xf_max ) continue;
+      nbinsX++;
+    }
+    int nbinsY = 0;
+    for(unsigned int idy=1; idy<=h_nom->GetYaxis()->GetNbins(); idy++){
+      if( h_nom->GetYaxis()->GetBinLowEdge(idy) >= yf_max) continue;      
+      nbinsY++;
+    }
+    int nd = nbinsX*nbinsY;
+    cout << "Total bins in acceptance: " << nbinsX << "*" << nbinsY << " = " << nd << endl;
+    
+    TFile *fin_jac = TFile::Open(("fout_"+intag+".root").c_str(), "READ");
+    if(fin_jac==0){
+      cout << "Cannot find jac file" << endl;
+      return 0;
+    }
+    cout << "Jac file " << fin_jac->GetName() << " opened." << endl;
+    TH1D* h_info = (TH1D*)fin_jac->Get("UL/h_info_UL");
+    int nfpx = h_info->GetBinContent(8);
+    int nfpy = h_info->GetBinContent(9);
+    int np  = nfpx*nfpy;
+
+    MatrixXd J = MatrixXd::Zero(nd,np);
+
+    int counter = 0;
+    for(unsigned int idx=1; idx<=nbinsX; idx++){
+      for(unsigned int idy=1; idy<=nbinsY; idy++){
+	for(unsigned int isyst=0; isyst<np; isyst++){
+	  TH2D* h_jac = (TH2D*)fin_jac->Get(Form("UL/h_pdf2data_UL_jac%d", isyst));
+	  J(counter,isyst) = h_jac->GetBinContent(idx,idy);
+	}
+	counter++;
+      }
+    }
+    
+    VectorXd y(nd);
+    VectorXd y_err(nd);
+
+    counter = 0;
+    for(unsigned int idx=1; idx<=nbinsX; idx++){
+      for(unsigned int idy=1; idy<=nbinsY; idy++){
+ 	y_err(counter) = h_nom->GetBinError(idx,idy);
+	counter++;
+      }
+    }
+
+    MatrixXd V_inv_sqrt = MatrixXd::Zero(nd, nd);
+    for(int i=0; i<nd; i++){
+      V_inv_sqrt(i,i) = 1.0/y_err(i);
+    }
+
+    TFile* fin_syst = TFile::Open(("root/scet_vars_"+xvar+"_2dmaps.root").c_str(), "READ");
+    if(fin_syst==0){
+      cout << "Cannot find syst file" << endl;
+      return 0;
+    }
+
+    vector<TString> scetlib_syst_names = {
+      "pdf0_scetvar_pdf0",
+      "omega_nu0.5_scetvar_omega_nu0.5",
+      "c_nu-0.1-omega_nu0.5_scetvar_c_nu-0.1-omega_nu0.5",
+      "c_nu0.2-omega_nu0.5_scetvar_c_nu0.2-omega_nu0.5"
+    };
+
+    for(unsigned int isyst=0; isyst<scetlib_syst_names.size(); isyst++){
+      TH2D* h_syst = (TH2D*)fin_syst->Get( "scet_vars_ul_"+run+"_"+TString(xvar.c_str())+"_vs_absy_"+scetlib_syst_names[isyst] );    
+      if(h_syst==0){
+	cout << "Histo not found. Continue." << endl;
+	continue;
+      }
+      cout << "Histo " << h_syst->GetName() << " found" << endl;
+
+      counter = 0;
+      for(unsigned int idx=1; idx<=nbinsX; idx++){
+	for(unsigned int idy=1; idy<=nbinsY; idy++){
+	  y(counter) = h_syst->GetBinContent(idx,idy) - h_nom->GetBinContent(idx,idy);
+	  counter++;
+	}
+      }
+
+      MatrixXd A = V_inv_sqrt*J;
+      MatrixXd b = V_inv_sqrt*y;
+      VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
+      VectorXd delta = y-J*x;
+      VectorXd pull  = b-A*x;
+      if(verbose) cout << delta << endl;
+      MatrixXd chi2start = b.transpose()*b;
+      MatrixXd chi2 = pull.transpose()*pull;
+      double chi2startval = chi2start(0,0);
+      double chi2val = chi2(0,0);
+      int ndof = y.size() - np;
+      cout <<  "Chi2 start = " << chi2startval << " --> chi2/ndof = " << chi2val << " / " << ndof << " = " << chi2val/ndof  << endl;
+    }
+    
+    TFile *fout = TFile::Open(("fout_fit_"+outtag+".root").c_str(), "RECREATE");    
+    fout->Close();
+    return 0;
+  }
 
   // dummy file
   if(debug){
@@ -240,7 +358,6 @@ int main(int argc, char* argv[])
     cout << "File NOT found" << endl;
     return 0;
   }
-
 
   fin->cd();
   
@@ -363,6 +480,10 @@ int main(int argc, char* argv[])
     int np = npx*npy;
     if(verbose) cout << "np = " << npx << " * " << npy << " = " << np << endl;
 
+    int nfpx = degf_map[iproc].at(0) + 1;
+    int nfpy = degf_map[iproc].at(1)/2 + 1;
+    //int nfp = nfpx*nfpy;
+    
     TF1* cheb_x = new TF1("cheb_x", cheb_fct, X_edges[0], X_edges[X_nbins], 4); 
     cheb_x->SetParNames("n","offset","scale","m");
     
@@ -563,7 +684,7 @@ int main(int argc, char* argv[])
     cout << "Chi2/ndof = " << chi2val << " / " << ndof << " = " << chi2val/ndof  << endl;
     MatrixXd W = (A.transpose()*A).inverse();
     
-    TH1D* hinfo = new TH1D("h_info_"+iproc, "", 7, 0,7);
+    TH1D* hinfo = new TH1D("h_info_"+iproc, "", 9, 0,9);
     hinfo->SetBinContent(1, chi2val);
     hinfo->GetXaxis()->SetBinLabel(1, "chi2");
     hinfo->SetBinContent(2, ndof);
@@ -578,6 +699,10 @@ int main(int argc, char* argv[])
     hinfo->GetXaxis()->SetBinLabel(6, "dx");
     hinfo->SetBinContent(7, deg_map[iproc].at(1));
     hinfo->GetXaxis()->SetBinLabel(7, "dy");
+    hinfo->SetBinContent(8, nfpx);
+    hinfo->GetXaxis()->SetBinLabel(8, "nfpx");
+    hinfo->SetBinContent(9, nfpy);
+    hinfo->GetXaxis()->SetBinLabel(9, "nfpy");
     TH2D* hdelta = (TH2D*)hdummy->Clone("h_delta_"+iproc);
     TH2D* hpull  = (TH2D*)hdummy->Clone("h_pull_"+iproc);
     TH2D* hratio = (TH2D*)hdummy->Clone("h_ratio_"+iproc);

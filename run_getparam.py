@@ -27,7 +27,9 @@ if args.batch:
 procs = {
      'A0' : {
          'deg_x' : [2,3,4,5,6,7,8],
-         'deg_y' : [2,4,6,8,10,12], 
+         'deg_y' : [2,4,6,8,10,12],
+         'fit_deg_y' : [2,4],
+         'fit_deg_x' : [1,2,3],
          'opts'   : {
              'opt1' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA0 --cA0x=0',
@@ -52,6 +54,8 @@ procs = {
     'A1' : {
          'deg_x' : [1,2,3,4,5,6,7,8],
          'deg_y' : [1,3,5,7,9],
+        'fit_deg_y' : [2,4],
+        'fit_deg_x' : [1,2,3],
          'opts'   : {
              'opt1' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA1 --cA1x=1',
@@ -76,6 +80,8 @@ procs = {
      'A2' : {
          'deg_x' : [2,3,4,5,6,7,8],
          'deg_y' : [2,4,6,8,10,12],
+         'fit_deg_y' : [2,4],
+         'fit_deg_x' : [1,2,3],
          'opts'   : {
              'opt1' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA2 --cA2x=1',
@@ -100,6 +106,8 @@ procs = {
     'A3' : {
          'deg_x' : [2,3,4,5,6,7,8],
          'deg_y' : [2,4,6,8,10,12],
+        'fit_deg_y' : [2,4],
+        'fit_deg_x' : [1,2,3],
          'opts'   : {
              'opt1' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1 --cA3y=0',
@@ -124,6 +132,8 @@ procs = {
     'A4' : {
          'deg_x' : [2,3,4,5,6,7,8],
          'deg_y' : [1,3,5,7,9,11,13],
+        'fit_deg_y' : [2,4],
+        'fit_deg_x' : [1,2,3],
          'opts'   : {
              'opt1' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA4 --cA4x=0',
@@ -148,8 +158,8 @@ procs = {
     'UL' : {
         'deg_y' : [6,8,10,12,14],
         'deg_x' : [8,10,12,14,16,18,20,22,24,26],
-        'fit_deg_y' : [2,3,4],
-        'fit_deg_x' : [1,2,3],
+        'fit_deg_y' : [2,4,6,8],
+        'fit_deg_x' : [3,4,5,6],
         'opts'   : {
              'opt1' : {
                  'cmd' : '--cULx=1 --run=wp --extrabinsX=10 --extrabinsY=10',
@@ -336,18 +346,25 @@ def run_one_opt(procs,iproc,opt):
         for dx in procs[iproc]['deg_x']:
             for dy in procs[iproc]['deg_y']:
                 fname = procs[iproc]['opts'][opt]['tag']+'_x'+str(dx)+'_y'+str(dy)
-                command = './getparam --tag='+fname+' '+procs[iproc]['opts'][opt]['cmd']+' --d'+iproc+'x='+str(dx)+' --d'+iproc+'y='+str(dy)
-                os.system(command)
+                command = './getparam --outtag='+fname+' '+procs[iproc]['opts'][opt]['cmd']+' --d'+iproc+'x='+str(dx)+' --d'+iproc+'y='+str(dy)
+                if args.dryrun:
+                    print(command)
+                else:
+                    os.system(command)
 
 def run_one_opt_jac(procs,iproc,opt):
         for dx in procs[iproc]['fit_deg_x']:
             for dy in procs[iproc]['fit_deg_y']:
                 fname = procs[iproc]['opts'][opt]['tag']+'_x'+str(dx)+'_y'+str(dy)
-                command = './getparam --tag=jac_'+fname+' '+procs[iproc]['opts'][opt]['cmd']+\
+                command = './getparam --outtag=jac_'+fname+' '+procs[iproc]['opts'][opt]['cmd']+\
                     ' --f'+iproc+'x='+str(dx)+' --f'+iproc+'y='+str(dy)+\
                     ' --d'+iproc+'x='+str(procs[iproc]['opts'][opt]['nom_deg_x'])+' --d'+iproc+'y='+str(procs[iproc]['opts'][opt]['nom_deg_y'])+\
-                    ' --xf_max=0.40 --yf_max=3.50'
-                os.system(command)     
+                    ' --xf_max=0.40 --yf_max=3.50'+\
+                    ' --savePdf2data --saveJac'
+                if args.dryrun:
+                    print(command)
+                else:
+                    os.system(command)     
 
 def run_all(procs):
     ps = []        
@@ -372,18 +389,21 @@ def run_all(procs):
                     fname = procs[iproc]['opts'][opt]['tag']+'_x'+str(dx)+'_y'+str(dy)
                     counter += 1
                     if args.algo=='run':
-                        if args.jac: 
-                            command = './getparam --tag=jac_'+fname+' '+procs[iproc]['opts'][opt]['cmd']+\
-                                ' --f'+iproc+'x='+str(dx)+' --f'+iproc+'y='+str(dy)+\
-                                ' --d'+iproc+'x='+str(procs[iproc]['opts'][opt]['nom_deg_x'])+' --d'+iproc+'y='+str(procs[iproc]['opts'][opt]['nom_deg_y'])+\
-                                ' --xf_max=0.40 --yf_max=3.50'
+                        if args.jac:
+                            run_one_opt_jac(procs,iproc,opt)
+                            #command = './getparam --tag=jac_'+fname+' '+procs[iproc]['opts'][opt]['cmd']+\
+                            #    ' --f'+iproc+'x='+str(dx)+' --f'+iproc+'y='+str(dy)+\
+                            #    ' --d'+iproc+'x='+str(procs[iproc]['opts'][opt]['nom_deg_x'])+' --d'+iproc+'y='+str(procs[iproc]['opts'][opt]['nom_deg_y'])+\
+                            #    ' --xf_max=0.40 --yf_max=3.50'+\
+                            #    ' --savePdf2data --saveJac'
                         else:
-                            command = './getparam --tag='+fname+' '+procs[iproc]['opts'][opt]['cmd']+' --d'+iproc+'x='+str(dx)+' --d'+iproc+'y='+str(dy)                            
-                        print(command)
-                        if args.dryrun:
-                            continue
-                        else:                        
-                            os.system(command)
+                            run_one_opt(procs,iproc,opt)
+                            #command = './getparam --tag='+fname+' '+procs[iproc]['opts'][opt]['cmd']+' --d'+iproc+'x='+str(dx)+' --d'+iproc+'y='+str(dy)                            
+                        #print(command)
+                        #if args.dryrun:
+                        #    continue
+                        #else:                        
+                        #    os.system(command)
                     elif args.algo=='plot':
                         fnames.append([iproc,fname])
     if args.algo=='run' and args.mt:    
