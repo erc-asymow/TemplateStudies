@@ -108,6 +108,10 @@ int main(int argc, char* argv[])
 	("doA3",    bool_switch()->default_value(false), "")
 	("doA4",    bool_switch()->default_value(false), "")	
       	("interpolate",   bool_switch()->default_value(false), "")
+	("savePdf",   bool_switch()->default_value(false), "")
+	("savePdf2data",  bool_switch()->default_value(false), "")
+	("saveJac",   bool_switch()->default_value(false), "")
+	("saveSyst",  bool_switch()->default_value(false), "")
       	("verbose",   bool_switch()->default_value(false), "")
 	("debug",   bool_switch()->default_value(false), "");
       
@@ -135,8 +139,12 @@ int main(int argc, char* argv[])
   else if(run=="wm") run2="wminus";
   else if(run=="z")  run2="z";
   
-  int verbose     = vm["verbose"].as<bool>();
-  int interpolate = vm["interpolate"].as<bool>();
+  int verbose      = vm["verbose"].as<bool>();
+  int interpolate  = vm["interpolate"].as<bool>();
+  int savePdf      = vm["savePdf"].as<bool>();
+  int savePdf2data = vm["savePdf2data"].as<bool>();
+  int saveJac     = vm["saveJac"].as<bool>();
+  int saveSyst    = vm["saveSyst"].as<bool>();
   int debug       = vm["debug"].as<bool>();
   int doA0        = vm["doA0"].as<bool>();
   int doA1        = vm["doA1"].as<bool>();
@@ -720,7 +728,8 @@ int main(int argc, char* argv[])
 	hpdf2data_p->SetBinContent(idx+1,idy+1, val); 
       }
     }
-    hpdf2data_p->Write();
+    if(savePdf2data)
+      hpdf2data_p->Write();
     if( iproc=="UL" ) hpdf2data_UL = (TH2D*)hpdf2data_p->Clone("hpdf2data_"+iproc);
     
     
@@ -729,10 +738,11 @@ int main(int argc, char* argv[])
     for(unsigned int ipx = 0; ipx<(degf_map[iproc].at(0) + 1); ipx++){
       for(unsigned int ipy = 0; ipy<degf_map[iproc].at(1) + 1; ipy++){	  
 	// it's a POI
-	if( ipy < (deg_map[iproc].at(1)/2 + 1)){
+	if( ipy < (degf_map[iproc].at(1)/2 + 1) ){
+	  //cout << count_pf << ", " << ipx << ":" << ipy << endl;
 	  for(int syst=0; syst<3; syst++){
 	    TString syst_name = "";
-	    if(syst==0) syst_name = "";
+	    if(syst==0)      syst_name = "";
 	    else if(syst==1) syst_name = "Up";
 	    else if(syst==2) syst_name = "Down";
 
@@ -746,7 +756,7 @@ int main(int argc, char* argv[])
 	      double totx = cheb_x->Eval(x_i); 
 	      for(unsigned int idy=1; idy<=hpdf_p->GetYaxis()->GetNbins(); idy++){
 		// restrict to fiducial phase-space
-		if( (hpdf_p->GetXaxis()->GetBinLowEdge(idx) > x_max) || (hpdf_p->GetYaxis()->GetBinLowEdge(idy) > y_max) ){
+		if( (hpdf_p->GetXaxis()->GetBinLowEdge(idx) >= xf_max) || (hpdf_p->GetYaxis()->GetBinLowEdge(idy) >= yf_max) ){
 		  hpdf_p->SetBinContent(idx,idy, syst==0 ? 0.0 : hpdf->GetBinContent(idx,idy));
 		  continue;
 		}
@@ -767,9 +777,10 @@ int main(int argc, char* argv[])
 		hpdf_p->SetBinContent(idx,idy, val);
 	      }
 	    }
-	    hpdf_p->Write();
+	    if((savePdf && (syst==0 && saveJac)) || (savePdf && (syst>0 && saveSyst)) )
+	      hpdf_p->Write();
 
-	    // save data expected of varied f_syst as binned density
+	    // save data expected of varifed f_syst as binned density
 	    TH2D* hpdf2data_p_j = (TH2D*)hdummy->Clone( syst==0 ?
 							"h_pdf2data_"+iproc+Form("_jac%d",count_pf) :
 							"h_pdf2data_"+iproc+Form("_syst%d",count_pf)+syst_name
@@ -797,7 +808,8 @@ int main(int argc, char* argv[])
 		hpdf2data_p_j->SetBinContent(idx+1,idy+1, val); 
 	      }
 	    }
-	    hpdf2data_p_j->Write();
+	    if((savePdf2data && (syst==0 && saveJac)) || (savePdf2data && (syst>0 && saveSyst)) )
+	      hpdf2data_p_j->Write();
 	  }	  
 	  count_pf++;
 	}	  
