@@ -158,8 +158,8 @@ procs = {
     'UL' : {
         'deg_y' : [6,8,10,12,14],
         'deg_x' : [8,10,12,14,16,18,20,22,24,26],
-        'fit_deg_y' : [2,4,6,8],
-        'fit_deg_x' : [3,4,5,6],
+        'fit_deg_y' : [2,4],
+        'fit_deg_x' : [6,7,8,9,10,11,12],
         'opts'   : {
              'opt1' : {
                  'cmd' : '--cULx=1 --run=wp --extrabinsX=10 --extrabinsY=10',
@@ -359,7 +359,7 @@ def run_one_opt_jac(procs,iproc,opt):
                 command = './getparam --outtag=jac_'+fname+' '+procs[iproc]['opts'][opt]['cmd']+\
                     ' --f'+iproc+'x='+str(dx)+' --f'+iproc+'y='+str(dy)+\
                     ' --d'+iproc+'x='+str(procs[iproc]['opts'][opt]['nom_deg_x'])+' --d'+iproc+'y='+str(procs[iproc]['opts'][opt]['nom_deg_y'])+\
-                    ' --xf_max=0.40 --yf_max=3.50'+\
+                    ' --xf_max=0.30 --yf_max=3.00'+\
                     ' --savePdf2data --saveJac'
                 if args.dryrun:
                     print(command)
