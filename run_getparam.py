@@ -15,6 +15,9 @@ parser.add_argument('--algo',   default='all'        , help = 'algo')
 parser.add_argument('--batch', action='store_true'  , help = 'bath')
 parser.add_argument('--mt', action='store_true'  , help = 'mt')
 parser.add_argument('--jac', action='store_true'  , help = 'jac')
+parser.add_argument('--fit', action='store_true'  , help = 'fit')
+parser.add_argument('--xf_max', dest = 'xf_max'  , type = float,  default=0.4, help='')
+parser.add_argument('--yf_max', dest = 'yf_max'  , type = float,  default=4.0, help='')
 
 args = parser.parse_args()
 
@@ -352,15 +355,33 @@ def run_one_opt(procs,iproc,opt):
                 else:
                     os.system(command)
 
+xf_max_str = ("%.2f" % args.xf_max).replace('.', 'p')
+yf_max_str = ("%.2f" % args.yf_max).replace('.', 'p')
+#print(xf_max_str)
+#print(yf_max_str)
+
 def run_one_opt_jac(procs,iproc,opt):
         for dx in procs[iproc]['fit_deg_x']:
             for dy in procs[iproc]['fit_deg_y']:
                 fname = procs[iproc]['opts'][opt]['tag']+'_x'+str(dx)+'_y'+str(dy)
-                command = './getparam --outtag=jac_'+fname+' '+procs[iproc]['opts'][opt]['cmd']+\
+                command = './getparam --outtag=jac_x'+xf_max_str+'_y'+yf_max_str+'_'+fname+' '+procs[iproc]['opts'][opt]['cmd']+\
                     ' --f'+iproc+'x='+str(dx)+' --f'+iproc+'y='+str(dy)+\
                     ' --d'+iproc+'x='+str(procs[iproc]['opts'][opt]['nom_deg_x'])+' --d'+iproc+'y='+str(procs[iproc]['opts'][opt]['nom_deg_y'])+\
-                    ' --xf_max=0.30 --yf_max=3.00'+\
+                    ' --xf_max='+str(args.xf_max)+' --yf_max='+str(args.yf_max)+\
                     ' --savePdf2data --saveJac'
+                if args.dryrun:
+                    print(command)
+                else:
+                    os.system(command)     
+
+
+def run_one_opt_fit(procs,iproc,opt):
+        for dx in procs[iproc]['fit_deg_x']:
+            for dy in procs[iproc]['fit_deg_y']:
+                fname = procs[iproc]['opts'][opt]['tag']+'_x'+str(dx)+'_y'+str(dy)
+                command = './getparam --intag=jac_x'+xf_max_str+'_y'+yf_max_str+'_'+fname+' --outtag=x'+xf_max_str+'_y'+yf_max_str+'_'+fname+' '+procs[iproc]['opts'][opt]['cmd']+\
+                    ' --xf_max='+str(args.xf_max-0.01)+' --yf_max='+str(args.yf_max-0.01)+\
+                    ' --runfit'
                 if args.dryrun:
                     print(command)
                 else:
@@ -379,6 +400,10 @@ def run_all(procs):
                     p = Process(target=run_one_opt_jac, args=(procs,iproc,opt))
                     p.start()
                     ps.append(p)
+                elif args.fit:
+                    p = Process(target=run_one_opt_fit, args=(procs,iproc,opt))
+                    p.start()
+                    ps.append(p)                    
                 else:
                     p = Process(target=run_one_opt, args=(procs,iproc,opt))
                     p.start()
@@ -391,19 +416,10 @@ def run_all(procs):
                     if args.algo=='run':
                         if args.jac:
                             run_one_opt_jac(procs,iproc,opt)
-                            #command = './getparam --tag=jac_'+fname+' '+procs[iproc]['opts'][opt]['cmd']+\
-                            #    ' --f'+iproc+'x='+str(dx)+' --f'+iproc+'y='+str(dy)+\
-                            #    ' --d'+iproc+'x='+str(procs[iproc]['opts'][opt]['nom_deg_x'])+' --d'+iproc+'y='+str(procs[iproc]['opts'][opt]['nom_deg_y'])+\
-                            #    ' --xf_max=0.40 --yf_max=3.50'+\
-                            #    ' --savePdf2data --saveJac'
+                        elif args.fit:
+                            run_one_opt_fit(procs,iproc,opt)
                         else:
                             run_one_opt(procs,iproc,opt)
-                            #command = './getparam --tag='+fname+' '+procs[iproc]['opts'][opt]['cmd']+' --d'+iproc+'x='+str(dx)+' --d'+iproc+'y='+str(dy)                            
-                        #print(command)
-                        #if args.dryrun:
-                        #    continue
-                        #else:                        
-                        #    os.system(command)
                     elif args.algo=='plot':
                         fnames.append([iproc,fname])
     if args.algo=='run' and args.mt:    
