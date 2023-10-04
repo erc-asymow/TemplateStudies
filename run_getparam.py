@@ -16,6 +16,7 @@ parser.add_argument('--batch', action='store_true'  , help = 'bath')
 parser.add_argument('--mt', action='store_true'  , help = 'mt')
 parser.add_argument('--jac', action='store_true'  , help = 'jac')
 parser.add_argument('--fit', action='store_true'  , help = 'fit')
+parser.add_argument('--systname', default='scet_UL'  , help = '')
 parser.add_argument('--xf_max', dest = 'xf_max'  , type = float,  default=0.4, help='')
 parser.add_argument('--yf_max', dest = 'yf_max'  , type = float,  default=4.0, help='')
 
@@ -31,8 +32,8 @@ procs = {
      'A0' : {
          'deg_x' : [2,3,4,5,6,7,8],
          'deg_y' : [2,4,6,8,10,12],
-         'fit_deg_y' : [2,4],
-         'fit_deg_x' : [1,2,3],
+         'fit_deg_y' : [2,4,6],
+         'fit_deg_x' : [1,2,3,4],
          'opts'   : {
              'opt1' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA0 --cA0x=0',
@@ -57,8 +58,8 @@ procs = {
     'A1' : {
          'deg_x' : [1,2,3,4,5,6,7,8],
          'deg_y' : [1,3,5,7,9],
-        'fit_deg_y' : [2,4],
-        'fit_deg_x' : [1,2,3],
+        'fit_deg_y' : [2,4,6],
+        'fit_deg_x' : [1,2,3,4],
          'opts'   : {
              'opt1' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA1 --cA1x=1',
@@ -83,8 +84,8 @@ procs = {
      'A2' : {
          'deg_x' : [2,3,4,5,6,7,8],
          'deg_y' : [2,4,6,8,10,12],
-         'fit_deg_y' : [2,4],
-         'fit_deg_x' : [1,2,3],
+         'fit_deg_y' : [2,4,6],
+         'fit_deg_x' : [1,2,3,4],
          'opts'   : {
              'opt1' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA2 --cA2x=1',
@@ -109,8 +110,8 @@ procs = {
     'A3' : {
          'deg_x' : [2,3,4,5,6,7,8],
          'deg_y' : [2,4,6,8,10,12],
-        'fit_deg_y' : [2,4],
-        'fit_deg_x' : [1,2,3],
+        'fit_deg_y' : [2,4,6],
+        'fit_deg_x' : [1,2,3,4],
          'opts'   : {
              'opt1' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1 --cA3y=0',
@@ -135,8 +136,8 @@ procs = {
     'A4' : {
          'deg_x' : [2,3,4,5,6,7,8],
          'deg_y' : [1,3,5,7,9,11,13],
-        'fit_deg_y' : [2,4],
-        'fit_deg_x' : [1,2,3],
+        'fit_deg_y' : [2,4,6],
+        'fit_deg_x' : [1,2,3,4],
          'opts'   : {
              'opt1' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA4 --cA4x=0',
@@ -187,7 +188,7 @@ procs = {
 }
 
 #allowed_procs = ["UL","A0","A1","A2","A3","A4"]
-allowed_procs = ["UL"]
+allowed_procs = ["A0"]
 
 def plot_pvals(fnames=[], metric="pvals", proc="wp"):
     ROOT.gStyle.SetPadRightMargin(0.15)
@@ -381,7 +382,7 @@ def run_one_opt_fit(procs,iproc,opt):
                 fname = procs[iproc]['opts'][opt]['tag']+'_x'+str(dx)+'_y'+str(dy)
                 command = './getparam --intag=jac_x'+xf_max_str+'_y'+yf_max_str+'_'+fname+' --outtag=x'+xf_max_str+'_y'+yf_max_str+'_'+fname+' '+procs[iproc]['opts'][opt]['cmd']+\
                     ' --xf_max='+str(args.xf_max-0.01)+' --yf_max='+str(args.yf_max-0.01)+\
-                    ' --runfit'
+                    ' --runfit --syst_'+args.systname
                 if args.dryrun:
                     print(command)
                 else:
@@ -432,9 +433,6 @@ def run_all(procs):
 if __name__ == '__main__':    
     fnames = run_all(procs)
     if args.algo=='plot':
-        #for fom in ['pvalue']:
-        #    for iproc in ["wp","wm","z"]:
-        #        plot_pvals(fnames, metric=fom, proc=iproc)
         for iproc in procs.keys():
             if iproc not in allowed_procs:
                 continue

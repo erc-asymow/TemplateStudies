@@ -115,6 +115,12 @@ int main(int argc, char* argv[])
 	("saveSyst",  bool_switch()->default_value(false), "")
       	("runfit",   bool_switch()->default_value(false), "")
       	("verbose",   bool_switch()->default_value(false), "")
+	("syst_scet_UL",   bool_switch()->default_value(false), "")
+	("syst_pdf_UL",   bool_switch()->default_value(false), "")
+	("syst_pdf_Ai",   bool_switch()->default_value(false), "")
+	("syst_scale_Ai",   bool_switch()->default_value(false), "")
+	("syst_altpdf_UL",   bool_switch()->default_value(false), "")
+	("syst_altpdf_Ai",   bool_switch()->default_value(false), "")
 	("debug",   bool_switch()->default_value(false), "");
       
       store(parse_command_line(argc, argv, desc), vm);
@@ -143,6 +149,14 @@ int main(int argc, char* argv[])
   else if(run=="z")  run2="z";
   
   int verbose      = vm["verbose"].as<bool>();
+
+  int syst_scet_UL   = vm["syst_scet_UL"].as<bool>();
+  int syst_pdf_UL    = vm["syst_pdf_UL"].as<bool>();
+  int syst_pdf_Ai    = vm["syst_pdf_Ai"].as<bool>();
+  int syst_scale_Ai  = vm["syst_scale_Ai"].as<bool>();
+  int syst_altpdf_UL = vm["syst_altpdf_UL"].as<bool>();
+  int syst_altpdf_Ai = vm["syst_altpdf_Ai"].as<bool>();
+  
   int runfit       = vm["runfit"].as<bool>();
   int interpolate  = vm["interpolate"].as<bool>();
   int savePdf      = vm["savePdf"].as<bool>();
@@ -208,204 +222,569 @@ int main(int argc, char* argv[])
   if(doA4) proc.emplace_back("A4");
 
   if(runfit){
-    
+
     TFile* fin_nom  = TFile::Open("root/file_qtbyQ_and_qt_vs_absy_v3.root", "READ");
     if(fin_nom==0){
       cout << "Cannot find nominal file" << endl;
       return 0;
     }
-    TString hname =  run2+(xvar=="qtbyQ" ? "_ptqVgen" : "_ptVgen")+"_2d_absY_vs_"+TString(xvar.c_str())+"_differential_ul";
-    TH2D* h_nom = (TH2D*)fin_nom->Get(hname);    
-    if(h_nom==0){
-      cout << "Nominal histo not found. Continue." << endl;
-      return 0;
-    }
-
-    // X-axis
-    int X_nbins  = h_nom->GetXaxis()->GetNbins();
-    double X_max = h_nom->GetXaxis()->GetXmax();
-    if(xf_max>0.){
-      X_nbins = h_nom->GetXaxis()->FindBin(xf_max);
-      X_max = h_nom->GetXaxis()->GetBinUpEdge(X_nbins);
-    }
-    double X_edges[X_nbins+1];
-    for(int ib = 0; ib<X_nbins; ib++) X_edges[ib] = h_nom->GetXaxis()->GetBinLowEdge(ib+1);
-    X_edges[X_nbins] = h_nom->GetXaxis()->GetBinUpEdge(X_nbins);
-        
-    // Y-axis
-    int Y_nbins  = h_nom->GetYaxis()->GetNbins();
-    double Y_max = h_nom->GetYaxis()->GetXmax();
-    if(yf_max>0.){
-      Y_nbins = h_nom->GetYaxis()->FindBin(yf_max);
-      Y_max = h_nom->GetYaxis()->GetBinUpEdge(Y_nbins);
-    }
-    double Y_edges[Y_nbins+1];
-    for(int ib = 0; ib<Y_nbins; ib++) Y_edges[ib] = h_nom->GetYaxis()->GetBinLowEdge(ib+1);
-    Y_edges[Y_nbins] = h_nom->GetYaxis()->GetBinUpEdge(Y_nbins) ;
-
-    int nd = X_nbins*Y_nbins;
-    cout << "Total bins in acceptance: " << X_nbins << "*" << Y_nbins << " = " << nd << endl;
-
-    TH2D* hstart = new TH2D("h_start", h_nom->GetTitle(), X_nbins, X_edges, Y_nbins, Y_edges );
-    TH1D* hinfo = new TH1D("h_info", "", 3, 0,3);
     
-    TFile *fin_jac = TFile::Open(("fout_"+intag+".root").c_str(), "READ");
-    if(fin_jac==0){
-      cout << "Cannot find jac file" << endl;
-      return 0;
-    }
-    cout << "Jac file " << fin_jac->GetName() << " opened.";
-    TH1D* h_info = (TH1D*)fin_jac->Get("UL/h_info_UL");
-    int nfpx = h_info->GetBinContent(8);
-    int nfpy = h_info->GetBinContent(9);
-    int np   = nfpx*nfpy;
-    cout << " " << np << " parameters found" << endl;
+    // scetlib variations on UL
+    if(syst_scet_UL){
 
-    hinfo->SetBinContent(1, nd);
-    hinfo->SetBinContent(2, np);
-    
-    MatrixXd J = MatrixXd::Zero(nd,np);
-    MatrixXd V_inv_sqrt = MatrixXd::Zero(nd, nd);
-    VectorXd y(nd);
-    VectorXd y0(nd);
-    VectorXd y_err(nd);
-    
-    int counter = 0;
-    for(unsigned int idx=1; idx<=X_nbins; idx++){
-      for(unsigned int idy=1; idy<=Y_nbins; idy++){
-	y0(counter)    = h_nom->GetBinContent(idx,idy);
- 	y_err(counter) = h_nom->GetBinError(idx,idy);
-	for(unsigned int isyst=0; isyst<np; isyst++){
-	  TH2D* h_jac = (TH2D*)fin_jac->Get(Form("UL/h_pdf2data_UL_jac%d", isyst));
-	  J(counter,isyst) = h_jac->GetBinContent(idx,idy);
-	}
-	V_inv_sqrt(counter,counter) = 1.0/y_err(counter);
-	hstart->SetBinContent(idx,idy,  y0(counter));
-	hstart->SetBinError(idx,idy,  y_err(counter));
-	counter++;
+      cout << "Doing syst_scet_UL on UL" << endl;
+      
+      TString hname =  run2+(xvar=="qtbyQ" ? "_ptqVgen" : "_ptVgen")+"_2d_absY_vs_"+TString(xvar.c_str())+"_differential_ul";
+      TH2D* h_nom = (TH2D*)fin_nom->Get(hname);    
+      if(h_nom==0){
+	cout << "Nominal histo not found. Continue." << endl;
+	return 0;
       }
-    }
-    
-    TFile* fin_syst = TFile::Open(("root/scet_vars_"+xvar+"_2dmaps.root").c_str(), "READ");
-    if(fin_syst==0){
-      cout << "Cannot find syst file" << endl;
-      return 0;
-    }
-
-    vector<TString> scetlib_syst_names = {
-      "pdf0_scetvar_pdf0",
-      "omega_nu0.5_scetvar_omega_nu0.5",
-      "c_nu-0.1-omega_nu0.5_scetvar_c_nu-0.1-omega_nu0.5",
-      "c_nu0.2-omega_nu0.5_scetvar_c_nu0.2-omega_nu0.5",
-      "c_nu0.01-omega_nu0.5_scetvar_c_nu0.01-omega_nu0.5",
-      "c_nu-0.2-omega_nu0.5_scetvar_c_nu-0.2-omega_nu0.5",
-      "c_nu-0.01_scetvar_c_nu-0.01",
-      "Lambda20.25_scetvar_Lambda20.25",
-      "Lambda2-0.25_scetvar_Lambda2-0.25",
-      "Lambda4.01_scetvar_Lambda4.01",
-      "Lambda4.16_scetvar_Lambda4.16",
-      "Delta_Lambda2-0.02_scetvar_Delta_Lambda2-0.02",
-      "Delta_Lambda20.02_scetvar_Delta_Lambda20.02",
-      "c_nu-0.1-omega_nu0.707_scetvar_c_nu-0.1-omega_nu0.707",
-      "omega_nu0.707_scetvar_omega_nu0.707",
-      "c_nu-0.1-omega_nu0.25-Omega0.12-Delta_Omega0.0158_scetvar_c_nu-0.1-omega_nu0.25-Omega0.12-Delta_Omega0.0158",
-      "c_nu-0.1-omega_nu0.25-Omega0.13-Delta_Omega0.0_scetvar_c_nu-0.1-omega_nu0.25-Omega0.13-Delta_Omega0.0",
-      "gamma_cusp+1_scetvar_gamma_cusp+1",
-      "gamma_cusp+5_scetvar_gamma_cusp+5",
-      "gamma_mu_q+1_scetvar_gamma_mu_q+1",
-      "gamma_mu_q+5_scetvar_gamma_mu_q+5",
-      "gamma_nu+1_scetvar_gamma_nu+1",
-      "gamma_nu+5_scetvar_gamma_nu+5",
-      "h_qqV-0.5_scetvar_h_qqV-0.5",
-      "h_qqV-2.0_scetvar_h_qqV-2.0",
-      "s+1_scetvar_s+1",
-      "s+5_scetvar_s+5",
-      "b_qqV+1_scetvar_b_qqV+1",
-      "b_qqV+5_scetvar_b_qqV+5",
-      "b_qqbarV+1_scetvar_b_qqbarV+1",
-      "b_qqbarV+5_scetvar_b_qqbarV+5",
-      "b_qqS+1_scetvar_b_qqS+1",
-      "b_qqS+5_scetvar_b_qqS+5",
-      "b_qqDS+1_scetvar_b_qqDS+1",
-      "b_qqDS+5_scetvar_b_qqDS+5",
-      "b_qg+1_scetvar_b_qg+1",
-      "b_qg+5_scetvar_b_qg+5",
-      "transition_points0.4_0.75_1.1_scetvar_transition_points0.4_0.75_1.1",
-      "transition_points0.2_0.45_0.7_scetvar_transition_points0.2_0.45_0.7",
-      "transition_points0.4_0.55_0.7_scetvar_transition_points0.4_0.55_0.7",
-      "transition_points0.2_0.65_1.1_scetvar_transition_points0.2_0.65_1.1"
-    };
-
-    hinfo->SetBinContent(3, scetlib_syst_names.size());
-
-    TFile *fout = TFile::Open(("fout_fit_"+outtag+".root").c_str(), "RECREATE");
-    
-    for(unsigned int isyst=0; isyst<scetlib_syst_names.size(); isyst++){
-
-      TString iproc = scetlib_syst_names[isyst];
-      TH2D* hdummy = new TH2D(Form("hdummy_%d",isyst), iproc+";q_{T}/Q or q_{T};|y|", X_nbins, X_edges, Y_nbins, Y_edges );
-
-      TH2D* h_syst = (TH2D*)fin_syst->Get( "scet_vars_ul_"+run+"_"+TString(xvar.c_str())+"_vs_absy_"+iproc );    
-      if(h_syst==0){
-	cout << "Histo not found. Continue." << endl;
-	continue;
+      
+      // X-axis
+      int X_nbins  = h_nom->GetXaxis()->GetNbins();
+      double X_max = h_nom->GetXaxis()->GetXmax();
+      if(xf_max>0.){
+	X_nbins = h_nom->GetXaxis()->FindBin(xf_max);
+	X_max = h_nom->GetXaxis()->GetBinUpEdge(X_nbins);
       }
-      cout << "Histo " << h_syst->GetName() << " found" << endl;
-
-      counter = 0;
+      double X_edges[X_nbins+1];
+      for(int ib = 0; ib<X_nbins; ib++) X_edges[ib] = h_nom->GetXaxis()->GetBinLowEdge(ib+1);
+      X_edges[X_nbins] = h_nom->GetXaxis()->GetBinUpEdge(X_nbins);
+      
+      // Y-axis
+      int Y_nbins  = h_nom->GetYaxis()->GetNbins();
+      double Y_max = h_nom->GetYaxis()->GetXmax();
+      if(yf_max>0.){
+	Y_nbins = h_nom->GetYaxis()->FindBin(yf_max);
+	Y_max = h_nom->GetYaxis()->GetBinUpEdge(Y_nbins);
+      }
+      double Y_edges[Y_nbins+1];
+      for(int ib = 0; ib<Y_nbins; ib++) Y_edges[ib] = h_nom->GetYaxis()->GetBinLowEdge(ib+1);
+      Y_edges[Y_nbins] = h_nom->GetYaxis()->GetBinUpEdge(Y_nbins) ;
+      
+      int nd = X_nbins*Y_nbins;
+      cout << "Total bins in acceptance: " << X_nbins << "*" << Y_nbins << " = " << nd << endl;
+      
+      TH2D* hstart = new TH2D("h_start", h_nom->GetTitle(), X_nbins, X_edges, Y_nbins, Y_edges );
+      TH1D* hinfo = new TH1D("h_info", "", 3, 0,3);
+      
+      TFile *fin_jac = TFile::Open(("fout_"+intag+".root").c_str(), "READ");
+      if(fin_jac==0){
+	cout << "Cannot find jac file" << endl;
+	return 0;
+      }
+      cout << "Jac file " << fin_jac->GetName() << " opened.";
+      TH1D* h_info = (TH1D*)fin_jac->Get("UL/h_info_UL");
+      int nfpx = h_info->GetBinContent(8);
+      int nfpy = h_info->GetBinContent(9);
+      int np   = nfpx*nfpy;
+      cout << " " << np << " parameters found" << endl;
+      
+      hinfo->SetBinContent(1, nd);
+      hinfo->SetBinContent(2, np);
+    
+      MatrixXd J = MatrixXd::Zero(nd,np);
+      MatrixXd V_inv_sqrt = MatrixXd::Zero(nd, nd);
+      VectorXd y(nd);
+      VectorXd y0(nd);
+      VectorXd y_err(nd);
+      
+      int counter = 0;
       for(unsigned int idx=1; idx<=X_nbins; idx++){
 	for(unsigned int idy=1; idy<=Y_nbins; idy++){
-	  y(counter)  = h_syst->GetBinContent(idx,idy);
+	  y0(counter)    = h_nom->GetBinContent(idx,idy);
+	  y_err(counter) = h_nom->GetBinError(idx,idy);
+	  for(unsigned int isyst=0; isyst<np; isyst++){
+	    TH2D* h_jac = (TH2D*)fin_jac->Get(Form("UL/h_pdf2data_UL_jac%d", isyst));
+	    J(counter,isyst) = h_jac->GetBinContent(idx,idy);
+	  }
+	  V_inv_sqrt(counter,counter) = 1.0/y_err(counter);
+	  hstart->SetBinContent(idx,idy,  y0(counter));
+	  hstart->SetBinError(idx,idy,  y_err(counter));
+	  counter++;
+	}
+      }
+      
+      TFile* fin_syst = TFile::Open(("root/scet_vars_"+xvar+"_2dmaps.root").c_str(), "READ");
+      if(fin_syst==0){
+	cout << "Cannot find syst file" << endl;
+	return 0;
+      }
+      
+      vector<TString> scetlib_syst_names = {
+	"pdf0_scetvar_pdf0",
+	"omega_nu0.5_scetvar_omega_nu0.5",
+	"c_nu-0.1-omega_nu0.5_scetvar_c_nu-0.1-omega_nu0.5",
+	"c_nu0.2-omega_nu0.5_scetvar_c_nu0.2-omega_nu0.5",
+	"c_nu0.01-omega_nu0.5_scetvar_c_nu0.01-omega_nu0.5",
+	"c_nu-0.2-omega_nu0.5_scetvar_c_nu-0.2-omega_nu0.5",
+	"c_nu-0.01_scetvar_c_nu-0.01",
+	"Lambda20.25_scetvar_Lambda20.25",
+	"Lambda2-0.25_scetvar_Lambda2-0.25",
+	"Lambda4.01_scetvar_Lambda4.01",
+	"Lambda4.16_scetvar_Lambda4.16",
+	"Delta_Lambda2-0.02_scetvar_Delta_Lambda2-0.02",
+	"Delta_Lambda20.02_scetvar_Delta_Lambda20.02",
+	"c_nu-0.1-omega_nu0.707_scetvar_c_nu-0.1-omega_nu0.707",
+	"omega_nu0.707_scetvar_omega_nu0.707",
+	"c_nu-0.1-omega_nu0.25-Omega0.12-Delta_Omega0.0158_scetvar_c_nu-0.1-omega_nu0.25-Omega0.12-Delta_Omega0.0158",
+	"c_nu-0.1-omega_nu0.25-Omega0.13-Delta_Omega0.0_scetvar_c_nu-0.1-omega_nu0.25-Omega0.13-Delta_Omega0.0",
+	"gamma_cusp+1_scetvar_gamma_cusp+1",
+	"gamma_cusp+5_scetvar_gamma_cusp+5",
+	"gamma_mu_q+1_scetvar_gamma_mu_q+1",
+	"gamma_mu_q+5_scetvar_gamma_mu_q+5",
+	"gamma_nu+1_scetvar_gamma_nu+1",
+	"gamma_nu+5_scetvar_gamma_nu+5",
+	"h_qqV-0.5_scetvar_h_qqV-0.5",
+	"h_qqV-2.0_scetvar_h_qqV-2.0",
+	"s+1_scetvar_s+1",
+	"s+5_scetvar_s+5",
+	"b_qqV+1_scetvar_b_qqV+1",
+	"b_qqV+5_scetvar_b_qqV+5",
+	"b_qqbarV+1_scetvar_b_qqbarV+1",
+	"b_qqbarV+5_scetvar_b_qqbarV+5",
+	"b_qqS+1_scetvar_b_qqS+1",
+	"b_qqS+5_scetvar_b_qqS+5",
+	"b_qqDS+1_scetvar_b_qqDS+1",
+	"b_qqDS+5_scetvar_b_qqDS+5",
+	"b_qg+1_scetvar_b_qg+1",
+	"b_qg+5_scetvar_b_qg+5",
+	"transition_points0.4_0.75_1.1_scetvar_transition_points0.4_0.75_1.1",
+	"transition_points0.2_0.45_0.7_scetvar_transition_points0.2_0.45_0.7",
+	"transition_points0.4_0.55_0.7_scetvar_transition_points0.4_0.55_0.7",
+	"transition_points0.2_0.65_1.1_scetvar_transition_points0.2_0.65_1.1"
+      };
+      
+      hinfo->SetBinContent(3, scetlib_syst_names.size());
+
+      TFile *fout = TFile::Open(("fout_fit_scet_UL_"+outtag+".root").c_str(), "RECREATE");
+      
+      for(unsigned int isyst=0; isyst<scetlib_syst_names.size(); isyst++){
+	
+	TString iproc = scetlib_syst_names[isyst];
+	TH2D* hdummy = new TH2D(Form("hdummy_%d",isyst), iproc+";q_{T}/Q or q_{T};|y|", X_nbins, X_edges, Y_nbins, Y_edges );
+	
+	TH2D* h_syst = (TH2D*)fin_syst->Get( "scet_vars_ul_"+run+"_"+TString(xvar.c_str())+"_vs_absy_"+iproc );    
+	if(h_syst==0){
+	  cout << "Histo not found. Continue." << endl;
+	  continue;
+	}
+	cout << "Histo " << h_syst->GetName() << " found" << endl;
+	
+	counter = 0;
+	for(unsigned int idx=1; idx<=X_nbins; idx++){
+	  for(unsigned int idy=1; idy<=Y_nbins; idy++){
+	    y(counter)  = h_syst->GetBinContent(idx,idy);
+	    counter++;
+	  }
+	}
+	
+	MatrixXd A = V_inv_sqrt*J;
+	MatrixXd b = V_inv_sqrt*(y-y0);
+	VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
+	VectorXd delta = y-y0-J*x;
+	VectorXd pull  = b-A*x;
+	if(verbose) cout << delta << endl;
+	MatrixXd chi2start = b.transpose()*b;
+	MatrixXd chi2 = pull.transpose()*pull;
+	double chi2startval = chi2start(0,0);
+	double chi2val = chi2(0,0);
+	int ndof = y.size() - np;
+	cout <<  "Chi2 start = " << chi2startval << " --> chi2/ndof = " << chi2val << " / " << ndof << " = " << chi2val/ndof  << endl;
+
+	TH2D* hdelta = (TH2D*)hdummy->Clone(Form("h_delta_%d",isyst));
+	TH2D* hpull  = (TH2D*)hdummy->Clone(Form("h_pull_%d",isyst));
+	TH2D* hratio = (TH2D*)hdummy->Clone(Form("h_ratio_%d",isyst));
+	TH2D* hdata  = (TH2D*)hdummy->Clone(Form("h_data_%d",isyst));
+	TH2D* hexp   = (TH2D*)hdummy->Clone(Form("h_exp_%d",isyst));
+
+	int count_d = 0;
+	for(unsigned int idx = 0; idx<X_nbins; idx++){
+	  for(unsigned int idy = 0; idy<Y_nbins; idy++){	
+	    hdelta->SetBinContent(idx+1,idy+1, delta(count_d));
+	    hpull->SetBinContent(idx+1,idy+1,  pull(count_d));
+	    hratio->SetBinContent(idx+1,idy+1, y(count_d)!=0. ? (y(count_d)-delta(count_d))/y(count_d) : 1.0 );	
+	    hratio->SetBinError(idx+1,idy+1, y(count_d)!=0. ? y_err(count_d)/y(count_d) : 0.0 );	
+	    hdata->SetBinContent(idx+1,idy+1,  y(count_d));
+	    hdata->SetBinError(idx+1,idy+1,  y_err(count_d));
+	    hexp->SetBinContent(idx+1,idy+1,  y(count_d)-delta(count_d));
+	    //double exp_err = (J.row(count_d)*W*J.row(count_d).transpose())(0,0);
+	    //hexp->SetBinError(idx+1,idy+1, exp_err>0. ? TMath::Sqrt(exp_err) : 0.0);
+	    count_d++;
+	  }
+	}
+	fout->cd();
+	hpull->Write();
+	hratio->Write();
+	hdelta->Write();
+	hdata->Write();
+	hexp->Write();    
+      }
+      fin_syst->Close();
+      
+      fout->cd();
+      hinfo->Write();
+      hstart->Write();    
+      fout->Close();
+    }
+
+    // pdf variations on UL
+    if(syst_pdf_UL){
+    }
+
+    if(syst_altpdf_UL){
+    }
+
+    if(syst_pdf_Ai){
+
+      TString pr = proc[1];
+      cout << "Doing syst_pdf_Ai on " << pr << endl;      
+
+      TString hname =  	"ang_coeff_"+TString(run.c_str())+"_"+TString(xvar.c_str())+"_vs_absy_A_"+TString(pr[1]);
+      TH2D* h_nom = (TH2D*)fin_nom->Get(hname);    
+      if(h_nom==0){
+	cout << "Nominal histo not found. Continue." << endl;
+	return 0;
+      }
+      
+      // X-axis
+      int X_nbins  = h_nom->GetXaxis()->GetNbins();
+      double X_max = h_nom->GetXaxis()->GetXmax();
+      if(xf_max>0.){
+	X_nbins = h_nom->GetXaxis()->FindBin(xf_max);
+	X_max = h_nom->GetXaxis()->GetBinUpEdge(X_nbins);
+      }
+      double X_edges[X_nbins+1];
+      for(int ib = 0; ib<X_nbins; ib++) X_edges[ib] = h_nom->GetXaxis()->GetBinLowEdge(ib+1);
+      X_edges[X_nbins] = h_nom->GetXaxis()->GetBinUpEdge(X_nbins);
+      
+      // Y-axis
+      int Y_nbins  = h_nom->GetYaxis()->GetNbins();
+      double Y_max = h_nom->GetYaxis()->GetXmax();
+      if(yf_max>0.){
+	Y_nbins = h_nom->GetYaxis()->FindBin(yf_max);
+	Y_max = h_nom->GetYaxis()->GetBinUpEdge(Y_nbins);
+      }
+      double Y_edges[Y_nbins+1];
+      for(int ib = 0; ib<Y_nbins; ib++) Y_edges[ib] = h_nom->GetYaxis()->GetBinLowEdge(ib+1);
+      Y_edges[Y_nbins] = h_nom->GetYaxis()->GetBinUpEdge(Y_nbins) ;
+      
+      int nd = X_nbins*Y_nbins;
+      cout << "Total bins in acceptance: " << X_nbins << "*" << Y_nbins << " = " << nd << endl;
+      
+      TH2D* hstart = new TH2D("h_start", h_nom->GetTitle(), X_nbins, X_edges, Y_nbins, Y_edges );
+      TH1D* hinfo = new TH1D("h_info", "", 3, 0,3);
+      
+      TFile *fin_jac = TFile::Open(("fout_"+intag+".root").c_str(), "READ");
+      if(fin_jac==0){
+	cout << "Cannot find jac file" << endl;
+	return 0;
+      }
+      cout << "Jac file " << fin_jac->GetName() << " opened.";
+      TH1D* h_info = (TH1D*)fin_jac->Get(pr+"/h_info_"+pr);
+      int nfpx = h_info->GetBinContent(8);
+      int nfpy = h_info->GetBinContent(9);
+      int np   = nfpx*nfpy;
+      cout << " " << np << " parameters found" << endl;
+      
+      hinfo->SetBinContent(1, nd);
+      hinfo->SetBinContent(2, np);
+    
+      MatrixXd J = MatrixXd::Zero(nd,np);
+      MatrixXd V_inv_sqrt = MatrixXd::Zero(nd, nd);
+      VectorXd y(nd);
+      VectorXd y0(nd);
+      VectorXd y_err(nd);
+      
+      int counter = 0;
+      for(unsigned int idx=1; idx<=X_nbins; idx++){
+	for(unsigned int idy=1; idy<=Y_nbins; idy++){
+	  y0(counter)    = h_nom->GetBinContent(idx,idy);
+	  y_err(counter) = h_nom->GetBinError(idx,idy);
+	  for(unsigned int isyst=0; isyst<np; isyst++){	    
+	    TH2D* h_jac = (TH2D*)fin_jac->Get(pr+"/h_pdf2data_"+pr+"_jac"+TString(Form("%d", isyst)));
+	    J(counter,isyst) = h_jac->GetBinContent(idx,idy);
+	  }
+	  V_inv_sqrt(counter,counter) = 1.0/y_err(counter);
+	  hstart->SetBinContent(idx,idy,  y0(counter));
+	  hstart->SetBinError(idx,idy,  y_err(counter));
+	  counter++;
+	}
+      }
+      
+      TFile* fin_syst = TFile::Open( ("/scratchnvme/tanmay/OutPut_2016/altpdf_files/pdf_mmht_vars_"+xvar+"_2dmap/pdf_mmht_vars_"+xvar+"_2dmap.root").c_str(), "READ");
+      if(fin_syst==0){
+	cout << "Cannot find syst file" << endl;
+	return 0;
+      }
+
+      vector<TString> pdf_syst_names = {
+	"pdf0MMHT"
+      };
+      for(int s = 1; s<=25; s++){
+	pdf_syst_names.emplace_back(TString( Form("pdf%dMMHTDown", s) ));
+	pdf_syst_names.emplace_back(TString( Form("pdf%dMMHTUp", s) ));
+      }
+      hinfo->SetBinContent(3, pdf_syst_names.size());
+
+      TFile *fout = TFile::Open("fout_fit_pdf_"+pr+"_"+TString(outtag.c_str())+".root", "RECREATE");
+
+      for(unsigned int isyst=0; isyst<pdf_syst_names.size(); isyst++){
+	
+	TString iproc = pdf_syst_names[isyst];
+	TH2D* hdummy = new TH2D(Form("hdummy_%d",isyst), iproc+";q_{T}/Q or q_{T};|y|", X_nbins, X_edges, Y_nbins, Y_edges );
+
+	TString hname = "ang_coeff_"+TString(run.c_str())+"_"+TString(xvar.c_str())+"_vs_absy_"+iproc+"_A_"+TString(pr[1]);
+	TH2D* h_syst = (TH2D*)fin_syst->Get( hname );    
+	if(h_syst==0){
+	  cout << "Histo not found. Continue." << endl;
+	  continue;
+	}
+	cout << "Histo " << h_syst->GetName() << " found" << endl;
+
+	counter = 0;
+	for(unsigned int idx=1; idx<=X_nbins; idx++){
+	  for(unsigned int idy=1; idy<=Y_nbins; idy++){
+	    y(counter)  = h_syst->GetBinContent(idx,idy);
+	    counter++;
+	  }
+	}
+	
+	MatrixXd A = V_inv_sqrt*J;
+	MatrixXd b = V_inv_sqrt*(y-y0);
+	VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
+	VectorXd delta = y-y0-J*x;
+	VectorXd pull  = b-A*x;
+	if(verbose) cout << delta << endl;
+	MatrixXd chi2start = b.transpose()*b;
+	MatrixXd chi2 = pull.transpose()*pull;
+	double chi2startval = chi2start(0,0);
+	double chi2val = chi2(0,0);
+	int ndof = y.size() - np;
+	cout <<  "Chi2 start = " << chi2startval << " --> chi2/ndof = " << chi2val << " / " << ndof << " = " << chi2val/ndof  << endl;
+
+	TH2D* hdelta = (TH2D*)hdummy->Clone(Form("h_delta_%d",isyst));
+	TH2D* hpull  = (TH2D*)hdummy->Clone(Form("h_pull_%d",isyst));
+	TH2D* hratio = (TH2D*)hdummy->Clone(Form("h_ratio_%d",isyst));
+	TH2D* hdata  = (TH2D*)hdummy->Clone(Form("h_data_%d",isyst));
+	TH2D* hexp   = (TH2D*)hdummy->Clone(Form("h_exp_%d",isyst));
+
+	int count_d = 0;
+	for(unsigned int idx = 0; idx<X_nbins; idx++){
+	  for(unsigned int idy = 0; idy<Y_nbins; idy++){	
+	    hdelta->SetBinContent(idx+1,idy+1, delta(count_d));
+	    hpull->SetBinContent(idx+1,idy+1,  pull(count_d));
+	    hratio->SetBinContent(idx+1,idy+1, y(count_d)!=0. ? (y(count_d)-delta(count_d))/y(count_d) : 1.0 );	
+	    hratio->SetBinError(idx+1,idy+1, y(count_d)!=0. ? y_err(count_d)/y(count_d) : 0.0 );	
+	    hdata->SetBinContent(idx+1,idy+1,  y(count_d));
+	    hdata->SetBinError(idx+1,idy+1,  y_err(count_d));
+	    hexp->SetBinContent(idx+1,idy+1,  y(count_d)-delta(count_d));
+	    //double exp_err = (J.row(count_d)*W*J.row(count_d).transpose())(0,0);
+	    //hexp->SetBinError(idx+1,idy+1, exp_err>0. ? TMath::Sqrt(exp_err) : 0.0);
+	    count_d++;
+	  }
+	}
+
+	fout->cd();
+	hpull->Write();
+	hratio->Write();
+	hdelta->Write();
+	hdata->Write();
+	hexp->Write();    
+      }
+      fin_syst->Close();
+	    
+      fout->cd();
+      hinfo->Write();
+      hstart->Write();    
+      fout->Close();
+    }
+
+    if(syst_scale_Ai){
+    }
+
+    if(syst_altpdf_Ai){
+
+      TString pr = proc[1];
+      cout << "Doing syst_altpdf_Ai on " << pr << endl;      
+
+      TString hname =  	"ang_coeff_"+TString(run.c_str())+"_"+TString(xvar.c_str())+"_vs_absy_A_"+TString(pr[1]);
+      TH2D* h_nom = (TH2D*)fin_nom->Get(hname);    
+      if(h_nom==0){
+	cout << "Nominal histo not found. Continue." << endl;
+	return 0;
+      }
+      
+      // X-axis
+      int X_nbins  = h_nom->GetXaxis()->GetNbins();
+      double X_max = h_nom->GetXaxis()->GetXmax();
+      if(xf_max>0.){
+	X_nbins = h_nom->GetXaxis()->FindBin(xf_max);
+	X_max = h_nom->GetXaxis()->GetBinUpEdge(X_nbins);
+      }
+      double X_edges[X_nbins+1];
+      for(int ib = 0; ib<X_nbins; ib++) X_edges[ib] = h_nom->GetXaxis()->GetBinLowEdge(ib+1);
+      X_edges[X_nbins] = h_nom->GetXaxis()->GetBinUpEdge(X_nbins);
+      
+      // Y-axis
+      int Y_nbins  = h_nom->GetYaxis()->GetNbins();
+      double Y_max = h_nom->GetYaxis()->GetXmax();
+      if(yf_max>0.){
+	Y_nbins = h_nom->GetYaxis()->FindBin(yf_max);
+	Y_max = h_nom->GetYaxis()->GetBinUpEdge(Y_nbins);
+      }
+      double Y_edges[Y_nbins+1];
+      for(int ib = 0; ib<Y_nbins; ib++) Y_edges[ib] = h_nom->GetYaxis()->GetBinLowEdge(ib+1);
+      Y_edges[Y_nbins] = h_nom->GetYaxis()->GetBinUpEdge(Y_nbins) ;
+      
+      int nd = X_nbins*Y_nbins;
+      cout << "Total bins in acceptance: " << X_nbins << "*" << Y_nbins << " = " << nd << endl;
+      
+      TH2D* hstart = new TH2D("h_start", h_nom->GetTitle(), X_nbins, X_edges, Y_nbins, Y_edges );
+      TH1D* hinfo = new TH1D("h_info", "", 3, 0,3);
+      
+      TFile *fin_jac = TFile::Open(("fout_"+intag+".root").c_str(), "READ");
+      if(fin_jac==0){
+	cout << "Cannot find jac file" << endl;
+	return 0;
+      }
+      cout << "Jac file " << fin_jac->GetName() << " opened.";
+      TH1D* h_info = (TH1D*)fin_jac->Get(pr+"/h_info_"+pr);
+      int nfpx = h_info->GetBinContent(8);
+      int nfpy = h_info->GetBinContent(9);
+      int np   = nfpx*nfpy;
+      cout << " " << np << " parameters found" << endl;
+      
+      hinfo->SetBinContent(1, nd);
+      hinfo->SetBinContent(2, np);
+    
+      MatrixXd J = MatrixXd::Zero(nd,np);
+      MatrixXd V_inv_sqrt = MatrixXd::Zero(nd, nd);
+      VectorXd y(nd);
+      VectorXd y0(nd);
+      VectorXd y_err(nd);
+      
+      int counter = 0;
+      for(unsigned int idx=1; idx<=X_nbins; idx++){
+	for(unsigned int idy=1; idy<=Y_nbins; idy++){
+	  y0(counter)    = h_nom->GetBinContent(idx,idy);
+	  y_err(counter) = h_nom->GetBinError(idx,idy);
+	  for(unsigned int isyst=0; isyst<np; isyst++){	    
+	    TH2D* h_jac = (TH2D*)fin_jac->Get(pr+"/h_pdf2data_"+pr+"_jac"+TString(Form("%d", isyst)));
+	    J(counter,isyst) = h_jac->GetBinContent(idx,idy);
+	  }
+	  V_inv_sqrt(counter,counter) = 1.0/y_err(counter);
+	  hstart->SetBinContent(idx,idy,  y0(counter));
+	  hstart->SetBinError(idx,idy,  y_err(counter));
 	  counter++;
 	}
       }
 
-      MatrixXd A = V_inv_sqrt*J;
-      MatrixXd b = V_inv_sqrt*(y-y0);
-      VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
-      VectorXd delta = y-y0-J*x;
-      VectorXd pull  = b-A*x;
-      if(verbose) cout << delta << endl;
-      MatrixXd chi2start = b.transpose()*b;
-      MatrixXd chi2 = pull.transpose()*pull;
-      double chi2startval = chi2start(0,0);
-      double chi2val = chi2(0,0);
-      int ndof = y.size() - np;
-      cout <<  "Chi2 start = " << chi2startval << " --> chi2/ndof = " << chi2val << " / " << ndof << " = " << chi2val/ndof  << endl;
+      vector<TString> pdf_alt_names = {
+	"ct18",
+	"nnpdf40",
+	"mmht",
+	"ct18z",
+	"nnpdf30",
+	"nnpdf31",
+	"atlasWZj20",
+	"pdf4lhc21"	
+      };
 
-      TH2D* hdelta = (TH2D*)hdummy->Clone(Form("h_delta_%d",isyst));
-      TH2D* hpull  = (TH2D*)hdummy->Clone(Form("h_pull_%d",isyst));
-      TH2D* hratio = (TH2D*)hdummy->Clone(Form("h_ratio_%d",isyst));
-      TH2D* hdata  = (TH2D*)hdummy->Clone(Form("h_data_%d",isyst));
-      TH2D* hexp   = (TH2D*)hdummy->Clone(Form("h_exp_%d",isyst));
+      map<TString, string> altpdf_nom;
+      altpdf_nom.insert( std::make_pair<TString, string >("ct18", "pdf0CT18") );
+      altpdf_nom.insert( std::make_pair<TString, string >("nnpdf40", "pdf1NNPDF40") );
+      altpdf_nom.insert( std::make_pair<TString, string >("mmht", "pdf0MMHT") );
+      altpdf_nom.insert( std::make_pair<TString, string >("ct18z", "pdf0CT18Z") );
+      altpdf_nom.insert( std::make_pair<TString, string >("nnpdf30", "pdf1NNPDF30") );
+      altpdf_nom.insert( std::make_pair<TString, string >("nnpdf31", "pdf1NNPDF31") );
+      altpdf_nom.insert( std::make_pair<TString, string >("atlasWZj20", "pdf0ATLASWZJ20") );
+      altpdf_nom.insert( std::make_pair<TString, string >("pdf4lhc21", "pdf1PDF4LHC21") );
+      
+      hinfo->SetBinContent(3, pdf_alt_names.size());
 
-      int count_d = 0;
-      for(unsigned int idx = 0; idx<X_nbins; idx++){
-	for(unsigned int idy = 0; idy<Y_nbins; idy++){	
-	  hdelta->SetBinContent(idx+1,idy+1, delta(count_d));
-	  hpull->SetBinContent(idx+1,idy+1,  pull(count_d));
-	  hratio->SetBinContent(idx+1,idy+1, y(count_d)!=0. ? (y(count_d)-delta(count_d))/y(count_d) : 1.0 );	
-	  hratio->SetBinError(idx+1,idy+1, y(count_d)!=0. ? y_err(count_d)/y(count_d) : 0.0 );	
-	  hdata->SetBinContent(idx+1,idy+1,  y(count_d));
-	  hdata->SetBinError(idx+1,idy+1,  y_err(count_d));
-	  hexp->SetBinContent(idx+1,idy+1,  y(count_d)-delta(count_d));
-	  //double exp_err = (J.row(count_d)*W*J.row(count_d).transpose())(0,0);
-	  //hexp->SetBinError(idx+1,idy+1, exp_err>0. ? TMath::Sqrt(exp_err) : 0.0);
-	  count_d++;
+      TFile *fout = TFile::Open("fout_fit_altpdf_"+pr+"_"+TString(outtag.c_str())+".root", "RECREATE");
+
+      for(unsigned int isyst=0; isyst<pdf_alt_names.size(); isyst++){
+
+	TString iproc = pdf_alt_names[isyst];
+	TFile* fin_syst = TFile::Open( "/scratchnvme/tanmay/OutPut_2016/altpdf_files/pdf_"+iproc+"_vars_"+TString(xvar.c_str())+"_2dmap/pdf_"+iproc+"_vars_"+TString(xvar.c_str())+"_2dmap.root", "READ");
+	if(fin_syst==0){
+	  cout << "Cannot find syst file" << endl;
+	  continue;
 	}
+
+	TH2D* hdummy = new TH2D(Form("hdummy_%d",isyst), iproc+";q_{T}/Q or q_{T};|y|", X_nbins, X_edges, Y_nbins, Y_edges );
+
+	TString hname = "ang_coeff_"+TString(run.c_str())+"_"+TString(xvar.c_str())+"_vs_absy_"+TString(altpdf_nom[iproc].c_str())+"_A_"+TString(pr[1]);
+	TH2D* h_syst = (TH2D*)fin_syst->Get( hname );    
+	if(h_syst==0){
+	  cout << "Histo not found. Continue." << endl;
+	  continue;
+	}
+	cout << "Histo " << h_syst->GetName() << " found" << endl;
+
+	counter = 0;
+	for(unsigned int idx=1; idx<=X_nbins; idx++){
+	  for(unsigned int idy=1; idy<=Y_nbins; idy++){
+	    y(counter)  = h_syst->GetBinContent(idx,idy);
+	    counter++;
+	  }
+	}
+	
+	MatrixXd A = V_inv_sqrt*J;
+	MatrixXd b = V_inv_sqrt*(y-y0);
+	VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
+	VectorXd delta = y-y0-J*x;
+	VectorXd pull  = b-A*x;
+	if(verbose) cout << delta << endl;
+	MatrixXd chi2start = b.transpose()*b;
+	MatrixXd chi2 = pull.transpose()*pull;
+	double chi2startval = chi2start(0,0);
+	double chi2val = chi2(0,0);
+	int ndof = y.size() - np;
+	cout <<  "Chi2 start = " << chi2startval << " --> chi2/ndof = " << chi2val << " / " << ndof << " = " << chi2val/ndof  << endl;
+
+	TH2D* hdelta = (TH2D*)hdummy->Clone(Form("h_delta_%d",isyst));
+	TH2D* hpull  = (TH2D*)hdummy->Clone(Form("h_pull_%d",isyst));
+	TH2D* hratio = (TH2D*)hdummy->Clone(Form("h_ratio_%d",isyst));
+	TH2D* hdata  = (TH2D*)hdummy->Clone(Form("h_data_%d",isyst));
+	TH2D* hexp   = (TH2D*)hdummy->Clone(Form("h_exp_%d",isyst));
+
+	int count_d = 0;
+	for(unsigned int idx = 0; idx<X_nbins; idx++){
+	  for(unsigned int idy = 0; idy<Y_nbins; idy++){	
+	    hdelta->SetBinContent(idx+1,idy+1, delta(count_d));
+	    hpull->SetBinContent(idx+1,idy+1,  pull(count_d));
+	    hratio->SetBinContent(idx+1,idy+1, y(count_d)!=0. ? (y(count_d)-delta(count_d))/y(count_d) : 1.0 );	
+	    hratio->SetBinError(idx+1,idy+1, y(count_d)!=0. ? y_err(count_d)/y(count_d) : 0.0 );	
+	    hdata->SetBinContent(idx+1,idy+1,  y(count_d));
+	    hdata->SetBinError(idx+1,idy+1,  y_err(count_d));
+	    hexp->SetBinContent(idx+1,idy+1,  y(count_d)-delta(count_d));
+	    //double exp_err = (J.row(count_d)*W*J.row(count_d).transpose())(0,0);
+	    //hexp->SetBinError(idx+1,idy+1, exp_err>0. ? TMath::Sqrt(exp_err) : 0.0);
+	    count_d++;
+	  }
+	}
+
+	fout->cd();
+	hpull->Write();
+	hratio->Write();
+	hdelta->Write();
+	hdata->Write();
+	hexp->Write();    
+	fin_syst->Close();
       }
+	    
       fout->cd();
-      hpull->Write();
-      hratio->Write();
-      hdelta->Write();
-      hdata->Write();
-      hexp->Write();    
+      hinfo->Write();
+      hstart->Write();    
+      fout->Close();
     }
 
-    hinfo->Write();
-    hstart->Write();
     
-    fout->Close();
+    fin_nom->Close();
     return 0;
   }
 
