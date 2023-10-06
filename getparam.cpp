@@ -222,8 +222,9 @@ int main(int argc, char* argv[])
   if(doA4) proc.emplace_back("A4");
 
   if(runfit){
-
-    TFile* fin_nom  = TFile::Open("root/file_qtbyQ_and_qt_vs_absy_v3.root", "READ");
+						    
+    //TFile* fin_nom  = TFile::Open("root/file_qtbyQ_and_qt_vs_absy_v3.root", "READ");
+    TFile* fin_nom  = TFile::Open(("/scratchnvme/tanmay/OutPut_2016/Final_Uses/Plot_root_Files_ang_coeff_"+xvar+"_2d/root_files_ang_coeff_"+xvar+"_2d.root").c_str(), "READ");
     if(fin_nom==0){
       cout << "Cannot find nominal file" << endl;
       return 0;
@@ -234,7 +235,8 @@ int main(int argc, char* argv[])
       
       cout << "Doing syst_scet_UL on UL" << endl;
       
-      TString hname =  run2+(xvar=="qtbyQ" ? "_ptqVgen" : "_ptVgen")+"_2d_absY_vs_"+TString(xvar.c_str())+"_differential_ul";
+      //TString hname =  run2+(xvar=="qtbyQ" ? "_ptqVgen" : "_ptVgen")+"_2d_absY_vs_"+TString(xvar.c_str())+"_differential_ul";
+      TString hname =  "ul_"+TString(run.c_str())+"_2d_"+TString(xvar.c_str())+"_vs_absy";
       TH2D* h_nom = (TH2D*)fin_nom->Get(hname);    
       if(h_nom==0){
 	cout << "Nominal histo not found. Continue." << endl;
@@ -364,7 +366,7 @@ int main(int argc, char* argv[])
 	
 	TString iproc = scetlib_syst_names[isyst];
 	TH2D* hdummy = new TH2D(Form("hdummy_%d",isyst), iproc+";q_{T}/Q or q_{T};|y|", X_nbins, X_edges, Y_nbins, Y_edges );
-	  
+
 	TH2D* h_syst = (TH2D*)fin_syst->Get("ul_"+run+"_2d_"+TString(xvar.c_str())+"_vs_absy_scetvar_"+iproc );    
 	if(h_syst==0){
 	  cout << "Histo not found. Continue." << endl;
@@ -443,7 +445,8 @@ int main(int argc, char* argv[])
       TString pr = proc[1];
       cout << "Doing syst_pdf_Ai on " << pr << endl;      
 
-      TString hname =  	"ang_coeff_"+TString(run.c_str())+"_"+TString(xvar.c_str())+"_vs_absy_A_"+TString(pr[1]);
+      //TString hname =  "ang_coeff_"+TString(run.c_str())+"_"+TString(xvar.c_str())+"_vs_absy_A_"+TString(pr[1]);
+      TString hname =  	"ang_coeff_"+TString(run.c_str())+"_2d_"+TString(xvar.c_str())+"_vs_absy_A_"+TString(pr[1]);
       TH2D* h_nom = (TH2D*)fin_nom->Get(hname);    
       if(h_nom==0){
 	cout << "Nominal histo not found. Continue." << endl;
@@ -608,7 +611,8 @@ int main(int argc, char* argv[])
       TString pr = proc[1];
       cout << "Doing syst_scale_Ai on " << pr << endl;      
 
-      TString hname =  	"ang_coeff_"+TString(run.c_str())+"_"+TString(xvar.c_str())+"_vs_absy_A_"+TString(pr[1]);
+      //TString hname =  "ang_coeff_"+TString(run.c_str())+"_"+TString(xvar.c_str())+"_vs_absy_A_"+TString(pr[1]);
+      TString hname =  "ang_coeff_"+TString(run.c_str())+"_2d_"+TString(xvar.c_str())+"_vs_absy_A_"+TString(pr[1]);
       TH2D* h_nom = (TH2D*)fin_nom->Get(hname);    
       if(h_nom==0){
 	cout << "Nominal histo not found. Continue." << endl;
@@ -775,7 +779,8 @@ int main(int argc, char* argv[])
       TString pr = proc[1];
       cout << "Doing syst_altpdf_Ai on " << pr << endl;      
 
-      TString hname =  	"ang_coeff_"+TString(run.c_str())+"_"+TString(xvar.c_str())+"_vs_absy_A_"+TString(pr[1]);
+      //TString hname =  "ang_coeff_"+TString(run.c_str())+"_"+TString(xvar.c_str())+"_vs_absy_A_"+TString(pr[1]);
+      TString hname =  	"ang_coeff_"+TString(run.c_str())+"_2d_"+TString(xvar.c_str())+"_vs_absy_A_"+TString(pr[1]);
       TH2D* h_nom = (TH2D*)fin_nom->Get(hname);    
       if(h_nom==0){
 	cout << "Nominal histo not found. Continue." << endl;
@@ -948,8 +953,7 @@ int main(int argc, char* argv[])
       hstart->Write();    
       fout->Close();
     }
-
-    
+   
     fin_nom->Close();
     return 0;
   }
@@ -984,8 +988,9 @@ int main(int argc, char* argv[])
     }
     f->Close();
   }
-  
-  TFile* fin = TFile::Open(TString("root/file_qtbyQ_and_qt_vs_absy_v3")+(debug ? "_debug.root" : ".root"), "READ");
+
+  //TFile* fin = TFile::Open(TString("root/file_qtbyQ_and_qt_vs_absy_v3")+(debug ? "_debug.root" : ".root"), "READ");
+  TFile* fin  = TFile::Open(("/scratchnvme/tanmay/OutPut_2016/Final_Uses/Plot_root_Files_ang_coeff_"+xvar+"_2d/root_files_ang_coeff_"+xvar+"_2d.root").c_str(), "READ");
   if(fin==0 || fin==nullptr || fin->IsZombie()){
     cout << "File NOT found" << endl;
     return 0;
@@ -1039,9 +1044,13 @@ int main(int argc, char* argv[])
 
     TString iproc = proc[i];
     cout << "Doing proc " << iproc << endl;
+    //TString hname = iproc=="UL" ?
+    //run2+(xvar=="qtbyQ" ? "_ptqVgen" : "_ptVgen")+"_2d_absY_vs_"+TString(xvar.c_str())+"_differential_ul" :
+    //"ang_coeff_"+TString(run.c_str())+"_qtbyQ_vs_absy_A_"+TString(iproc[1]);
     TString hname = iproc=="UL" ?
-      run2+(xvar=="qtbyQ" ? "_ptqVgen" : "_ptVgen")+"_2d_absY_vs_"+TString(xvar.c_str())+"_differential_ul" :
-      "ang_coeff_"+TString(run.c_str())+"_qtbyQ_vs_absy_A_"+TString(iproc[1]);
+      "ul_"+TString(run.c_str())+"_2d_"+TString(xvar.c_str())+"_vs_absy" :
+      "ang_coeff_"+TString(run.c_str())+"_2d_"+TString(xvar.c_str())+"_vs_absy_A_"+TString(iproc[1]);
+    
     TH2D* h = (TH2D*)fin->Get(hname);    
     if(h==0){
       cout << "Histo not found. Continue." << endl;
@@ -1074,8 +1083,6 @@ int main(int argc, char* argv[])
     double X_scale  = (X_max-X_min)*0.5;
     double X_offset = (X_max+X_min)*0.5;
     double X_edges[X_nbins+1];
-    //for(int ib = 0; ib<X_nbins; ib++) X_edges[ib] = (h->GetXaxis()->GetBinLowEdge(ib+1)+X_min)/X_range;
-    //X_edges[X_nbins] = (h->GetXaxis()->GetBinUpEdge(X_nbins)+X_min)/X_range;
     for(int ib = 0; ib<X_nbins; ib++) X_edges[ib] = h->GetXaxis()->GetBinLowEdge(ib+1);
     X_edges[X_nbins] = h->GetXaxis()->GetBinUpEdge(X_nbins);
     if(verbose) cout << "X_edges: ";
@@ -1093,8 +1100,6 @@ int main(int argc, char* argv[])
     double Y_scale  = (Y_max-Y_min)*0.5;
     double Y_offset = (Y_max+Y_min)*0.5;
     double Y_edges[Y_nbins+1];
-    //for(int ib = 0; ib<Y_nbins; ib++) Y_edges[ib] = (h->GetYaxis()->GetBinLowEdge(ib+1)+Y_min)/Y_range;
-    //Y_edges[Y_nbins] = (h->GetYaxis()->GetBinUpEdge(Y_nbins)+Y_min)/Y_range;
     for(int ib = 0; ib<Y_nbins; ib++) Y_edges[ib] = h->GetYaxis()->GetBinLowEdge(ib+1);
     Y_edges[Y_nbins] = h->GetYaxis()->GetBinUpEdge(Y_nbins) ;
     if(verbose) cout << "Y_edges: ";
