@@ -188,7 +188,7 @@ procs = {
 }
 
 #allowed_procs = ["UL","A0","A1","A2","A3","A4"]
-allowed_procs = ["A4"]
+allowed_procs = ["UL"]
 
 xf_max_str = ("%.2f" % args.xf_max).replace('.', 'p')
 yf_max_str = ("%.2f" % args.yf_max).replace('.', 'p')
@@ -366,7 +366,7 @@ def plot_fitres(ifnames, isyst="scale"):
     c = ROOT.TCanvas("c", "canvas", 1200, 600)
     c.Divide(2,1)
     do_pull = False
-    if ifnames[0] in ["A0", "A1", "A2", "A3", "A4"]:
+    if ifnames[0] in ["UL","A0", "A1", "A2", "A3", "A4"]:
         do_pull = True
     for i in range(0, int(ns)):        
         print("Doing %s" % i)
@@ -417,6 +417,7 @@ def plot_fitres(ifnames, isyst="scale"):
             c.SaveAs(outname)
         else:
             input()
+    fin.Close()
     return
         
 def run_one_opt(procs,iproc,opt):
@@ -509,4 +510,4 @@ if __name__ == '__main__':
         elif args.algo=='plot_fitres':
             for [proc,fname] in fnames:
                 #print(fname, proc)
-                plot_fitres([proc,fname])
+                plot_fitres([proc,fname], 'altpdf')

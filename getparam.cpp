@@ -116,11 +116,9 @@ int main(int argc, char* argv[])
       	("runfit",   bool_switch()->default_value(false), "")
       	("verbose",   bool_switch()->default_value(false), "")
 	("syst_scet_UL",   bool_switch()->default_value(false), "")
-	("syst_pdf_UL",   bool_switch()->default_value(false), "")
-	("syst_pdf_Ai",   bool_switch()->default_value(false), "")
+	("syst_pdf",   bool_switch()->default_value(false), "")
 	("syst_scale_Ai",   bool_switch()->default_value(false), "")
-	("syst_altpdf_UL",   bool_switch()->default_value(false), "")
-	("syst_altpdf_Ai",   bool_switch()->default_value(false), "")
+	("syst_altpdf",   bool_switch()->default_value(false), "")
 	("debug",   bool_switch()->default_value(false), "");
       
       store(parse_command_line(argc, argv, desc), vm);
@@ -151,11 +149,9 @@ int main(int argc, char* argv[])
   int verbose      = vm["verbose"].as<bool>();
 
   int syst_scet_UL   = vm["syst_scet_UL"].as<bool>();
-  int syst_pdf_UL    = vm["syst_pdf_UL"].as<bool>();
-  int syst_pdf_Ai    = vm["syst_pdf_Ai"].as<bool>();
+  int syst_pdf    = vm["syst_pdf"].as<bool>();
   int syst_scale_Ai  = vm["syst_scale_Ai"].as<bool>();
-  int syst_altpdf_UL = vm["syst_altpdf_UL"].as<bool>();
-  int syst_altpdf_Ai = vm["syst_altpdf_Ai"].as<bool>();
+  int syst_altpdf = vm["syst_altpdf"].as<bool>();
   
   int runfit       = vm["runfit"].as<bool>();
   int interpolate  = vm["interpolate"].as<bool>();
@@ -431,22 +427,15 @@ int main(int argc, char* argv[])
       fout->Close();
     }
 
-    // pdf variations on UL
-    if(syst_pdf_UL){
-      cout << "Doing syst_pdf_UL for UL" << endl;            
-    }
+    if(syst_pdf){
 
-    if(syst_altpdf_UL){
-      cout << "Doing syst_altpdf_UL for UL" << endl;            
-    }
+      TString pr = proc.size()>1 ?  proc[1] : proc[0];
+      cout << "Doing syst_pdf on " << pr << endl;      
 
-    if(syst_pdf_Ai){
-
-      TString pr = proc[1];
-      cout << "Doing syst_pdf_Ai on " << pr << endl;      
-
-      //TString hname =  "ang_coeff_"+TString(run.c_str())+"_"+TString(xvar.c_str())+"_vs_absy_A_"+TString(pr[1]);
-      TString hname =  	"ang_coeff_"+TString(run.c_str())+"_2d_"+TString(xvar.c_str())+"_vs_absy_A_"+TString(pr[1]);
+      TString hname = "ang_coeff_"+TString(run.c_str())+"_2d_"+TString(xvar.c_str())+"_vs_absy_A_"+TString(pr[1]);
+      if(pr=="UL")
+	hname =  "ul_"+TString(run.c_str())+"_2d_"+TString(xvar.c_str())+"_vs_absy";
+      
       TH2D* h_nom = (TH2D*)fin_nom->Get(hname);    
       if(h_nom==0){
 	cout << "Nominal histo not found. Continue." << endl;
@@ -518,19 +507,22 @@ int main(int argc, char* argv[])
 	}
       }
       
-      TFile* fin_syst = TFile::Open( ("/scratchnvme/tanmay/OutPut_2016/altpdf_files/pdf_mmht_vars_"+xvar+"_2dmap/pdf_mmht_vars_"+xvar+"_2dmap.root").c_str(), "READ");
+      TFile* fin_syst = TFile::Open( ("/scratchnvme/tanmay/OutPut_2016/Final_Uses/Plot_root_Files_ang_coeff_"+xvar+"_pdf_msht20_vars_2d/root_files_ang_coeff_"+xvar+"_pdf_msht20_vars_2d.root").c_str(), "READ");
       if(fin_syst==0){
 	cout << "Cannot find syst file" << endl;
 	return 0;
       }
 
       vector<TString> pdf_syst_names = {
-	"pdf0MMHT"
+	"pdf0MSHT20"
       };
-      for(int s = 1; s<=25; s++){
-	pdf_syst_names.emplace_back(TString( Form("pdf%dMMHTDown", s) ));
-	pdf_syst_names.emplace_back(TString( Form("pdf%dMMHTUp", s) ));
+      for(int s = 1; s<=32; s++){
+	pdf_syst_names.emplace_back(TString( Form("pdf%dMSHT20Down", s) ));
+	pdf_syst_names.emplace_back(TString( Form("pdf%dMSHT20Up", s) ));
       }
+      pdf_syst_names.emplace_back("as0116");
+      pdf_syst_names.emplace_back("as0120");
+      
       hinfo->SetBinContent(3, pdf_syst_names.size());
 
       TFile *fout = TFile::Open("fout_fit_pdf_"+pr+"_"+TString(outtag.c_str())+".root", "RECREATE");
@@ -540,10 +532,13 @@ int main(int argc, char* argv[])
 	TString iproc = pdf_syst_names[isyst];
 	TH2D* hdummy = new TH2D(Form("hdummy_%d",isyst), iproc+";q_{T}/Q or q_{T};|y|", X_nbins, X_edges, Y_nbins, Y_edges );
 
-	TString hname = "ang_coeff_"+TString(run.c_str())+"_"+TString(xvar.c_str())+"_vs_absy_"+iproc+"_A_"+TString(pr[1]);
+	TString hname = "ang_coeff_"+TString(run.c_str())+"_2d_"+TString(xvar.c_str())+"_vs_absy_"+iproc+"_A_"+TString(pr[1]);
+	if(pr=="UL")
+	  hname = "ul_"+TString(run.c_str())+"_2d_"+TString(xvar.c_str())+"_vs_absy_"+iproc;
+
 	TH2D* h_syst = (TH2D*)fin_syst->Get( hname );    
 	if(h_syst==0){
-	  cout << "Histo not found. Continue." << endl;
+	  cout << "Histo " << hname << " not found. Continue." << endl;
 	  continue;
 	}
 	cout << "Histo " << h_syst->GetName() << " found" << endl;
@@ -774,13 +769,15 @@ int main(int argc, char* argv[])
       fout->Close();
     }
 
-    if(syst_altpdf_Ai){
+    if(syst_altpdf){
 
-      TString pr = proc[1];
-      cout << "Doing syst_altpdf_Ai on " << pr << endl;      
+      TString pr = proc.size()>1 ?  proc[1] : proc[0];
+      cout << "Doing syst_altpdf on " << pr << endl;      
 
-      //TString hname =  "ang_coeff_"+TString(run.c_str())+"_"+TString(xvar.c_str())+"_vs_absy_A_"+TString(pr[1]);
-      TString hname =  	"ang_coeff_"+TString(run.c_str())+"_2d_"+TString(xvar.c_str())+"_vs_absy_A_"+TString(pr[1]);
+      TString hname = "ang_coeff_"+TString(run.c_str())+"_2d_"+TString(xvar.c_str())+"_vs_absy_A_"+TString(pr[1]);
+      if(pr=="UL")
+	hname =  "ul_"+TString(run.c_str())+"_2d_"+TString(xvar.c_str())+"_vs_absy";
+
       TH2D* h_nom = (TH2D*)fin_nom->Get(hname);    
       if(h_nom==0){
 	cout << "Nominal histo not found. Continue." << endl;
@@ -854,24 +851,24 @@ int main(int argc, char* argv[])
 
       vector<TString> pdf_alt_names = {
 	"ct18",
-	"nnpdf40",
-	"mmht",
-	"ct18z",
-	"nnpdf30",
-	"nnpdf31",
-	"atlasWZj20",
-	"pdf4lhc21"	
+	//"nnpdf40",
+	//"mmht",
+	//"ct18z",
+	//"nnpdf30",
+	//"nnpdf31",
+	//"atlasWZj20",
+	//"pdf4lhc21"	
       };
 
-      map<TString, string> altpdf_nom;
+      map<TString, TString> altpdf_nom;
       altpdf_nom.insert( std::make_pair<TString, string >("ct18", "pdf0CT18") );
-      altpdf_nom.insert( std::make_pair<TString, string >("nnpdf40", "pdf1NNPDF40") );
-      altpdf_nom.insert( std::make_pair<TString, string >("mmht", "pdf0MMHT") );
-      altpdf_nom.insert( std::make_pair<TString, string >("ct18z", "pdf0CT18Z") );
-      altpdf_nom.insert( std::make_pair<TString, string >("nnpdf30", "pdf1NNPDF30") );
-      altpdf_nom.insert( std::make_pair<TString, string >("nnpdf31", "pdf1NNPDF31") );
-      altpdf_nom.insert( std::make_pair<TString, string >("atlasWZj20", "pdf0ATLASWZJ20") );
-      altpdf_nom.insert( std::make_pair<TString, string >("pdf4lhc21", "pdf1PDF4LHC21") );
+      //altpdf_nom.insert( std::make_pair<TString, string >("nnpdf40", "pdf1NNPDF40") );
+      //altpdf_nom.insert( std::make_pair<TString, string >("mmht", "pdf0MMHT") );
+      //altpdf_nom.insert( std::make_pair<TString, string >("ct18z", "pdf0CT18Z") );
+      //altpdf_nom.insert( std::make_pair<TString, string >("nnpdf30", "pdf1NNPDF30") );
+      //altpdf_nom.insert( std::make_pair<TString, string >("nnpdf31", "pdf1NNPDF31") );
+      //altpdf_nom.insert( std::make_pair<TString, string >("atlasWZj20", "pdf0ATLASWZJ20") );
+      //altpdf_nom.insert( std::make_pair<TString, string >("pdf4lhc21", "pdf1PDF4LHC21") );
       
       hinfo->SetBinContent(3, pdf_alt_names.size());
 
@@ -879,8 +876,8 @@ int main(int argc, char* argv[])
 
       for(unsigned int isyst=0; isyst<pdf_alt_names.size(); isyst++){
 
-	TString iproc = pdf_alt_names[isyst];
-	TFile* fin_syst = TFile::Open( "/scratchnvme/tanmay/OutPut_2016/altpdf_files/pdf_"+iproc+"_vars_"+TString(xvar.c_str())+"_2dmap/pdf_"+iproc+"_vars_"+TString(xvar.c_str())+"_2dmap.root", "READ");
+	TString iproc = pdf_alt_names[isyst];	
+	TFile* fin_syst = TFile::Open( "/scratchnvme/tanmay/OutPut_2016/Final_Uses/Plot_root_Files_ang_coeff_"+TString(xvar.c_str())+"_pdf_"+iproc+"_vars_2d/root_files_ang_coeff_"+TString(xvar.c_str())+"_pdf_"+iproc+"_vars_2d.root", "READ");
 	if(fin_syst==0){
 	  cout << "Cannot find syst file" << endl;
 	  continue;
@@ -888,7 +885,10 @@ int main(int argc, char* argv[])
 
 	TH2D* hdummy = new TH2D(Form("hdummy_%d",isyst), iproc+";q_{T}/Q or q_{T};|y|", X_nbins, X_edges, Y_nbins, Y_edges );
 
-	TString hname = "ang_coeff_"+TString(run.c_str())+"_"+TString(xvar.c_str())+"_vs_absy_"+TString(altpdf_nom[iproc].c_str())+"_A_"+TString(pr[1]);
+	TString hname = "ang_coeff_"+TString(run.c_str())+"_2d_"+TString(xvar.c_str())+"_vs_absy_"+altpdf_nom[iproc]+"_A_"+TString(pr[1]);
+	if(pr=="UL")
+	  hname = "ul_"+TString(run.c_str())+"_2d_"+TString(xvar.c_str())+"_vs_absy_"+altpdf_nom[iproc];
+
 	TH2D* h_syst = (TH2D*)fin_syst->Get( hname );    
 	if(h_syst==0){
 	  cout << "Histo not found. Continue." << endl;
