@@ -190,6 +190,11 @@ procs = {
 #allowed_procs = ["UL","A0","A1","A2","A3","A4"]
 allowed_procs = ["A4"]
 
+xf_max_str = ("%.2f" % args.xf_max).replace('.', 'p')
+yf_max_str = ("%.2f" % args.yf_max).replace('.', 'p')
+#print(xf_max_str)
+#print(yf_max_str)
+
 def plot_pvals(fnames=[], metric="pvals", proc="wp"):
     ROOT.gStyle.SetPadRightMargin(0.15)
     histo = ROOT.TH2D('histo_pvals', '', 15, 0,15,15,0,15)
@@ -345,7 +350,75 @@ def plot_pulls(ifnames):
         c.SaveAs(outname)
     else:
         input()
+    return
 
+
+def plot_fitres(ifnames, isyst="scale"):
+    print(ifnames[0],ifnames[1])
+    dx = ifnames[1].split('_')[2].replace('x', 'd_{x}=')
+    dy = ifnames[1].split('_')[3].replace('y', 'd_{y}=')
+    print(dx+' '+dy)
+    fin = ROOT.TFile('fout_fit_'+isyst+'_'+ifnames[0]+'_x'+xf_max_str+'_y'+yf_max_str+'_'+ifnames[1]+'.root', 'READ')        
+    print(fin.GetName())
+    hinfo = fin.Get("h_info")
+    hstart = fin.Get("h_start")
+    ns = hinfo.GetBinContent(3)
+    c = ROOT.TCanvas("c", "canvas", 1200, 600)
+    c.Divide(2,1)
+    do_pull = False
+    if ifnames[0] in ["A0", "A1", "A2", "A3", "A4"]:
+        do_pull = True
+    for i in range(0, int(ns)):        
+        print("Doing %s" % i)
+        if do_pull:
+            e_i = fin.Get(("h_pull_%s" % i))
+            d_i = fin.Get(("h_data_%s" % i))            
+            d_i_clone = d_i.Clone(("h_data_%s_copy"%i))
+            for ix in range(1, d_i_clone.GetXaxis().GetNbins()+1):
+                for iy in range(1, d_i_clone.GetYaxis().GetNbins()+1):
+                    pull = (d_i.GetBinContent(ix,iy) - hstart.GetBinContent(ix,iy))/hstart.GetBinError(ix,iy)
+                    d_i_clone.SetBinContent(ix,iy, pull )
+            d_i_clone.SetMinimum(-3)
+            d_i_clone.SetMaximum(+3)
+            d_i_clone.SetStats(0)
+            d_i_clone.SetTitle(ifnames[0]+", "+isyst+" "+d_i_clone.GetTitle()+": pre-fit")
+            c.cd(1)	
+            d_i_clone.Draw("colz")				  
+            e_i.SetStats(0)
+            e_i.SetMinimum(-3)
+            e_i.SetMaximum(+3)
+            c.cd(2)
+            ROOT.gStyle.SetPadRightMargin(0.15)
+            e_i.SetTitle(ifnames[0]+", "+isyst+" "+e_i.GetTitle()+": post-fit "+dx+", "+dy)
+            e_i.Draw("COLZ")
+        else:
+            e_i = fin.Get(("h_exp_%s" % i))
+            d_i = fin.Get(("h_data_%s" % i))
+            d_i_clone = d_i.Clone(("h_data_%s_copy" % i))
+            d_i_clone.Divide(hstart)
+            d_i_clone.SetMinimum(0.5)
+            d_i_clone.SetMaximum(1.5)
+            d_i_clone.SetStats(0)
+            d_i_clone.SetTitle(ifnames[0]+", "+isyst+" "+d_i_clone.GetTitle()+": pre-fit")
+            c.cd(1)
+            d_i_clone.Draw("colz")
+            e_i.Divide(d_i)
+            e_i.SetStats(0)
+            e_i.SetMinimum(0.95)
+            e_i.SetMaximum(1.05)
+            c.cd(2)
+            ROOT.gStyle.SetPadRightMargin(0.15)
+            e_i.SetTitle(ifnames[0]+", "+isyst+" "+e_i.GetTitle()+": post-fit "+dx+", "+dy)
+            e_i.Draw("COLZ")
+        outname = "plots/"+isyst+"_var"+str(i)+"_"+ifnames[0]+'_x'+xf_max_str+'_y'+yf_max_str+'_'+ifnames[1]+'.png'
+        print(outname)
+        if args.batch:
+            print('Saving image as '+outname)
+            c.SaveAs(outname)
+        else:
+            input()
+    return
+        
 def run_one_opt(procs,iproc,opt):
         for dx in procs[iproc]['deg_x']:
             for dy in procs[iproc]['deg_y']:
@@ -356,11 +429,7 @@ def run_one_opt(procs,iproc,opt):
                 else:
                     os.system(command)
 
-xf_max_str = ("%.2f" % args.xf_max).replace('.', 'p')
-yf_max_str = ("%.2f" % args.yf_max).replace('.', 'p')
-#print(xf_max_str)
-#print(yf_max_str)
-
+                    
 def run_one_opt_jac(procs,iproc,opt):
         for dx in procs[iproc]['fit_deg_x']:
             for dy in procs[iproc]['fit_deg_y']:
@@ -396,7 +465,7 @@ def run_all(procs):
         if iproc not in allowed_procs:
             continue
         for opt in procs[iproc]['opts'].keys():
-            if args.mt:
+            if args.algo=='run' and args.mt:
                 if args.jac:
                     p = Process(target=run_one_opt_jac, args=(procs,iproc,opt))
                     p.start()
@@ -409,20 +478,12 @@ def run_all(procs):
                     p = Process(target=run_one_opt, args=(procs,iproc,opt))
                     p.start()
                     ps.append(p)
-                continue
-            for dx in procs[iproc][('fit_' if args.jac else '')+'deg_x']:
-                for dy in procs[iproc][('fit_' if args.jac else '')+'deg_y']:
+                #continue
+            for dx in procs[iproc][('fit_' if (args.jac or args.fit or args.algo=='plot_fitres') else '')+'deg_x']:
+                for dy in procs[iproc][('fit_' if (args.jac or args.fit or args.algo=='plot_fitres') else '')+'deg_y']:
                     fname = procs[iproc]['opts'][opt]['tag']+'_x'+str(dx)+'_y'+str(dy)
                     counter += 1
-                    if args.algo=='run':
-                        if args.jac:
-                            run_one_opt_jac(procs,iproc,opt)
-                        elif args.fit:
-                            run_one_opt_fit(procs,iproc,opt)
-                        else:
-                            run_one_opt(procs,iproc,opt)
-                    elif args.algo=='plot':
-                        fnames.append([iproc,fname])
+                    fnames.append([iproc,fname])
     if args.algo=='run' and args.mt:    
         for p in ps: 
             p.join()
@@ -432,11 +493,20 @@ def run_all(procs):
 
 if __name__ == '__main__':    
     fnames = run_all(procs)
-    if args.algo=='plot':
-        for iproc in procs.keys():
-            if iproc not in allowed_procs:
-                continue
-            for opt in procs[iproc]['opts'].keys():
-                fname = procs[iproc]['opts'][opt]['tag']+'_x'+str(procs[iproc]['opts'][opt]['nom_deg_x'])+'_y'+str(procs[iproc]['opts'][opt]['nom_deg_y'])
-                proc = iproc
-                plot_pulls([proc,fname])
+    if 'plot' in args.algo:
+        if args.algo=='plot_pvals':
+            plot_pvals(fnames, 'pvals', 'wp')
+            plot_pvals(fnames, 'pvals', 'wm')
+            plot_pvals(fnames, 'pvals', 'z')
+        elif args.algo=='plot_pulls':
+            for iproc in procs.keys():
+                if iproc not in allowed_procs:
+                    continue
+                for opt in procs[iproc]['opts'].keys():
+                    fname = procs[iproc]['opts'][opt]['tag']+'_x'+str(procs[iproc]['opts'][opt]['nom_deg_x'])+'_y'+str(procs[iproc]['opts'][opt]['nom_deg_y'])
+                    proc = iproc
+                    plot_pulls([proc,fname])
+        elif args.algo=='plot_fitres':
+            for [proc,fname] in fnames:
+                #print(fname, proc)
+                plot_fitres([proc,fname])
