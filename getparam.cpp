@@ -115,9 +115,9 @@ int main(int argc, char* argv[])
 	("saveSyst",  bool_switch()->default_value(false), "")
       	("runfit",   bool_switch()->default_value(false), "")
       	("verbose",   bool_switch()->default_value(false), "")
-	("syst_scet_UL",   bool_switch()->default_value(false), "")
+	("syst_scet",   bool_switch()->default_value(false), "")
 	("syst_pdf",   bool_switch()->default_value(false), "")
-	("syst_scale_Ai",   bool_switch()->default_value(false), "")
+	("syst_scale",   bool_switch()->default_value(false), "")
 	("syst_altpdf",   bool_switch()->default_value(false), "")
 	("debug",   bool_switch()->default_value(false), "");
       
@@ -148,9 +148,9 @@ int main(int argc, char* argv[])
   
   int verbose      = vm["verbose"].as<bool>();
 
-  int syst_scet_UL   = vm["syst_scet_UL"].as<bool>();
+  int syst_scet   = vm["syst_scet"].as<bool>();
   int syst_pdf    = vm["syst_pdf"].as<bool>();
-  int syst_scale_Ai  = vm["syst_scale_Ai"].as<bool>();
+  int syst_scale  = vm["syst_scale"].as<bool>();
   int syst_altpdf = vm["syst_altpdf"].as<bool>();
   
   int runfit       = vm["runfit"].as<bool>();
@@ -227,9 +227,9 @@ int main(int argc, char* argv[])
     }
     
     // scetlib variations on UL
-    if(syst_scet_UL){
+    if(syst_scet){
       
-      cout << "Doing syst_scet_UL on UL" << endl;
+      cout << "Doing syst_scet on UL" << endl;
       
       //TString hname =  run2+(xvar=="qtbyQ" ? "_ptqVgen" : "_ptVgen")+"_2d_absY_vs_"+TString(xvar.c_str())+"_differential_ul";
       TString hname =  "ul_"+TString(run.c_str())+"_2d_"+TString(xvar.c_str())+"_vs_absy";
@@ -601,13 +601,16 @@ int main(int argc, char* argv[])
       fout->Close();
     }
 
-    if(syst_scale_Ai){
+    if(syst_scale){
 
-      TString pr = proc[1];
-      cout << "Doing syst_scale_Ai on " << pr << endl;      
+      TString pr = proc.size()>1 ?  proc[1] : proc[0];
+      cout << "Doing syst_scale on " << pr << endl;      
 
       //TString hname =  "ang_coeff_"+TString(run.c_str())+"_"+TString(xvar.c_str())+"_vs_absy_A_"+TString(pr[1]);
       TString hname =  "ang_coeff_"+TString(run.c_str())+"_2d_"+TString(xvar.c_str())+"_vs_absy_A_"+TString(pr[1]);
+      if(pr=="UL")
+	hname =  "ul_"+TString(run.c_str())+"_2d_"+TString(xvar.c_str())+"_vs_absy";
+
       TH2D* h_nom = (TH2D*)fin_nom->Get(hname);    
       if(h_nom==0){
 	cout << "Nominal histo not found. Continue." << endl;
@@ -705,6 +708,9 @@ int main(int argc, char* argv[])
 	TH2D* hdummy = new TH2D(Form("hdummy_%d",isyst), iproc+";q_{T}/Q or q_{T};|y|", X_nbins, X_edges, Y_nbins, Y_edges );
 
 	TString hname = "ang_coeff_"+TString(run.c_str())+"_2d_"+TString(xvar.c_str())+"_vs_absy_"+iproc+"_A_"+TString(pr[1]);
+	if(pr=="UL")
+	  hname = "ul_"+TString(run.c_str())+"_2d_"+TString(xvar.c_str())+"_vs_absy_"+iproc;
+
 	TH2D* h_syst = (TH2D*)fin_syst->Get(hname);
 	if(h_syst==0){
 	  cout << "Histo not found. Continue." << endl;
@@ -851,24 +857,24 @@ int main(int argc, char* argv[])
 
       vector<TString> pdf_alt_names = {
 	"ct18",
-	//"nnpdf40",
-	//"mmht",
-	//"ct18z",
+	"nnpdf40",
+	"mmht",
+	"ct18z",
 	//"nnpdf30",
-	//"nnpdf31",
-	//"atlasWZj20",
-	//"pdf4lhc21"	
+	"nnpdf31",
+	"atlasWZj20",
+	"pdf4lhc21"	
       };
 
       map<TString, TString> altpdf_nom;
       altpdf_nom.insert( std::make_pair<TString, string >("ct18", "pdf0CT18") );
-      //altpdf_nom.insert( std::make_pair<TString, string >("nnpdf40", "pdf1NNPDF40") );
-      //altpdf_nom.insert( std::make_pair<TString, string >("mmht", "pdf0MMHT") );
-      //altpdf_nom.insert( std::make_pair<TString, string >("ct18z", "pdf0CT18Z") );
+      altpdf_nom.insert( std::make_pair<TString, string >("nnpdf40", "pdf1NNPDF40") );
+      altpdf_nom.insert( std::make_pair<TString, string >("mmht", "pdf0MMHT") );
+      altpdf_nom.insert( std::make_pair<TString, string >("ct18z", "pdf0CT18Z") );
       //altpdf_nom.insert( std::make_pair<TString, string >("nnpdf30", "pdf1NNPDF30") );
-      //altpdf_nom.insert( std::make_pair<TString, string >("nnpdf31", "pdf1NNPDF31") );
-      //altpdf_nom.insert( std::make_pair<TString, string >("atlasWZj20", "pdf0ATLASWZJ20") );
-      //altpdf_nom.insert( std::make_pair<TString, string >("pdf4lhc21", "pdf1PDF4LHC21") );
+      altpdf_nom.insert( std::make_pair<TString, string >("nnpdf31", "pdf1NNPDF31") );
+      altpdf_nom.insert( std::make_pair<TString, string >("atlasWZj20", "pdf0ATLASWZJ20") );
+      altpdf_nom.insert( std::make_pair<TString, string >("pdf4lhc21", "pdf1PDF4LHC21") );
       
       hinfo->SetBinContent(3, pdf_alt_names.size());
 

@@ -16,7 +16,12 @@ parser.add_argument('--batch', action='store_true'  , help = 'bath')
 parser.add_argument('--mt', action='store_true'  , help = 'mt')
 parser.add_argument('--jac', action='store_true'  , help = 'jac')
 parser.add_argument('--fit', action='store_true'  , help = 'fit')
-parser.add_argument('--systname', default='scet_UL'  , help = '')
+parser.add_argument('--doA0', action='store_true'  , help = '')
+parser.add_argument('--doA1', action='store_true'  , help = '')
+parser.add_argument('--doA2', action='store_true'  , help = '')
+parser.add_argument('--doA3', action='store_true'  , help = '')
+parser.add_argument('--doA4', action='store_true'  , help = '')
+parser.add_argument('--systname', default='scet'  , help = '')
 parser.add_argument('--xf_max', dest = 'xf_max'  , type = float,  default=0.4, help='')
 parser.add_argument('--yf_max', dest = 'yf_max'  , type = float,  default=4.0, help='')
 
@@ -162,7 +167,7 @@ procs = {
     'UL' : {
         'deg_y' : [6,8,10,12,14],
         'deg_x' : [8,10,12,14,16,18,20,22,24,26],
-        'fit_deg_y' : [2,4],
+        'fit_deg_y' : [2,4,6],
         'fit_deg_x' : [6,7,8,9,10,11,12],
         'opts'   : {
              'opt1' : {
@@ -189,7 +194,17 @@ procs = {
 
 #allowed_procs = ["UL","A0","A1","A2","A3","A4"]
 allowed_procs = ["UL"]
-
+if args.doA0:
+    allowed_procs = ["A0"]
+elif args.doA1:
+    allowed_procs = ["A1"]
+elif args.doA1:
+    allowed_procs = ["A2"]
+elif args.doA3:
+    allowed_procs = ["A3"]
+elif args.doA4:
+    allowed_procs = ["A4"]
+    
 xf_max_str = ("%.2f" % args.xf_max).replace('.', 'p')
 yf_max_str = ("%.2f" % args.yf_max).replace('.', 'p')
 #print(xf_max_str)
@@ -368,6 +383,8 @@ def plot_fitres(ifnames, isyst="scale"):
     do_pull = False
     if ifnames[0] in ["UL","A0", "A1", "A2", "A3", "A4"]:
         do_pull = True
+    if ifnames[0]=="UL" and isyst=="scet":
+        do_pull = False
     for i in range(0, int(ns)):        
         print("Doing %s" % i)
         if do_pull:
@@ -396,16 +413,16 @@ def plot_fitres(ifnames, isyst="scale"):
             d_i = fin.Get(("h_data_%s" % i))
             d_i_clone = d_i.Clone(("h_data_%s_copy" % i))
             d_i_clone.Divide(hstart)
-            d_i_clone.SetMinimum(0.5)
-            d_i_clone.SetMaximum(1.5)
+            d_i_clone.SetMinimum(0.7)
+            d_i_clone.SetMaximum(1.3)
             d_i_clone.SetStats(0)
             d_i_clone.SetTitle(ifnames[0]+", "+isyst+" "+d_i_clone.GetTitle()+": pre-fit")
             c.cd(1)
             d_i_clone.Draw("colz")
             e_i.Divide(d_i)
             e_i.SetStats(0)
-            e_i.SetMinimum(0.95)
-            e_i.SetMaximum(1.05)
+            e_i.SetMinimum(0.97)
+            e_i.SetMaximum(1.03)
             c.cd(2)
             ROOT.gStyle.SetPadRightMargin(0.15)
             e_i.SetTitle(ifnames[0]+", "+isyst+" "+e_i.GetTitle()+": post-fit "+dx+", "+dy)
@@ -510,4 +527,4 @@ if __name__ == '__main__':
         elif args.algo=='plot_fitres':
             for [proc,fname] in fnames:
                 #print(fname, proc)
-                plot_fitres([proc,fname], 'altpdf')
+                plot_fitres([proc,fname], args.systname)
