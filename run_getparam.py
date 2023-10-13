@@ -113,9 +113,10 @@ procs = {
          },
      },
     'A3' : {
-         'deg_x' : [2,3,4,5,6,7,8],
-         'deg_y' : [2,4,6,8,10,12],
-        'fit_deg_y' : [2,4,6],
+        'deg_x' : [2,3,4,5,6,7,8],
+        'deg_y' : [2,4,6,8,10,12],
+        #'fit_deg_y' : [2,4,6,8,10],
+        'fit_deg_y' : [12,14],
         'fit_deg_x' : [1,2,3,4],
          'opts'   : {
              'opt1' : {
@@ -141,7 +142,7 @@ procs = {
     'A4' : {
          'deg_x' : [2,3,4,5,6,7,8],
          'deg_y' : [1,3,5,7,9,11,13],
-        'fit_deg_y' : [2,4,6],
+        'fit_deg_y' : [2,4,6,8],
         'fit_deg_x' : [1,2,3,4],
          'opts'   : {
              'opt1' : {
@@ -198,7 +199,7 @@ if args.doA0:
     allowed_procs = ["A0"]
 elif args.doA1:
     allowed_procs = ["A1"]
-elif args.doA1:
+elif args.doA2:
     allowed_procs = ["A2"]
 elif args.doA3:
     allowed_procs = ["A3"]
@@ -369,64 +370,64 @@ def plot_pulls(ifnames):
 
 
 def plot_fitres(ifnames, isyst="scale"):
-    print(ifnames[0],ifnames[1])
+    #print(ifnames[0],ifnames[1])
     dx = ifnames[1].split('_')[2].replace('x', 'd_{x}=')
     dy = ifnames[1].split('_')[3].replace('y', 'd_{y}=')
-    print(dx+' '+dy)
+    #print(dx+' '+dy)
     fin = ROOT.TFile('fout_fit_'+isyst+'_'+ifnames[0]+'_x'+xf_max_str+'_y'+yf_max_str+'_'+ifnames[1]+'.root', 'READ')        
-    print(fin.GetName())
+    #print(fin.GetName())
     hinfo = fin.Get("h_info")
     hstart = fin.Get("h_start")
     ns = hinfo.GetBinContent(3)
-    c = ROOT.TCanvas("c", "canvas", 1200, 600)
-    c.Divide(2,1)
-    do_pull = False
-    if ifnames[0] in ["UL","A0", "A1", "A2", "A3", "A4"]:
-        do_pull = True
-    if ifnames[0]=="UL" and isyst=="scet":
-        do_pull = False
+    c = ROOT.TCanvas("c", "canvas", 800, 800)
+    c.Divide(2,2)
+    #do_pull = False
+    #if ifnames[0] in ["UL","A0", "A1", "A2", "A3", "A4"]:
+    #    do_pull = True
+    #if ifnames[0]=="UL" and isyst=="scet":
+    #    do_pull = False
     for i in range(0, int(ns)):        
         print("Doing %s" % i)
-        if do_pull:
-            e_i = fin.Get(("h_pull_%s" % i))
-            d_i = fin.Get(("h_data_%s" % i))            
-            d_i_clone = d_i.Clone(("h_data_%s_copy"%i))
-            for ix in range(1, d_i_clone.GetXaxis().GetNbins()+1):
-                for iy in range(1, d_i_clone.GetYaxis().GetNbins()+1):
-                    pull = (d_i.GetBinContent(ix,iy) - hstart.GetBinContent(ix,iy))/hstart.GetBinError(ix,iy)
-                    d_i_clone.SetBinContent(ix,iy, pull )
-            d_i_clone.SetMinimum(-3)
-            d_i_clone.SetMaximum(+3)
-            d_i_clone.SetStats(0)
-            d_i_clone.SetTitle(ifnames[0]+", "+isyst+" "+d_i_clone.GetTitle()+": pre-fit")
-            c.cd(1)	
-            d_i_clone.Draw("colz")				  
-            e_i.SetStats(0)
-            e_i.SetMinimum(-3)
-            e_i.SetMaximum(+3)
-            c.cd(2)
-            ROOT.gStyle.SetPadRightMargin(0.15)
-            e_i.SetTitle(ifnames[0]+", "+isyst+" "+e_i.GetTitle()+": post-fit "+dx+", "+dy)
-            e_i.Draw("COLZ")
-        else:
-            e_i = fin.Get(("h_exp_%s" % i))
-            d_i = fin.Get(("h_data_%s" % i))
-            d_i_clone = d_i.Clone(("h_data_%s_copy" % i))
-            d_i_clone.Divide(hstart)
-            d_i_clone.SetMinimum(0.7)
-            d_i_clone.SetMaximum(1.3)
-            d_i_clone.SetStats(0)
-            d_i_clone.SetTitle(ifnames[0]+", "+isyst+" "+d_i_clone.GetTitle()+": pre-fit")
-            c.cd(1)
-            d_i_clone.Draw("colz")
-            e_i.Divide(d_i)
-            e_i.SetStats(0)
-            e_i.SetMinimum(0.97)
-            e_i.SetMaximum(1.03)
-            c.cd(2)
-            ROOT.gStyle.SetPadRightMargin(0.15)
-            e_i.SetTitle(ifnames[0]+", "+isyst+" "+e_i.GetTitle()+": post-fit "+dx+", "+dy)
-            e_i.Draw("COLZ")
+        #if do_pull:
+        pe_i = fin.Get(("h_pull_%s" % i))
+        pd_i = fin.Get(("h_data_%s" % i))            
+        pd_i_clone = pd_i.Clone(("h_data_%s_copy"%i))
+        for ix in range(1, pd_i_clone.GetXaxis().GetNbins()+1):
+            for iy in range(1, pd_i_clone.GetYaxis().GetNbins()+1):
+                pull = (pd_i.GetBinContent(ix,iy) - hstart.GetBinContent(ix,iy))/hstart.GetBinError(ix,iy)
+                pd_i_clone.SetBinContent(ix,iy, pull )
+        pd_i_clone.SetMinimum(-3)
+        pd_i_clone.SetMaximum(+3)
+        pd_i_clone.SetStats(0)
+        pd_i_clone.SetTitle(ifnames[0]+", "+isyst+" "+pd_i_clone.GetTitle()+": pre-fit")
+        c.cd(1)	
+        pd_i_clone.Draw("colz")				  
+        pe_i.SetStats(0)
+        pe_i.SetMinimum(-3)
+        pe_i.SetMaximum(+3)
+        c.cd(2)
+        ROOT.gPad.SetRightMargin(0.15)
+        pe_i.SetTitle(ifnames[0]+", "+isyst+" "+pe_i.GetTitle()+": post-fit "+dx+", "+dy)
+        pe_i.Draw("COLZ")
+        #else:
+        re_i = fin.Get(("h_exp_%s" % i))
+        rd_i = fin.Get(("h_data_%s" % i))
+        rd_i_clone = rd_i.Clone(("h_data_%s_copy" % i))
+        rd_i_clone.Divide(hstart)
+        rd_i_clone.SetMinimum(0.8)
+        rd_i_clone.SetMaximum(1.2)
+        rd_i_clone.SetStats(0)
+        rd_i_clone.SetTitle(ifnames[0]+", "+isyst+" "+rd_i_clone.GetTitle()+": pre-fit")
+        c.cd(3)
+        rd_i_clone.Draw("colz")
+        re_i.Divide(rd_i)
+        re_i.SetStats(0)
+        re_i.SetMinimum(0.97)
+        re_i.SetMaximum(1.03)
+        c.cd(4)
+        ROOT.gPad.SetRightMargin(0.15)
+        re_i.SetTitle(ifnames[0]+", "+isyst+" "+re_i.GetTitle()+": post-fit "+dx+", "+dy)
+        re_i.Draw("COLZ")
         outname = "plots/"+isyst+"_var"+str(i)+"_"+ifnames[0]+'_x'+xf_max_str+'_y'+yf_max_str+'_'+ifnames[1]+'.png'
         print(outname)
         if args.batch:
