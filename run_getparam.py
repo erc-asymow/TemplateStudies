@@ -16,6 +16,7 @@ parser.add_argument('--batch', action='store_true'  , help = 'bath')
 parser.add_argument('--mt', action='store_true'  , help = 'mt')
 parser.add_argument('--jac', action='store_true'  , help = 'jac')
 parser.add_argument('--fit', action='store_true'  , help = 'fit')
+parser.add_argument('--syst', action='store_true'  , help = 'syst')
 parser.add_argument('--doA0', action='store_true'  , help = '')
 parser.add_argument('--doA1', action='store_true'  , help = '')
 parser.add_argument('--doA2', action='store_true'  , help = '')
@@ -39,6 +40,8 @@ procs = {
          'deg_y' : [2,4,6,8,10,12],
          'fit_deg_y' : [2,4,6],
          'fit_deg_x' : [1,2,3,4],
+         'syst_deg_y' : [2],
+         'syst_deg_x' : [3],
          'opts'   : {
              'opt1' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA0 --cA0x=0',
@@ -61,18 +64,20 @@ procs = {
          },
      },
     'A1' : {
-         'deg_x' : [1,2,3,4,5,6,7,8],
-         'deg_y' : [1,3,5,7,9],
+        'deg_x' : [1,2,3,4,5,6,7,8],
+        'deg_y' : [1,3,5,7,9],
         'fit_deg_y' : [2,4,6],
         'fit_deg_x' : [1,2,3,4],
-         'opts'   : {
+        'syst_deg_y' : [2],
+        'syst_deg_x' : [3],
+        'opts'   : {
              'opt1' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA1 --cA1x=1',
                  'tag' : 'wp_A1',
                  'nom_deg_x' : 8,
                  'nom_deg_y' : 9,
              },
-             'opt2' : {
+            'opt2' : {
                  'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA1 --cA1x=1',
                  'tag' : 'wm_A1',
                  'nom_deg_x' : 8,
@@ -91,6 +96,8 @@ procs = {
          'deg_y' : [2,4,6,8,10,12],
          'fit_deg_y' : [2,4,6],
          'fit_deg_x' : [1,2,3,4],
+         'syst_deg_y' : [2],
+         'syst_deg_x' : [3],
          'opts'   : {
              'opt1' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA2 --cA2x=1',
@@ -115,9 +122,10 @@ procs = {
     'A3' : {
         'deg_x' : [2,3,4,5,6,7,8],
         'deg_y' : [2,4,6,8,10,12],
-        #'fit_deg_y' : [2,4,6,8,10],
-        'fit_deg_y' : [12,14],
+        'fit_deg_y' : [2,4,6,8,10],
         'fit_deg_x' : [1,2,3,4],
+        'syst_deg_y' : [10],
+        'syst_deg_x' : [3],
          'opts'   : {
              'opt1' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1 --cA3y=0',
@@ -144,6 +152,8 @@ procs = {
          'deg_y' : [1,3,5,7,9,11,13],
         'fit_deg_y' : [2,4,6,8],
         'fit_deg_x' : [1,2,3,4],
+        'syst_deg_y' : [8],
+        'syst_deg_x' : [4],
          'opts'   : {
              'opt1' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA4 --cA4x=0',
@@ -170,6 +180,8 @@ procs = {
         'deg_x' : [8,10,12,14,16,18,20,22,24,26],
         'fit_deg_y' : [2,4,6],
         'fit_deg_x' : [6,7,8,9,10,11,12],
+        'syst_deg_y' : [4],
+        'syst_deg_x' : [8],
         'opts'   : {
              'opt1' : {
                  'cmd' : '--cULx=1 --run=wp --extrabinsX=10 --extrabinsY=10',
@@ -189,7 +201,7 @@ procs = {
                  'nom_deg_x' : 20,
                  'nom_deg_y' : 10,
              },
-         },
+        },
      },
 }
 
@@ -461,8 +473,21 @@ def run_one_opt_jac(procs,iproc,opt):
                 if args.dryrun:
                     print(command)
                 else:
-                    os.system(command)     
+                    os.system(command)
 
+def run_one_opt_syst(procs,iproc,opt):
+        for dx in procs[iproc]['syst_deg_x']:
+            for dy in procs[iproc]['syst_deg_y']:
+                fname = procs[iproc]['opts'][opt]['tag']+'_x'+str(dx)+'_y'+str(dy)
+                command = './getparam --outtag=syst_x'+xf_max_str+'_y'+yf_max_str+'_'+fname+' '+procs[iproc]['opts'][opt]['cmd']+\
+                    ' --f'+iproc+'x='+str(dx)+' --f'+iproc+'y='+str(dy)+\
+                    ' --d'+iproc+'x='+str(procs[iproc]['opts'][opt]['nom_deg_x'])+' --d'+iproc+'y='+str(procs[iproc]['opts'][opt]['nom_deg_y'])+\
+                    ' --xf_max='+str(args.xf_max)+' --yf_max='+str(args.yf_max)+\
+                    ' --saveSyst --savePdf'
+                if args.dryrun:
+                    print(command)
+                else:
+                    os.system(command)     
 
 def run_one_opt_fit(procs,iproc,opt):
         for dx in procs[iproc]['fit_deg_x']:
@@ -492,14 +517,28 @@ def run_all(procs):
                 elif args.fit:
                     p = Process(target=run_one_opt_fit, args=(procs,iproc,opt))
                     p.start()
+                    ps.append(p)
+                elif args.syst:
+                    p = Process(target=run_one_opt_syst, args=(procs,iproc,opt))
+                    p.start()
                     ps.append(p)                    
                 else:
                     p = Process(target=run_one_opt, args=(procs,iproc,opt))
                     p.start()
                     ps.append(p)
                 #continue
-            for dx in procs[iproc][('fit_' if (args.jac or args.fit or args.algo=='plot_fitres') else '')+'deg_x']:
-                for dy in procs[iproc][('fit_' if (args.jac or args.fit or args.algo=='plot_fitres') else '')+'deg_y']:
+            deg_x_name = 'deg_x'
+            if (args.jac or args.fit or args.algo=='plot_fitres'):
+                deg_x_name = 'fit_deg_x'
+            elif args.syst:
+                deg_x_name = 'syst_deg_x'
+            deg_y_name = 'deg_y'
+            if (args.jac or args.fit or args.algo=='plot_fitres'):
+                deg_y_name = 'fit_deg_y'
+            elif args.syst:
+                deg_y_name = 'syst_deg_y'
+            for dx in procs[iproc][deg_x_name]:
+                for dy in procs[iproc][deg_y_name]:
                     fname = procs[iproc]['opts'][opt]['tag']+'_x'+str(dx)+'_y'+str(dy)
                     counter += 1
                     fnames.append([iproc,fname])
