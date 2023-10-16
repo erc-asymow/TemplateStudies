@@ -119,7 +119,12 @@ int main(int argc, char* argv[])
 	("syst_pdf",   bool_switch()->default_value(false), "")
 	("syst_scale",   bool_switch()->default_value(false), "")
 	("syst_altpdf",   bool_switch()->default_value(false), "")
-	("syst_as_additive",   bool_switch()->default_value(false), "")
+	("syst_as_additive_UL",   bool_switch()->default_value(false), "")
+	("syst_as_additive_A0",   bool_switch()->default_value(false), "")
+	("syst_as_additive_A1",   bool_switch()->default_value(false), "")
+	("syst_as_additive_A2",   bool_switch()->default_value(false), "")
+	("syst_as_additive_A3",   bool_switch()->default_value(false), "")
+	("syst_as_additive_A4",   bool_switch()->default_value(false), "")
 	("shift_UL",   value<double>()->default_value(0.1), "max shift")
 	("shift_A0",   value<double>()->default_value(0.1), "max shift")
 	("shift_A1",   value<double>()->default_value(0.1), "max shift")
@@ -212,8 +217,21 @@ int main(int argc, char* argv[])
   int fA4x   = vm["fA4x"].as<int>();
   int fA4y   = vm["fA4y"].as<int>();
 
-  bool syst_as_additive = vm["syst_as_additive"].as<bool>();
-  
+  bool syst_as_additive_UL = vm["syst_as_additive_UL"].as<bool>();
+  bool syst_as_additive_A0 = vm["syst_as_additive_A0"].as<bool>();
+  bool syst_as_additive_A1 = vm["syst_as_additive_A1"].as<bool>();
+  bool syst_as_additive_A2 = vm["syst_as_additive_A2"].as<bool>();
+  bool syst_as_additive_A3 = vm["syst_as_additive_A3"].as<bool>();
+  bool syst_as_additive_A4 = vm["syst_as_additive_A4"].as<bool>();
+
+  std::map<TString, bool> syst_as_add_map;
+  syst_as_add_map.insert( std::make_pair<TString, bool >("UL", std::move(syst_as_additive_UL)) );
+  syst_as_add_map.insert( std::make_pair<TString, bool >("A0", std::move(syst_as_additive_A0)) );
+  syst_as_add_map.insert( std::make_pair<TString, bool >("A1", std::move(syst_as_additive_A1)) );
+  syst_as_add_map.insert( std::make_pair<TString, bool >("A2", std::move(syst_as_additive_A2)) );
+  syst_as_add_map.insert( std::make_pair<TString, bool >("A3", std::move(syst_as_additive_A3)) );
+  syst_as_add_map.insert( std::make_pair<TString, bool >("A4", std::move(syst_as_additive_A4)) );
+
   double x_max   = vm["x_max"].as<double>();
   double y_max   = vm["y_max"].as<double>();
   double xf_max  = vm["xf_max"].as<double>();
@@ -1151,7 +1169,7 @@ int main(int argc, char* argv[])
     int nfpy = degf_map[iproc].at(1)/2 + 1;
     //int nfp = nfpx*nfpy;
 
-    if( syst_as_additive && iproc!="A4" ) nfpx--;
+    if( syst_as_add_map[iproc] && iproc!="A4" ) nfpx--;
     
     TF1* cheb_x = new TF1("cheb_x", cheb_fct, X_edges[0], X_edges[X_nbins], 4); 
     cheb_x->SetParNames("n","offset","scale","m");
@@ -1532,7 +1550,7 @@ int main(int argc, char* argv[])
     // now computing the polynomial approximant
     int count_pf = 0;
     for(unsigned int ipx = 0; ipx<(degf_map[iproc].at(0) + 1); ipx++){
-      if( syst_as_additive && iproc!="A4" && ipx==0 )
+      if( syst_as_add_map[iproc] && iproc!="A4" && ipx==0 )
 	continue;
       for(unsigned int ipy = 0; ipy<degf_map[iproc].at(1) + 1; ipy++){	  
 	// it's a POI
@@ -1568,12 +1586,12 @@ int main(int argc, char* argv[])
 		double val = 0.0;
 		if(syst==0){
 		  val = hpdf->GetBinContent(idx,idy)*totx*toty ;
-		  if( syst_as_additive ) val = totx*toty;
+		  if( syst_as_add_map[iproc] ) val = totx*toty;
 		}
 		else{
 		  double shift = syst==1 ? +shift_map[iproc] : -shift_map[iproc];
 		  val = hpdf->GetBinContent(idx,idy)*(1 + shift*totx*toty) ;
-		  if( syst_as_additive ) val = hpdf->GetBinContent(idx,idy) + shift*totx*toty;
+		  if( syst_as_add_map[iproc] ) val = hpdf->GetBinContent(idx,idy) + shift*totx*toty;
 		}
 		hpdf_p->SetBinContent(idx,idy, val);
 	      }

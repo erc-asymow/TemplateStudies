@@ -153,8 +153,10 @@ procs = {
                  'nom_deg_x' : 6,
                  'nom_deg_y' : 6,
                  'syst_deg_x' : 3,
-                 'syst_deg_y' : 6,
-                 'cmd_syst': '--doA3 --cA3x=1 --cA3y=0 --shift_A3=0.5'
+                 'syst_deg_y' : 4,
+                 #'syst_deg_y' : 6,
+                 #'cmd_syst': '--doA3 --cA3x=1 --cA3y=0 --shift_A3=0.5'
+                 'cmd_syst': '--doA3 --cA3x=1 --cA3y=0 --shift_A3=0.1 --syst_as_additive_A3'
              },
              'opt_wm' : {
                  'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1 --cA3y=0',
@@ -162,8 +164,10 @@ procs = {
                  'nom_deg_x' : 6,
                  'nom_deg_y' : 6,
                  'syst_deg_x' : 3,
-                 'syst_deg_y' : 6,
-                 'cmd_syst': '--doA3 --cA3x=1 --cA3y=0 --shift_A3=0.5'
+                 'syst_deg_y' : 4,
+                 #'syst_deg_y' : 6,
+                 #'cmd_syst': '--doA3 --cA3x=1 --cA3y=0 --shift_A3=0.5'
+                 'cmd_syst': '--doA3 --cA3x=1 --cA3y=0 --shift_A3=0.1 --syst_as_additive_A3'
              },
              'opt_z' : {
                  'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1 --cA3y=0',
@@ -171,8 +175,10 @@ procs = {
                  'nom_deg_x' : 6,
                  'nom_deg_y' : 6,
                  'syst_deg_x' : 3,
-                 'syst_deg_y' : 6,
-                 'cmd_syst': '--doA3 --cA3x=1 --cA3y=0 --shift_A3=0.5'
+                 #'syst_deg_y' : 6,
+                 #'cmd_syst': '--doA3 --cA3x=1 --cA3y=0 --shift_A3=0.5'
+                 'syst_deg_y' : 4,
+                 'cmd_syst': '--doA3 --cA3x=1 --cA3y=0 --shift_A3=0.1 --syst_as_additive_A3'
              },
          },
      },
@@ -516,7 +522,7 @@ def run_one_opt_jac(procs,iproc,opt):
                     ' --f'+iproc+'x='+str(dx)+' --f'+iproc+'y='+str(dy)+\
                     ' --d'+iproc+'x='+str(procs[iproc]['opts'][opt]['nom_deg_x'])+' --d'+iproc+'y='+str(procs[iproc]['opts'][opt]['nom_deg_y'])+\
                     ' --xf_max='+str(args.xf_max)+' --yf_max='+str(args.yf_max)+\
-                    ' --savePdf2data --saveJac --syst_as_additive '
+                    ' --savePdf2data --saveJac'
                 if args.dryrun:
                     print(command)
                 else:

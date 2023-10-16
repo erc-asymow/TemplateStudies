@@ -1,7 +1,7 @@
 import os
 
-do_fits = True
-do_syst = False
+do_fits = False
+do_syst = True
 
 phase_spaces = ["--xf_max=0.4 --yf_max=3.5",
                 #"--xf_max=0.3 --yf_max=3.0"
@@ -41,7 +41,9 @@ if __name__ == '__main__':
                     os.system(cmd_fit)
                     os.system(cmd_plot)
     elif do_syst:
+        #posttag = ' --posttag=V0'
+        posttag = ' --posttag=add'
         for ips in phase_spaces:
-            cms_syst = 'python run_getparam.py --algo=run --mt --syst '+ips+' --posttag=V0'#+' --dryrun'
+            cms_syst = 'python run_getparam.py --algo=run --mt --syst '+ips+' '+posttag #+' --dryrun'
             print(cms_syst)
             os.system(cms_syst)
