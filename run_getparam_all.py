@@ -1,7 +1,7 @@
 import os
 
-do_fits = False
-do_syst = True
+do_fits = True
+do_syst = False
 
 phase_spaces = ["--xf_max=0.4 --yf_max=3.5",
                 #"--xf_max=0.3 --yf_max=3.0"
@@ -13,11 +13,11 @@ systs = ["scet",
          "altpdf"
          ]
 
-procs = ["UL",
+procs = [#"UL",
          "A0",
          "A1",
          "A2",
-         "A3",
+         #"A3",
          "A4"
          ]
 
@@ -30,9 +30,10 @@ if __name__ == '__main__':
                 for iproc in procs:
                     if isys=="scet" and iproc!="UL":
                         continue
-                    cmd_jac  = 'python run_getparam.py --algo=run --mt --jac '+ips+(' --do'+iproc if iproc!="UL" else '' )+' --systname='+isys
-                    cmd_fit  = 'python run_getparam.py --algo=run --mt --fit '+ips+(' --do'+iproc if iproc!="UL" else '' )+' --systname='+isys
-                    cmd_plot = 'python run_getparam.py --algo=plot_fitres '+ips+(' --do'+iproc if iproc!="UL" else '' )+' --systname='+isys+' --batch'
+                    posttag = ' --posttag=add'
+                    cmd_jac  = 'python run_getparam.py --algo=run --mt --jac '+ips+(' --do'+iproc if iproc!="UL" else '' )+posttag #+' --dryrun'
+                    cmd_fit  = 'python run_getparam.py --algo=run --mt --fit '+ips+(' --do'+iproc if iproc!="UL" else '' )+' --systname='+isys+posttag
+                    cmd_plot = 'python run_getparam.py --algo=plot_fitres '+ips+(' --do'+iproc if iproc!="UL" else '' )+' --systname='+isys+' --posttag=add'+' --batch'+posttag
                     print(cmd_jac)
                     print(cmd_fit)
                     print(cmd_plot)

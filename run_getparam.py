@@ -499,6 +499,7 @@ def run_one_opt(procs,iproc,opt):
         for dx in procs[iproc]['deg_x']:
             for dy in procs[iproc]['deg_y']:
                 fname = procs[iproc]['opts'][opt]['tag']+'_x'+str(dx)+'_y'+str(dy)
+                fname += ('_'+args.posttag if args.posttag!='' else '')
                 command = './getparam --outtag='+fname+' '+procs[iproc]['opts'][opt]['cmd']+' --d'+iproc+'x='+str(dx)+' --d'+iproc+'y='+str(dy)
                 if args.dryrun:
                     print(command)
@@ -510,11 +511,12 @@ def run_one_opt_jac(procs,iproc,opt):
         for dx in procs[iproc]['fit_deg_x']:
             for dy in procs[iproc]['fit_deg_y']:
                 fname = procs[iproc]['opts'][opt]['tag']+'_x'+str(dx)+'_y'+str(dy)
+                fname += ('_'+args.posttag if args.posttag!='' else '')
                 command = './getparam --outtag=jac_x'+xf_max_str+'_y'+yf_max_str+'_'+fname+' '+procs[iproc]['opts'][opt]['cmd']+\
                     ' --f'+iproc+'x='+str(dx)+' --f'+iproc+'y='+str(dy)+\
                     ' --d'+iproc+'x='+str(procs[iproc]['opts'][opt]['nom_deg_x'])+' --d'+iproc+'y='+str(procs[iproc]['opts'][opt]['nom_deg_y'])+\
                     ' --xf_max='+str(args.xf_max)+' --yf_max='+str(args.yf_max)+\
-                    ' --savePdf2data --saveJac'
+                    ' --savePdf2data --saveJac --syst_as_additive '
                 if args.dryrun:
                     print(command)
                 else:
@@ -538,6 +540,7 @@ def run_one_opt_fit(procs,iproc,opt):
         for dx in procs[iproc]['fit_deg_x']:
             for dy in procs[iproc]['fit_deg_y']:
                 fname = procs[iproc]['opts'][opt]['tag']+'_x'+str(dx)+'_y'+str(dy)
+                fname += ('_'+args.posttag if args.posttag!='' else '')
                 command = './getparam --intag=jac_x'+xf_max_str+'_y'+yf_max_str+'_'+fname+' --outtag=x'+xf_max_str+'_y'+yf_max_str+'_'+fname+' '+procs[iproc]['opts'][opt]['cmd']+\
                     ' --xf_max='+str(args.xf_max-0.01)+' --yf_max='+str(args.yf_max-0.01)+\
                     ' --runfit --syst_'+args.systname
@@ -591,6 +594,7 @@ def run_all(procs):
             for dx in procs[iproc][deg_x_name]:
                 for dy in procs[iproc][deg_y_name]:
                     fname = procs[iproc]['opts'][opt]['tag']+'_x'+str(dx)+'_y'+str(dy)
+                    fname += ('_'+args.posttag if args.posttag!='' else '')
                     counter += 1
                     fnames.append([iproc,fname])
 
@@ -615,6 +619,7 @@ if __name__ == '__main__':
                     continue
                 for opt in procs[iproc]['opts'].keys():
                     fname = procs[iproc]['opts'][opt]['tag']+'_x'+str(procs[iproc]['opts'][opt]['nom_deg_x'])+'_y'+str(procs[iproc]['opts'][opt]['nom_deg_y'])
+                    fname += ('_'+args.posttag if args.posttag!='' else '')
                     proc = iproc
                     plot_pulls([proc,fname])
         elif args.algo=='plot_fitres':

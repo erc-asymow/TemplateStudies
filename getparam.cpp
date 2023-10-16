@@ -119,6 +119,7 @@ int main(int argc, char* argv[])
 	("syst_pdf",   bool_switch()->default_value(false), "")
 	("syst_scale",   bool_switch()->default_value(false), "")
 	("syst_altpdf",   bool_switch()->default_value(false), "")
+	("syst_as_additive",   bool_switch()->default_value(false), "")
 	("shift_UL",   value<double>()->default_value(0.1), "max shift")
 	("shift_A0",   value<double>()->default_value(0.1), "max shift")
 	("shift_A1",   value<double>()->default_value(0.1), "max shift")
@@ -152,25 +153,25 @@ int main(int argc, char* argv[])
   else if(run=="wm") run2="wminus";
   else if(run=="z")  run2="z";
   
-  int verbose      = vm["verbose"].as<bool>();
+  bool verbose      = vm["verbose"].as<bool>();
 
-  int syst_scet   = vm["syst_scet"].as<bool>();
-  int syst_pdf    = vm["syst_pdf"].as<bool>();
-  int syst_scale  = vm["syst_scale"].as<bool>();
-  int syst_altpdf = vm["syst_altpdf"].as<bool>();
+  bool syst_scet   = vm["syst_scet"].as<bool>();
+  bool syst_pdf    = vm["syst_pdf"].as<bool>();
+  bool syst_scale  = vm["syst_scale"].as<bool>();
+  bool syst_altpdf = vm["syst_altpdf"].as<bool>();
   
-  int runfit       = vm["runfit"].as<bool>();
-  int interpolate  = vm["interpolate"].as<bool>();
-  int savePdf      = vm["savePdf"].as<bool>();
-  int savePdf2data = vm["savePdf2data"].as<bool>();
-  int saveJac     = vm["saveJac"].as<bool>();
-  int saveSyst    = vm["saveSyst"].as<bool>();
-  int debug       = vm["debug"].as<bool>();
-  int doA0        = vm["doA0"].as<bool>();
-  int doA1        = vm["doA1"].as<bool>();
-  int doA2        = vm["doA2"].as<bool>();
-  int doA3        = vm["doA3"].as<bool>();
-  int doA4        = vm["doA4"].as<bool>();
+  bool runfit       = vm["runfit"].as<bool>();
+  bool interpolate  = vm["interpolate"].as<bool>();
+  bool savePdf      = vm["savePdf"].as<bool>();
+  bool savePdf2data = vm["savePdf2data"].as<bool>();
+  bool saveJac     = vm["saveJac"].as<bool>();
+  bool saveSyst    = vm["saveSyst"].as<bool>();
+  bool debug       = vm["debug"].as<bool>();
+  bool doA0        = vm["doA0"].as<bool>();
+  bool doA1        = vm["doA1"].as<bool>();
+  bool doA2        = vm["doA2"].as<bool>();
+  bool doA3        = vm["doA3"].as<bool>();
+  bool doA4        = vm["doA4"].as<bool>();
 
   int dULx = vm["dULx"].as<int>();
   int dULy = vm["dULy"].as<int>();
@@ -211,6 +212,8 @@ int main(int argc, char* argv[])
   int fA4x   = vm["fA4x"].as<int>();
   int fA4y   = vm["fA4y"].as<int>();
 
+  bool syst_as_additive = vm["syst_as_additive"].as<bool>();
+  
   double x_max   = vm["x_max"].as<double>();
   double y_max   = vm["y_max"].as<double>();
   double xf_max  = vm["xf_max"].as<double>();
@@ -1147,6 +1150,8 @@ int main(int argc, char* argv[])
     int nfpx = degf_map[iproc].at(0) + 1;
     int nfpy = degf_map[iproc].at(1)/2 + 1;
     //int nfp = nfpx*nfpy;
+
+    if( syst_as_additive && iproc!="A4" ) nfpx--;
     
     TF1* cheb_x = new TF1("cheb_x", cheb_fct, X_edges[0], X_edges[X_nbins], 4); 
     cheb_x->SetParNames("n","offset","scale","m");
@@ -1527,6 +1532,8 @@ int main(int argc, char* argv[])
     // now computing the polynomial approximant
     int count_pf = 0;
     for(unsigned int ipx = 0; ipx<(degf_map[iproc].at(0) + 1); ipx++){
+      if( syst_as_additive && iproc!="A4" && ipx==0 )
+	continue;
       for(unsigned int ipy = 0; ipy<degf_map[iproc].at(1) + 1; ipy++){	  
 	// it's a POI
 	if( ipy < (degf_map[iproc].at(1)/2 + 1) ){
@@ -1559,11 +1566,14 @@ int main(int argc, char* argv[])
 		double toty = cheby1 + cheby2 ;
 		if( degf_map[iproc].at(1)%2==0 && ipy==degf_map[iproc].at(1)/2 ) toty *= 0.5;	      
 		double val = 0.0;
-		if(syst==0)
+		if(syst==0){
 		  val = hpdf->GetBinContent(idx,idy)*totx*toty ;
+		  if( syst_as_additive ) val = totx*toty;
+		}
 		else{
 		  double shift = syst==1 ? +shift_map[iproc] : -shift_map[iproc];
 		  val = hpdf->GetBinContent(idx,idy)*(1 + shift*totx*toty) ;
+		  if( syst_as_additive ) val = hpdf->GetBinContent(idx,idy) + shift*totx*toty;
 		}
 		hpdf_p->SetBinContent(idx,idy, val);
 	      }
