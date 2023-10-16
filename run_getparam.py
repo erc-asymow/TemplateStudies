@@ -23,6 +23,7 @@ parser.add_argument('--doA2', action='store_true'  , help = '')
 parser.add_argument('--doA3', action='store_true'  , help = '')
 parser.add_argument('--doA4', action='store_true'  , help = '')
 parser.add_argument('--systname', default='scet'  , help = '')
+parser.add_argument('--posttag', default=''  , help = '')
 parser.add_argument('--xf_max', dest = 'xf_max'  , type = float,  default=0.4, help='')
 parser.add_argument('--yf_max', dest = 'yf_max'  , type = float,  default=4.0, help='')
 
@@ -40,26 +41,33 @@ procs = {
          'deg_y' : [2,4,6,8,10,12],
          'fit_deg_y' : [2,4,6],
          'fit_deg_x' : [1,2,3,4],
-         'syst_deg_y' : [2],
-         'syst_deg_x' : [3],
          'opts'   : {
-             'opt1' : {
+             'opt_wp' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA0 --cA0x=0',
                  'tag' : 'wp_A0',
                  'nom_deg_x' : 8,
                  'nom_deg_y' : 10,
+                 'syst_deg_x' : 3,
+                 'syst_deg_y' : 2,
+                 'cmd_syst': '--doA0 --cA0x=0 --shift_A0=0.5'
              },
-             'opt2' : {
+             'opt_wm' : {
                  'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA0 --cA0x=0',
                  'tag' : 'wm_A0',
                  'nom_deg_x' : 8,
                  'nom_deg_y' : 8,
+                 'syst_deg_x' : 3,
+                 'syst_deg_y' : 2,
+                 'cmd_syst': '--doA0 --cA0x=0 --shift_A0=0.5'
              },
-             'opt3' : {
+             'opt_z' : {
                  'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA0 --cA0x=0',
                  'tag' : 'z_A0',
                  'nom_deg_x' : 8,
                  'nom_deg_y' : 6,
+                 'syst_deg_x' : 3,
+                 'syst_deg_y' : 2,
+                 'cmd_syst': '--doA0 --cA0x=0 --shift_A0=0.5'
              },
          },
      },
@@ -68,26 +76,33 @@ procs = {
         'deg_y' : [1,3,5,7,9],
         'fit_deg_y' : [2,4,6],
         'fit_deg_x' : [1,2,3,4],
-        'syst_deg_y' : [2],
-        'syst_deg_x' : [3],
         'opts'   : {
-             'opt1' : {
+             'opt_wp' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA1 --cA1x=1',
                  'tag' : 'wp_A1',
                  'nom_deg_x' : 8,
                  'nom_deg_y' : 9,
+                 'syst_deg_x' : 3,
+                 'syst_deg_y' : 2,
+                 'cmd_syst': '--doA1 --cA1x=1 --shift_A1=0.5'
              },
-            'opt2' : {
-                 'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA1 --cA1x=1',
-                 'tag' : 'wm_A1',
-                 'nom_deg_x' : 8,
-                 'nom_deg_y' : 7,
+            'opt_wm' : {
+                'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA1 --cA1x=1',
+                'tag' : 'wm_A1',
+                'nom_deg_x' : 8,
+                'nom_deg_y' : 7,
+                'syst_deg_x' : 3,
+                'syst_deg_y' : 2,
+                'cmd_syst': '--doA1 --cA1x=1 --shift_A1=0.5'
              },
-             'opt3' : {
+             'opt_z' : {
                  'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA1 --cA1x=1',
                  'tag' : 'z_A1',
                  'nom_deg_x' : 8,
                  'nom_deg_y' : 7,
+                 'syst_deg_x' : 3,
+                 'syst_deg_y' : 2,
+                 'cmd_syst': '--doA1 --cA1x=1 --shift_A1=0.5'
              },
          },
      },
@@ -96,26 +111,33 @@ procs = {
          'deg_y' : [2,4,6,8,10,12],
          'fit_deg_y' : [2,4,6],
          'fit_deg_x' : [1,2,3,4],
-         'syst_deg_y' : [2],
-         'syst_deg_x' : [3],
          'opts'   : {
-             'opt1' : {
+             'opt_wp' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA2 --cA2x=1',
                  'tag' : 'wp_A2',
                  'nom_deg_x' : 7,
                  'nom_deg_y' : 6,
+                 'syst_deg_x' : 3,
+                 'syst_deg_y' : 2,
+                 'cmd_syst': '--doA2 --cA2x=1 --shift_A2=0.5'
              },
-             'opt2' : {
+             'opt_wm' : {
                  'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA2 --cA2x=1',
                  'tag' : 'wm_A2',
                  'nom_deg_x' : 7,
                  'nom_deg_y' : 6,
+                 'syst_deg_x' : 3,
+                 'syst_deg_y' : 2,
+                 'cmd_syst': '--doA2 --cA2x=1 --shift_A2=0.5'
              },
-             'opt3' : {
+             'opt_z' : {
                  'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA2 --cA2x=1',
                  'tag' : 'z_A2',
                  'nom_deg_x' : 7,
                  'nom_deg_y' : 6,
+                 'syst_deg_x' : 3,
+                 'syst_deg_y' : 2,
+                 'cmd_syst': '--doA2 --cA2x=1 --shift_A2=0.5'
              },
          },
      },
@@ -124,26 +146,33 @@ procs = {
         'deg_y' : [2,4,6,8,10,12],
         'fit_deg_y' : [2,4,6,8,10],
         'fit_deg_x' : [1,2,3,4],
-        'syst_deg_y' : [10],
-        'syst_deg_x' : [3],
          'opts'   : {
-             'opt1' : {
+             'opt_wp' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1 --cA3y=0',
                  'tag' : 'wp_A3',
                  'nom_deg_x' : 6,
                  'nom_deg_y' : 6,
+                 'syst_deg_x' : 3,
+                 'syst_deg_y' : 6,
+                 'cmd_syst': '--doA3 --cA3x=1 --cA3y=0 --shift_A3=0.5'
              },
-             'opt2' : {
+             'opt_wm' : {
                  'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1 --cA3y=0',
                  'tag' : 'wm_A3',
                  'nom_deg_x' : 6,
                  'nom_deg_y' : 6,
+                 'syst_deg_x' : 3,
+                 'syst_deg_y' : 6,
+                 'cmd_syst': '--doA3 --cA3x=1 --cA3y=0 --shift_A3=0.5'
              },
-             'opt3' : {
+             'opt_z' : {
                  'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1 --cA3y=0',
                  'tag' : 'z_A3',
                  'nom_deg_x' : 6,
                  'nom_deg_y' : 6,
+                 'syst_deg_x' : 3,
+                 'syst_deg_y' : 6,
+                 'cmd_syst': '--doA3 --cA3x=1 --cA3y=0 --shift_A3=0.5'
              },
          },
      },
@@ -152,26 +181,33 @@ procs = {
          'deg_y' : [1,3,5,7,9,11,13],
         'fit_deg_y' : [2,4,6,8],
         'fit_deg_x' : [1,2,3,4],
-        'syst_deg_y' : [8],
-        'syst_deg_x' : [4],
          'opts'   : {
-             'opt1' : {
+             'opt_wp' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA4 --cA4x=0',
                  'tag' : 'wp_A4',
                  'nom_deg_x' : 7,
                  'nom_deg_y' : 13,
+                 'syst_deg_x' : 4,
+                 'syst_deg_y' : 8,
+                 'cmd_syst': '--doA4 --cA4x=0 --shift_A4=0.2',
              },
-             'opt2' : {
+             'opt_wm' : {
                  'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA4 --cA4x=0',
                  'tag' : 'wm_A4',
                  'nom_deg_x' : 7,
                  'nom_deg_y' : 11,
+                 'syst_deg_x' : 4,
+                 'syst_deg_y' : 8,
+                 'cmd_syst': '--doA4 --cA4x=0 --shift_A4=0.2',
              },
-             'opt3' : {
+             'opt_z' : {
                  'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA4 --cA4x=0',
                  'tag' : 'z_A4',
                  'nom_deg_x' : 7,
                  'nom_deg_y' : 11,
+                 'syst_deg_x' : 4,
+                 'syst_deg_y' : 8,
+                 'cmd_syst': '--doA4 --cA4x=0 --shift_A4=0.2',
              },
          },
      },
@@ -180,43 +216,52 @@ procs = {
         'deg_x' : [8,10,12,14,16,18,20,22,24,26],
         'fit_deg_y' : [2,4,6],
         'fit_deg_x' : [6,7,8,9,10,11,12],
-        'syst_deg_y' : [4],
-        'syst_deg_x' : [8],
         'opts'   : {
-             'opt1' : {
+             'opt_wp' : {
                  'cmd' : '--cULx=1 --run=wp --extrabinsX=10 --extrabinsY=10',
                  'tag' : 'wp_UL',
                  'nom_deg_x' : 20,
                  'nom_deg_y' : 10,
+                 'syst_deg_x' : 8,
+                 'syst_deg_y' : 4,
+                 'cmd_syst' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --shift_UL=0.1',
              },
-             'opt2' : {
+             'opt_wm' : {
                  'cmd' : '--cULx=1 --run=wm --extrabinsX=10 --extrabinsY=10',
                  'tag' : 'wm_UL',
                  'nom_deg_x' : 20,
                  'nom_deg_y' : 10,
+                 'syst_deg_x' : 8,
+                 'syst_deg_y' : 4,
+                 'cmd_syst' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --shift_UL=0.1',
              },
-             'opt3' : {
+             'opt_z' : {
                  'cmd' : '--cULx=1 --run=z --extrabinsX=10 --extrabinsY=10',
                  'tag' : 'z_UL',
                  'nom_deg_x' : 20,
                  'nom_deg_y' : 10,
+                 'syst_deg_x' : 8,
+                 'syst_deg_y' : 4,
+                 'cmd_syst' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --shift_UL=0.1',
              },
         },
      },
 }
 
-#allowed_procs = ["UL","A0","A1","A2","A3","A4"]
 allowed_procs = ["UL"]
 if args.doA0:
     allowed_procs = ["A0"]
-elif args.doA1:
+if args.doA1:
     allowed_procs = ["A1"]
-elif args.doA2:
+if args.doA2:
     allowed_procs = ["A2"]
-elif args.doA3:
+if args.doA3:
     allowed_procs = ["A3"]
-elif args.doA4:
+if args.doA4:
     allowed_procs = ["A4"]
+
+if args.syst:
+    allowed_procs = ["UL","A0","A1","A2","A3","A4"]
     
 xf_max_str = ("%.2f" % args.xf_max).replace('.', 'p')
 yf_max_str = ("%.2f" % args.yf_max).replace('.', 'p')
@@ -475,19 +520,19 @@ def run_one_opt_jac(procs,iproc,opt):
                 else:
                     os.system(command)
 
-def run_one_opt_syst(procs,iproc,opt):
-        for dx in procs[iproc]['syst_deg_x']:
-            for dy in procs[iproc]['syst_deg_y']:
-                fname = procs[iproc]['opts'][opt]['tag']+'_x'+str(dx)+'_y'+str(dy)
-                command = './getparam --outtag=syst_x'+xf_max_str+'_y'+yf_max_str+'_'+fname+' '+procs[iproc]['opts'][opt]['cmd']+\
-                    ' --f'+iproc+'x='+str(dx)+' --f'+iproc+'y='+str(dy)+\
-                    ' --d'+iproc+'x='+str(procs[iproc]['opts'][opt]['nom_deg_x'])+' --d'+iproc+'y='+str(procs[iproc]['opts'][opt]['nom_deg_y'])+\
-                    ' --xf_max='+str(args.xf_max)+' --yf_max='+str(args.yf_max)+\
-                    ' --saveSyst --savePdf'
-                if args.dryrun:
-                    print(command)
-                else:
-                    os.system(command)     
+def run_one_opt_syst(procs, iopt):
+    fname = ('_'+args.posttag if args.posttag!='' else '')
+    command = './getparam --outtag=syst_'+iopt+'_x'+xf_max_str+'_y'+yf_max_str+fname+\
+        ' --xf_max='+str(args.xf_max)+' --yf_max='+str(args.yf_max)+\
+        ' --saveSyst --savePdf '
+    for iproc in allowed_procs:
+        command += procs[iproc]['opts']['opt_'+iopt]['cmd_syst'] +\
+            ' --d'+iproc+'x='+str( procs[iproc]['opts']['opt_'+iopt]['nom_deg_x'])+' --d'+iproc+'y='+str(procs[iproc]['opts']['opt_'+iopt]['nom_deg_y'])+\
+            ' --f'+iproc+'x='+str( procs[iproc]['opts']['opt_'+iopt]['syst_deg_x'] )+' --f'+iproc+'y='+str( procs[iproc]['opts']['opt_'+iopt]['syst_deg_y'] )+' '
+    if args.dryrun:
+        print(command)
+    else:
+        os.system(command)     
 
 def run_one_opt_fit(procs,iproc,opt):
         for dx in procs[iproc]['fit_deg_x']:
@@ -505,7 +550,17 @@ def run_all(procs):
     ps = []        
     fnames = []
     counter = 0
+
+    if args.algo=='run' and args.mt and args.syst:
+        for iopt in ['wp','wm','z']:
+            p = Process(target=run_one_opt_syst, args=(procs,iopt))
+            p.start()
+            ps.append(p)
+            fnames.append(iopt+('_'+args.posttag if args.posttag!='' else ''))
+            counter += 1
+                                    
     for iproc in procs.keys():
+        if args.syst: continue
         if iproc not in allowed_procs:
             continue
         for opt in procs[iproc]['opts'].keys():
@@ -518,10 +573,6 @@ def run_all(procs):
                     p = Process(target=run_one_opt_fit, args=(procs,iproc,opt))
                     p.start()
                     ps.append(p)
-                elif args.syst:
-                    p = Process(target=run_one_opt_syst, args=(procs,iproc,opt))
-                    p.start()
-                    ps.append(p)                    
                 else:
                     p = Process(target=run_one_opt, args=(procs,iproc,opt))
                     p.start()
@@ -542,9 +593,11 @@ def run_all(procs):
                     fname = procs[iproc]['opts'][opt]['tag']+'_x'+str(dx)+'_y'+str(dy)
                     counter += 1
                     fnames.append([iproc,fname])
+
     if args.algo=='run' and args.mt:    
         for p in ps: 
             p.join()
+
     print('Submitted %d proc' % counter)
     return fnames
 

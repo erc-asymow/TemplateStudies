@@ -41,7 +41,6 @@ if __name__ == '__main__':
                     os.system(cmd_plot)
     elif do_syst:
         for ips in phase_spaces:
-            for iproc in procs:
-                cms_syst = 'python run_getparam.py --algo=run --mt --syst '+ips+(' --do'+iproc if iproc!="UL" else '' )+' --dryrun'
-                print(cms_syst)
-                os.system(cms_syst)
+            cms_syst = 'python run_getparam.py --algo=run --mt --syst '+ips+' --posttag=V0'#+' --dryrun'
+            print(cms_syst)
+            os.system(cms_syst)

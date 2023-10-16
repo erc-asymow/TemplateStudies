@@ -119,6 +119,12 @@ int main(int argc, char* argv[])
 	("syst_pdf",   bool_switch()->default_value(false), "")
 	("syst_scale",   bool_switch()->default_value(false), "")
 	("syst_altpdf",   bool_switch()->default_value(false), "")
+	("shift_UL",   value<double>()->default_value(0.1), "max shift")
+	("shift_A0",   value<double>()->default_value(0.1), "max shift")
+	("shift_A1",   value<double>()->default_value(0.1), "max shift")
+	("shift_A2",   value<double>()->default_value(0.1), "max shift")
+	("shift_A3",   value<double>()->default_value(0.1), "max shift")
+	("shift_A4",   value<double>()->default_value(0.1), "max shift")
 	("debug",   bool_switch()->default_value(false), "");
       
       store(parse_command_line(argc, argv, desc), vm);
@@ -210,6 +216,21 @@ int main(int argc, char* argv[])
   double xf_max  = vm["xf_max"].as<double>();
   double yf_max  = vm["yf_max"].as<double>();
 
+  double shift_UL  = vm["shift_UL"].as<double>();
+  double shift_A0  = vm["shift_A0"].as<double>();
+  double shift_A1  = vm["shift_A1"].as<double>();
+  double shift_A2  = vm["shift_A2"].as<double>();
+  double shift_A3  = vm["shift_A3"].as<double>();
+  double shift_A4  = vm["shift_A4"].as<double>();
+
+  std::map<TString, double> shift_map;
+  shift_map.insert( std::make_pair<TString, double >("UL", std::move(shift_UL)) );
+  shift_map.insert( std::make_pair<TString, double >("A0", std::move(shift_A0)) );
+  shift_map.insert( std::make_pair<TString, double >("A1", std::move(shift_A1)) );
+  shift_map.insert( std::make_pair<TString, double >("A2", std::move(shift_A2)) );
+  shift_map.insert( std::make_pair<TString, double >("A3", std::move(shift_A3)) );
+  shift_map.insert( std::make_pair<TString, double >("A4", std::move(shift_A4)) );
+  
   std::vector<TString> proc = {"UL"};
   if(doA0) proc.emplace_back("A0");
   if(doA1) proc.emplace_back("A1");
@@ -1327,7 +1348,7 @@ int main(int argc, char* argv[])
     cout << "Chi2/ndof = " << chi2val << " / " << ndof << " = " << chi2val/ndof  << endl;
     MatrixXd W = (A.transpose()*A).inverse();
     
-    TH1D* hinfo = new TH1D("h_info_"+iproc, "", 9, 0,9);
+    TH1D* hinfo = new TH1D("h_info_"+iproc, "", 10, 0, 10);
     hinfo->SetBinContent(1, chi2val);
     hinfo->GetXaxis()->SetBinLabel(1, "chi2");
     hinfo->SetBinContent(2, ndof);
@@ -1346,6 +1367,8 @@ int main(int argc, char* argv[])
     hinfo->GetXaxis()->SetBinLabel(8, "nfpx");
     hinfo->SetBinContent(9, nfpy);
     hinfo->GetXaxis()->SetBinLabel(9, "nfpy");
+    hinfo->SetBinContent(10, shift_map[iproc]);
+    hinfo->GetXaxis()->SetBinLabel(10, "shift");
     TH2D* hdelta = (TH2D*)hdummy->Clone("h_delta_"+iproc);
     TH2D* hpull  = (TH2D*)hdummy->Clone("h_pull_"+iproc);
     TH2D* hratio = (TH2D*)hdummy->Clone("h_ratio_"+iproc);
@@ -1539,7 +1562,7 @@ int main(int argc, char* argv[])
 		if(syst==0)
 		  val = hpdf->GetBinContent(idx,idy)*totx*toty ;
 		else{
-		  double shift = syst==1 ? +0.1 : -0.1;
+		  double shift = syst==1 ? +shift_map[iproc] : -shift_map[iproc];
 		  val = hpdf->GetBinContent(idx,idy)*(1 + shift*totx*toty) ;
 		}
 		hpdf_p->SetBinContent(idx,idy, val);
