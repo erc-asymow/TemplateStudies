@@ -229,7 +229,7 @@ procs = {
                  'nom_deg_x' : 20,
                  'nom_deg_y' : 10,
                  'syst_deg_x' : 8,
-                 'syst_deg_y' : 4,
+                 'syst_deg_y' : 6,
                  'cmd_syst' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --shift_UL=0.1',
              },
              'opt_wm' : {
@@ -238,7 +238,7 @@ procs = {
                  'nom_deg_x' : 20,
                  'nom_deg_y' : 10,
                  'syst_deg_x' : 8,
-                 'syst_deg_y' : 4,
+                 'syst_deg_y' : 6,
                  'cmd_syst' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --shift_UL=0.1',
              },
              'opt_z' : {
@@ -247,7 +247,7 @@ procs = {
                  'nom_deg_x' : 20,
                  'nom_deg_y' : 10,
                  'syst_deg_x' : 8,
-                 'syst_deg_y' : 4,
+                 'syst_deg_y' : 6,
                  'cmd_syst' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --shift_UL=0.1',
              },
         },

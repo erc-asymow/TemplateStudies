@@ -262,7 +262,7 @@ int main(int argc, char* argv[])
   if(runfit){
 						    
     //TFile* fin_nom  = TFile::Open("root/file_qtbyQ_and_qt_vs_absy_v3.root", "READ");
-    TFile* fin_nom  = TFile::Open(("/scratchnvme/tanmay/OutPut_2016/Final_Uses/Plot_root_Files_ang_coeff_"+xvar+"_2d/root_files_ang_coeff_"+xvar+"_2d.root").c_str(), "READ");
+    TFile* fin_nom  = TFile::Open(("/scratchnvme/tanmay/OutPut_2016/Final_Uses/V2/Plot_root_Files_ang_coeff_"+xvar+"_2d/root_files_ang_coeff_"+xvar+"_2d.root").c_str(), "READ");
     if(fin_nom==0){
       cout << "Cannot find nominal file" << endl;
       return 0;
@@ -549,7 +549,7 @@ int main(int argc, char* argv[])
 	}
       }
       
-      TFile* fin_syst = TFile::Open( ("/scratchnvme/tanmay/OutPut_2016/Final_Uses/Plot_root_Files_ang_coeff_"+xvar+"_pdf_msht20_vars_2d/root_files_ang_coeff_"+xvar+"_pdf_msht20_vars_2d.root").c_str(), "READ");
+      TFile* fin_syst = TFile::Open( ("/scratchnvme/tanmay/OutPut_2016/Final_Uses/V2/Plot_root_Files_ang_coeff_"+xvar+"_pdf_msht20_vars_2d/root_files_ang_coeff_"+xvar+"_pdf_msht20_vars_2d.root").c_str(), "READ");
       if(fin_syst==0){
 	cout << "Cannot find syst file" << endl;
 	return 0;
@@ -724,7 +724,7 @@ int main(int argc, char* argv[])
 	}
       }
 
-      TFile* fin_syst = TFile::Open(("/scratchnvme/tanmay/OutPut_2016/Final_Uses/Plot_root_Files_ang_coeff_"+xvar+"_qcd_vars_2d/root_files_ang_coeff_"+xvar+"_qcd_vars_2d.root").c_str(), "READ");
+      TFile* fin_syst = TFile::Open(("/scratchnvme/tanmay/OutPut_2016/Final_Uses/V2/Plot_root_Files_ang_coeff_"+xvar+"_qcd_vars_2d/root_files_ang_coeff_"+xvar+"_qcd_vars_2d.root").c_str(), "READ");
       if(fin_syst==0){
 	cout << "Cannot find syst file" << endl;
 	return 0;
@@ -902,7 +902,7 @@ int main(int argc, char* argv[])
 	"nnpdf40",
 	"mmht",
 	"ct18z",
-	//"nnpdf30",
+	"nnpdf30",
 	"nnpdf31",
 	"atlasWZj20",
 	"pdf4lhc21"	
@@ -913,7 +913,7 @@ int main(int argc, char* argv[])
       altpdf_nom.insert( std::make_pair<TString, string >("nnpdf40", "pdf1NNPDF40") );
       altpdf_nom.insert( std::make_pair<TString, string >("mmht", "pdf0MMHT") );
       altpdf_nom.insert( std::make_pair<TString, string >("ct18z", "pdf0CT18Z") );
-      //altpdf_nom.insert( std::make_pair<TString, string >("nnpdf30", "pdf1NNPDF30") );
+      altpdf_nom.insert( std::make_pair<TString, string >("nnpdf30", "pdf1NNPDF30") );
       altpdf_nom.insert( std::make_pair<TString, string >("nnpdf31", "pdf1NNPDF31") );
       altpdf_nom.insert( std::make_pair<TString, string >("atlasWZj20", "pdf0ATLASWZJ20") );
       altpdf_nom.insert( std::make_pair<TString, string >("pdf4lhc21", "pdf1PDF4LHC21") );
@@ -925,7 +925,7 @@ int main(int argc, char* argv[])
       for(unsigned int isyst=0; isyst<pdf_alt_names.size(); isyst++){
 
 	TString iproc = pdf_alt_names[isyst];	
-	TFile* fin_syst = TFile::Open( "/scratchnvme/tanmay/OutPut_2016/Final_Uses/Plot_root_Files_ang_coeff_"+TString(xvar.c_str())+"_pdf_"+iproc+"_vars_2d/root_files_ang_coeff_"+TString(xvar.c_str())+"_pdf_"+iproc+"_vars_2d.root", "READ");
+	TFile* fin_syst = TFile::Open( "/scratchnvme/tanmay/OutPut_2016/Final_Uses/V2/Plot_root_Files_ang_coeff_"+TString(xvar.c_str())+"_pdf_"+iproc+"_vars_2d/root_files_ang_coeff_"+TString(xvar.c_str())+"_pdf_"+iproc+"_vars_2d.root", "READ");
 	if(fin_syst==0){
 	  cout << "Cannot find syst file" << endl;
 	  continue;
@@ -1038,7 +1038,7 @@ int main(int argc, char* argv[])
   }
 
   //TFile* fin = TFile::Open(TString("root/file_qtbyQ_and_qt_vs_absy_v3")+(debug ? "_debug.root" : ".root"), "READ");
-  TFile* fin  = TFile::Open(("/scratchnvme/tanmay/OutPut_2016/Final_Uses/Plot_root_Files_ang_coeff_"+xvar+"_2d/root_files_ang_coeff_"+xvar+"_2d.root").c_str(), "READ");
+  TFile* fin  = TFile::Open(("/scratchnvme/tanmay/OutPut_2016/Final_Uses/V2/Plot_root_Files_ang_coeff_"+xvar+"_2d/root_files_ang_coeff_"+xvar+"_2d.root").c_str(), "READ");
   if(fin==0 || fin==nullptr || fin->IsZombie()){
     cout << "File NOT found" << endl;
     return 0;
@@ -1169,7 +1169,7 @@ int main(int argc, char* argv[])
     int nfpy = degf_map[iproc].at(1)/2 + 1;
     //int nfp = nfpx*nfpy;
 
-    if( syst_as_add_map[iproc] && iproc!="A4" ) nfpx--;
+    if( syst_as_add_map[iproc] && (iproc!="A4" && iproc!="A0") ) nfpx--;
     
     TF1* cheb_x = new TF1("cheb_x", cheb_fct, X_edges[0], X_edges[X_nbins], 4); 
     cheb_x->SetParNames("n","offset","scale","m");
@@ -1550,7 +1550,7 @@ int main(int argc, char* argv[])
     // now computing the polynomial approximant
     int count_pf = 0;
     for(unsigned int ipx = 0; ipx<(degf_map[iproc].at(0) + 1); ipx++){
-      if( syst_as_add_map[iproc] && iproc!="A4" && ipx==0 )
+      if( syst_as_add_map[iproc] && (iproc!="A4" && iproc!="A0") && ipx==0 )
 	continue;
       for(unsigned int ipy = 0; ipy<degf_map[iproc].at(1) + 1; ipy++){	  
 	// it's a POI
