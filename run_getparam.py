@@ -274,9 +274,12 @@ yf_max_str = ("%.2f" % args.yf_max).replace('.', 'p')
 #print(xf_max_str)
 #print(yf_max_str)
 
-def plot_pvals(fnames=[], metric="pvals", proc="wp"):
+def plot_pvals(fnames=[], metric="pvalue", proc="wp"):
     ROOT.gStyle.SetPadRightMargin(0.15)
-    histo = ROOT.TH2D('histo_pvals', '', 15, 0,15,15,0,15)
+    max_deg = 15
+    if 'UL' in fnames[0]:
+        max_deg = 30
+    histo = ROOT.TH2D('histo_pvals', '', max_deg, 0,max_deg,max_deg,0, max_deg)
     histo.GetXaxis().SetTitle("deg_{x}")
     histo.GetYaxis().SetTitle("deg_{y}")
     histo.SetStats(0)
@@ -616,9 +619,9 @@ if __name__ == '__main__':
     fnames = run_all(procs)
     if 'plot' in args.algo:
         if args.algo=='plot_pvals':
-            plot_pvals(fnames, 'pvals', 'wp')
-            plot_pvals(fnames, 'pvals', 'wm')
-            plot_pvals(fnames, 'pvals', 'z')
+            plot_pvals(fnames, 'ratio', 'wp')
+            plot_pvals(fnames, 'ratio', 'wm')
+            plot_pvals(fnames, 'ratio', 'z')
         elif args.algo=='plot_pulls':
             for iproc in procs.keys():
                 if iproc not in allowed_procs:

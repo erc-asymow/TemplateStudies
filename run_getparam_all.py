@@ -1,24 +1,25 @@
 import os
 
-do_fits = False
-do_syst = True
+do_fits = True
+do_syst = False
 
 phase_spaces = ["--xf_max=0.4 --yf_max=3.5",
                 #"--xf_max=0.3 --yf_max=3.0"
                 ]
 
 systs = [#"scet",
-         #"scale",
+    #"scale",
          #"pdf",
-         "altpdf"
+         #"altpdf"
+    "scale_31point"
          ]
 
-procs = ["UL",
-         "A0",
-         "A1",
-         "A2",
+procs = [#"UL",
+         #"A0",
+         #"A1",
+         #"A2",
          "A3",
-         "A4"
+         #"A4"
          ]
 
 
