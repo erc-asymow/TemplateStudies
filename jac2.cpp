@@ -32,7 +32,7 @@ constexpr double GW = 2.0;
 constexpr double MASSSHIFT = 0.01; 
 constexpr int NMAX  = 200;
 //constexpr int NMASS = 20;
-constexpr int NMASS = 3;
+constexpr int NMASS = 10;
 constexpr double DELTAM = 0.200;
 
 enum pdf_type { pdf_x=0, pdf_y, corr_x, corr_y, A0_x, A0_y, A1_x, A1_y, A2_x, A2_y, A3_x, A3_y, A4_x, A4_y, unknown};
@@ -341,6 +341,7 @@ int main(int argc, char* argv[])
   tf1toy_x->SetParameter(1, p0_x);
   double int_toy_x = tf1toy_x->Integral(0.0, max_x);
   tf1toy_x->SetParameter(0, 1.0/int_toy_x);
+
   auto toy_x = [&](double x)->double{
     return x/TMath::Power(x*x + p0_x, 1.0)/int_toy_x;
   };
@@ -352,6 +353,7 @@ int main(int argc, char* argv[])
   tf1toy_y->SetParameter(2, 1.0);
   double int_toy_y = tf1toy_y->Integral(-max_y, max_y);
   tf1toy_y->SetParameter(2, 1.0/int_toy_y);
+
   auto toy_y = [&](double y)->double{
     return 1.0/int_toy_y/TMath::Sqrt(2*TMath::Pi()*sigma2_y)*TMath::Exp(-0.5*y*y/sigma2_y);
   };
@@ -364,6 +366,7 @@ int main(int argc, char* argv[])
   auto toy_corrxy = [](double x, double y)->double{
     return 0.1*(1.0 - 0.3*y*y)*TMath::Erf(5.0*x) + 1.0;
   };
+
   //if(fWJets!=nullptr && !fWJets->IsZombie()){
   //  std::cout << "WJets file found! Taking h2 as corrxy" << std::endl;
   //  th2_corrxy = fWJets->Get<TH2F>("h2");
@@ -376,13 +379,72 @@ int main(int argc, char* argv[])
   TF2* tf2toy_A3 = new TF2("toy_A3", "0.3*(x + x*x + x*x*x)*(0.1*y*y)",         0., max_x, -max_y, max_y);
   TF2* tf2toy_A4 = new TF2("toy_A4", "(1-x)*(y + y*y*y/10.)/5",                 0., max_x, -max_y, max_y);
 
-  auto toy_A0 = [](double x, double y)->double{ return 2*x*x*(1 - 0.01*y*y); };
-  auto toy_A1 = [](double x, double y)->double{ return (0.5*x + 2*x*x)*(0.05*y + 0.002*y*y*y); };
-  auto toy_A2 = [](double x, double y)->double{ return 2*x*x*(1 - 0.01*y*y); };
-  auto toy_A3 = [](double x, double y)->double{ return 0.3*(x + x*x + x*x*x)*(0.1*y*y); };
-  auto toy_A4 = [](double x, double y)->double{ return (1-x)*(y + y*y*y/10.)/5; };
+  //auto toy_A0 = [](double x, double y)->double{ return 2*x*x*(1 - 0.01*y*y); };
+  //auto toy_A1 = [](double x, double y)->double{ return (0.5*x + 2*x*x)*(0.05*y + 0.002*y*y*y); };
+  //auto toy_A2 = [](double x, double y)->double{ return 2*x*x*(1 - 0.01*y*y); };
+  //auto toy_A3 = [](double x, double y)->double{ return 0.3*(x + x*x + x*x*x)*(0.1*y*y); };
+  //auto toy_A4 = [](double x, double y)->double{ return (1-x)*(y + y*y*y/10.)/5; };
+
+  string f_realistic_inputs_name = "fout_syst_wm_x0p40_y3p50_V1.root";
+  int flip_CS = 1;
+  if(f_realistic_inputs_name.find("wp")!=string::npos)
+    flip_CS = -1;
   
-  
+  TFile* f_realistic_inputs = TFile::Open(f_realistic_inputs_name.c_str(), "READ");
+  TH2D* h_pdf_UL = (TH2D*)f_realistic_inputs->Get("UL/h_pdf_UL");  
+  h_pdf_UL->Scale(0.5);
+  TH2D* h_pdf_A0 = (TH2D*)f_realistic_inputs->Get("A0/h_pdf_A0");
+  TH2D* h_pdf_A1 = (TH2D*)f_realistic_inputs->Get("A1/h_pdf_A1");
+  TH2D* h_pdf_A2 = (TH2D*)f_realistic_inputs->Get("A2/h_pdf_A2");
+  TH2D* h_pdf_A3 = (TH2D*)f_realistic_inputs->Get("A3/h_pdf_A3");
+  TH2D* h_pdf_A4 = (TH2D*)f_realistic_inputs->Get("A4/h_pdf_A4");  
+
+  auto toy_UL = [h_pdf_UL](double x, double y)->double{
+    return h_pdf_UL->GetBinContent( h_pdf_UL->FindBin(x, TMath::Abs(y)) );
+  };
+  auto toy_A0 = [h_pdf_A0](double x, double y)->double{ return h_pdf_A0->GetBinContent( h_pdf_A0->FindBin(x, TMath::Abs(y)) );};
+  auto toy_A1 = [h_pdf_A1, flip_CS](double x, double y)->double{
+    if(y<0)
+      return -flip_CS*h_pdf_A1->GetBinContent( h_pdf_A1->FindBin(x, TMath::Abs(y)) );
+    return flip_CS*h_pdf_A1->GetBinContent( h_pdf_A1->FindBin(x, TMath::Abs(y)) );
+  };
+  auto toy_A2 = [h_pdf_A2](double x, double y)->double{ return h_pdf_A2->GetBinContent( h_pdf_A2->FindBin(x, TMath::Abs(y)) );};
+  auto toy_A3 = [h_pdf_A3](double x, double y)->double{ return h_pdf_A3->GetBinContent( h_pdf_A3->FindBin(x, TMath::Abs(y)) );};
+  auto toy_A4 = [h_pdf_A4,flip_CS](double x, double y)->double{
+    if(y<0)
+      return -flip_CS*h_pdf_A4->GetBinContent( h_pdf_A4->FindBin(x, TMath::Abs(y)) );
+    return flip_CS*h_pdf_A4->GetBinContent( h_pdf_A4->FindBin(x, TMath::Abs(y)) );
+  };
+
+  auto toy_UL_fast = [h_pdf_UL](int ibin)->double{
+    if(ibin==-99) return 0.0;
+    return h_pdf_UL->GetBinContent( ibin );
+  };
+  auto toy_A0_fast = [h_pdf_A0](int ibin)->double{
+    if(ibin==-99) return 0.0;
+    return h_pdf_A0->GetBinContent( ibin );
+  };
+  auto toy_A1_fast = [h_pdf_A1,flip_CS](double y, int ibin)->double{
+    if(ibin==-99) return 0.0;
+    if(y<0)
+      return -flip_CS*h_pdf_A1->GetBinContent( ibin );
+    return flip_CS*h_pdf_A1->GetBinContent( ibin );
+  };
+  auto toy_A2_fast = [h_pdf_A2](int ibin)->double{
+    if(ibin==-99) return 0.0;
+    return h_pdf_A2->GetBinContent( ibin );
+  };
+  auto toy_A3_fast = [h_pdf_A3](int ibin)->double{
+    if(ibin==-99) return 0.0;
+    return h_pdf_A3->GetBinContent( ibin );
+  };
+  auto toy_A4_fast = [h_pdf_A4,flip_CS](double y, int ibin)->double{
+    if(ibin==-99) return 0.0;
+    if(y<0)
+      return -flip_CS*h_pdf_A4->GetBinContent( ibin );
+    return flip_CS*h_pdf_A4->GetBinContent( ibin );
+  };
+
   // preprare inputs
   if(true){
 
@@ -396,11 +458,12 @@ int main(int argc, char* argv[])
 	int idx = (degs(pdf_type::corr_y)+1)*k + l; 
 	tree->Branch(Form("corrxy_%d_%d", k,l), &(corr_xy[idx]), Form("corrxy_%d_%d/D", k,l));
 	double y = TMath::Cos((degs(pdf_type::corr_y)-l)*TMath::Pi()/degs(pdf_type::corr_y))*max_y;
-	corr_xy[idx] = toy_x(x)*toy_y(y);
+	//corr_xy[idx] = toy_x(x)*toy_y(y);
 	//if(getbin_extTH2_corr)     corr_xy[idx] *= th2_corrxy->GetBinContent( th2_corrxy->FindBin(TMath::Abs(y), x) );
 	//else if(inter_extTH2_corr) corr_xy[idx] *= th2_corrxy->Interpolate(TMath::Abs(y),x);
 	//else if(toyTF2_corr)
-	corr_xy[idx] *= toy_corrxy(x,y);
+	//corr_xy[idx] *= toy_corrxy(x,y);
+	corr_xy[idx] = toy_UL(x,y);
       }
     }
 
@@ -521,7 +584,8 @@ int main(int argc, char* argv[])
       Eigen::Vector4d p4_lab = A.inverse()*p4_CS;
       pt     = TMath::Sqrt(p4_lab(1)*p4_lab(1) + p4_lab(2)*p4_lab(2));
       eta = TMath::ASinH(p4_lab(3)/pt);
-      accept |= (pt>=pt_low && pt<=pt_high && TMath::Abs(eta)<=rap_high ) ; 
+      accept |= (pt>=pt_low && pt<=pt_high && TMath::Abs(eta)<=rap_high ) ;
+      //accept = true;
     }
     out.emplace_back( Q );
     out.emplace_back( cos );
@@ -546,6 +610,13 @@ int main(int argc, char* argv[])
   dlast = std::make_unique<RNode>(dlast->Define("eta", [](RVecD PS){return PS.at(6);}, {"PS"}));
   dlast = std::make_unique<RNode>(dlast->Define("pt_smear",  [](RVecD PS){return PS.at(7);}, {"PS"}));
   dlast = std::make_unique<RNode>(dlast->Define("eta_smear", [](RVecD PS){return PS.at(8);}, {"PS"}));
+
+  dlast =std::make_unique<RNode>(dlast->Define("xybin",   [h_pdf_UL](double x, double y)->int{
+    if(x > h_pdf_UL->GetXaxis()->GetBinUpEdge( h_pdf_UL->GetXaxis()->GetNbins() ) || TMath::Abs(y) > h_pdf_UL->GetYaxis()->GetBinUpEdge( h_pdf_UL->GetYaxis()->GetNbins() ) )
+      return -99;
+    else
+      return h_pdf_UL->FindBin( x, TMath::Abs(y) );
+  }, {"x", "y"}));
   
   dlast = std::make_unique<RNode>(dlast->Define("weights_mass", 
 						[&](double Q)->RVecD{
@@ -841,19 +912,21 @@ int main(int argc, char* argv[])
 	  return out;
 	} , {"x", "y", "cos", "phi"} ));
 
-    dlast = std::make_unique<RNode>(dlast->Define("weights_mctruth", [&](double x, double y, RVecD har)->RVecD {
+    dlast = std::make_unique<RNode>(dlast->Define("weights_mctruth", [&](double x, double y, RVecD har, int ibin)->RVecD {
 	  RVecD out;
 	  double norm{3./16/TMath::Pi()};
-	  double UL = toy_x(x)*toy_y(y);
+	  //double UL = toy_x(x)*toy_y(y);
+	  double UL = toy_UL_fast(ibin);
+	  //double UL = toy_UL(x,y);
 	  //if(getbin_extTH2_corr)     UL *= th2_corrxy->GetBinContent( th2_corrxy->FindBin(TMath::Abs(y),x) );
 	  //else if(inter_extTH2_corr) UL *= th2_corrxy->Interpolate(TMath::Abs(y),x);
 	  //else if(toyTF2_corr)
-	  UL *= toy_corrxy(x,y);	   
-	  double A0 = toy_A0(x,y);
-	  double A1 = toy_A1(x,y);
-	  double A2 = toy_A2(x,y);
-	  double A3 = toy_A3(x,y);
-	  double A4 = toy_A4(x,y);
+	  //UL *= toy_corrxy(x,y);	   
+	  double A0 = toy_A0_fast(ibin);
+	  double A1 = toy_A1_fast(y,ibin);
+	  double A2 = toy_A2_fast(ibin);
+	  double A3 = toy_A3_fast(ibin);
+	  double A4 = toy_A4_fast(y,ibin);
 	  //cout << "\tULtoy =" << UL << endl;
 	  //cout << "\tA0toy =" << A0 << endl;
 	  //cout << "\tA1toy =" << A1 << endl;
@@ -862,7 +935,8 @@ int main(int argc, char* argv[])
 	  //cout << "\tA4toy =" << A4 << endl;
 	  double norm_UL   = norm*UL;
 	  double norm_PiAi = norm*(har.at(0)+A0*har.at(1)+A1*har.at(2)+A2*har.at(3)+A3*har.at(4)+A4*har.at(5));
-	  out.emplace_back( UL*norm_PiAi);          // full weight 
+	  out.emplace_back( UL*norm_PiAi);          // full weight
+	  //out.emplace_back( UL );          // full weight 
 	  out.emplace_back( UL*norm_PiAi);          // weight for corr
 	  out.emplace_back( norm_UL*A0*har.at(1) ); // weight for A0
 	  out.emplace_back( norm_UL*A1*har.at(2) ); // weight for A1
@@ -870,7 +944,7 @@ int main(int argc, char* argv[])
 	  out.emplace_back( norm_UL*A3*har.at(4) ); // weight for A3
 	  out.emplace_back( norm_UL*A4*har.at(5) ); // weight for A4
 	  return out;
-    }, {"x", "y", "harmonics"} ));        
+    }, {"x", "y", "harmonics", "xybin"} ));        
     
     dlast = std::make_unique<RNode>(dlast->Define("weights_cheb", [&,corrxy_in,A0xy_in,A1xy_in,A2xy_in,A3xy_in,A4xy_in]
 						  (RVecD corrxy_vec,
@@ -1011,7 +1085,11 @@ int main(int argc, char* argv[])
       sums.emplace_back( dlast->Sum<double>("w") );
       sums.emplace_back( dlast->Sum<double>("wMC") );
     }
-    
+
+    if(run=="corr"){
+      sums.emplace_back( dlast->Sum<double>("wMC") );
+    }
+
     string varx = fit_qt_y ? "y" : "eta";
     string vary = fit_qt_y ? "x" : "pt";
     if(fit_qt_y==false && smear){
@@ -1122,6 +1200,7 @@ int main(int argc, char* argv[])
 
   double total = *(dlast->Count());  
   for(auto sum : sums) std::cout << (*sum)*(max_x*2*max_y*4*TMath::Pi())/total << std::endl;
+  //for(auto sum : sums) std::cout << (*sum)*(max_x*2*max_y)/total << std::endl;
 
   fout->cd();
   std::cout << "Writing histos..." << std::endl;
