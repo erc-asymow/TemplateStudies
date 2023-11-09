@@ -152,11 +152,11 @@ procs = {
         'deg_y' : [2,4,6,8,10,12],
         #'fit_deg_y' : [2,4,6,8,10],
         #'fit_deg_x' : [1,2,3,4],
-        'fit_deg_y' : [4],
+        'fit_deg_y' : [6],
         'fit_deg_x' : [1,2],
         'opts'   : {
              'opt_wp' : {
-                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1 --cA3y=0',
+                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1 --cA3y=0 --syst_as_additive_A3',
                  'tag' : 'wp_A3',
                  'nom_deg_x' : 6,
                  'nom_deg_y' : 6,

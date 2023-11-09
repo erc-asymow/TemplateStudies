@@ -30,7 +30,7 @@ sample_sizes = {
     '100M':   100000000,
     '1G':    1000000000,
     '4G':    4000000000,
-    '10G':  10000000000,
+    #'10G':  10000000000,
     ##'40G':  40000000000,
     ##'200G': 200000000000,
 }
@@ -38,10 +38,10 @@ sample_sizes = {
 fit_opts = {
     'ULA0A1A2A3A4' :       ' --jUL --j0 --j1 --j2 --j3 --j4',
     'ADDMC_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert',
-    'FBB_ULA0A1A2A3A4'         : ' --jUL --j0 --j1 --j2 --j3 --j4 --compute_deltachi2 --with_offset',
-    'ADDMCFBB_ULA0A1A2A3A4'    : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --compute_deltachi2 --with_offset',
-    'ADDMCJACEXT_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --jacobians_from_external',
-    'ADDMCHMCEXT_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --hMC_from_external',
+    #'FBB_ULA0A1A2A3A4'         : ' --jUL --j0 --j1 --j2 --j3 --j4 --compute_deltachi2 --with_offset',
+    #'ADDMCFBB_ULA0A1A2A3A4'    : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --compute_deltachi2 --with_offset',
+    #'ADDMCJACEXT_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --jacobians_from_external',
+    #'ADDMCHMCEXT_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --hMC_from_external',
     ##'ADDMCHMCEXTSCALED_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --add_MC_uncert --hMC_from_external',
     #'ADDMCMASSUNCERT_ULA0A1A2A3A4' : ' --jUL --j0 --j1 --j2 --j3 --j4 --hMC_from_external --jacobians_from_external --add_mass_uncert=1.0',
     #'ADDMC_ULA0A1A2A4':    ' --jUL --j0 --j1 --j2 --j4 --add_MC_uncert',
@@ -95,7 +95,7 @@ pol_default = {
 
 pol_systs = []
 
-pol_systs.append( pol_default )
+#pol_systs.append( pol_default )
 
 pol_syst = copy.deepcopy(pol_default)
 pol_syst['A0'] = [2,2]
@@ -132,25 +132,57 @@ pol_syst['corr'] = [10,6]
 
 pol_syst = copy.deepcopy(pol_default)
 pol_syst['run'] = "corr"
-pol_syst['corr'] = [3,2]
-pol_syst['A0']   = [2,2]
-pol_syst['A1']   = [2,2]
-pol_syst['A2']   = [2,2]
-pol_syst['A2']   = [2,2]
-pol_syst['A3']   = [2,2]
-pol_syst['A4']   = [2,2]
+pol_syst['corr'] = [5,4] #[5,4] #[8,6]
+pol_syst['A0']   = [1,2] #[2,2] #[3,2]
+pol_syst['A1']   = [1,2] #[2,2] #[3,2]
+pol_syst['A2']   = [1,2] #[2,2] #[3,2]
+pol_syst['A3']   = [1,4] #[2,4] #[3,4]
+pol_syst['A4']   = [2,6] #[2,6] #[4,8]
 #pol_systs.append( pol_syst )
 
 pol_syst = copy.deepcopy(pol_default)
 pol_syst['run'] = "corr"
-pol_syst['corr'] = [5,2]
-pol_syst['A0']   = [2,2]
-pol_syst['A1']   = [2,2]
-pol_syst['A2']   = [2,2]
-pol_syst['A2']   = [2,2]
-pol_syst['A3']   = [2,2]
-pol_syst['A4']   = [2,2]
+pol_syst['corr'] = [5,4]
+pol_syst['A0']   = [1,2]
+pol_syst['A1']   = [1,2]
+pol_syst['A2']   = [1,2]
+pol_syst['A2']   = [1,2]
+pol_syst['A3']   = [1,4]
+pol_syst['A4']   = [1,6]
 #pol_systs.append( pol_syst )
+
+pol_syst = copy.deepcopy(pol_default)
+pol_syst['run'] = "corr"
+pol_syst['corr'] = [5,4]
+pol_syst['A0']   = [1,2]
+pol_syst['A1']   = [1,2]
+pol_syst['A2']   = [1,2]
+pol_syst['A2']   = [1,2]
+pol_syst['A3']   = [1,4]
+pol_syst['A4']   = [1,4]
+#pol_systs.append( pol_syst )
+
+pol_syst = copy.deepcopy(pol_default)
+pol_syst['run'] = "corr"
+pol_syst['corr'] = [5,4]
+pol_syst['A0']   = [1,2]
+pol_syst['A1']   = [1,2]
+pol_syst['A2']   = [1,2]
+pol_syst['A2']   = [1,2]
+pol_syst['A3']   = [1,2]
+pol_syst['A4']   = [1,2]
+pol_systs.append( pol_syst )
+
+pol_syst = copy.deepcopy(pol_default)
+pol_syst['run'] = "corr"
+pol_syst['corr'] = [3,4]
+pol_syst['A0']   = [1,2]
+pol_syst['A1']   = [1,2]
+pol_syst['A2']   = [1,2]
+pol_syst['A2']   = [1,2]
+pol_syst['A3']   = [1,2]
+pol_syst['A4']   = [1,2]
+pol_systs.append( pol_syst )
 
 pol_syst = copy.deepcopy(pol_default)
 pol_syst['run'] = "corr"
@@ -260,7 +292,7 @@ elif args.algo=='jac2_systs_vsN':
                     command += ' --degs_'+k+'_x='+str(syst[k][0])+' --degs_'+k+'_y='+str(syst[k][1])
             if args.smear:
                 command += ' --smear'
-            command += ' --max_y=3.5 --max_x=0.5'
+            command += ' --max_y=3.0 --max_x=0.3'
             command += ' --relativistic'
             print(command)
             if not args.dryrun:
@@ -373,7 +405,7 @@ elif args.algo=='fit_fast':
     os.system(command) 
 
 elif args.algo=='fit_grid_fast':
-    command  = './fit_grid --nevents='+str(args.nevents) +' --prior=10000 --extraprior=10 --tag='+args.tag+' --run=grid --post_tag='+args.post_tag
+    command  = './fit_grid --nevents='+str(args.nevents) +' --prior=0.5 --extraprior=10 --tag='+args.tag+' --run=grid --post_tag='+args.post_tag
     for k in pol_default.keys():
         if 'corr' not in k: continue
         command += ' --degs_'+k+'_x='+str(pol_default[k][0])+' --degs_'+k+'_y='+str(pol_default[k][1])
