@@ -39,8 +39,10 @@ procs = {
      'A0' : {
          'deg_x' : [2,3,4,5,6,7,8],
          'deg_y' : [2,4,6,8,10,12],
-         'fit_deg_y' : [2,4,6],
-         'fit_deg_x' : [1,2,3,4],
+         #'fit_deg_y' : [2,4,6],
+         #'fit_deg_x' : [1,2,3,4],
+         'fit_deg_y' : [2],
+         'fit_deg_x' : [1,2],         
          'opts'   : {
              'opt_wp' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA0 --cA0x=0',
@@ -74,8 +76,10 @@ procs = {
     'A1' : {
         'deg_x' : [1,2,3,4,5,6,7,8],
         'deg_y' : [1,3,5,7,9],
-        'fit_deg_y' : [2,4,6],
-        'fit_deg_x' : [1,2,3,4],
+        #'fit_deg_y' : [2,4,6],
+        #'fit_deg_x' : [1,2,3,4],
+        'fit_deg_y' : [2],
+        'fit_deg_x' : [1,2],
         'opts'   : {
              'opt_wp' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA1 --cA1x=1',
@@ -109,8 +113,10 @@ procs = {
      'A2' : {
          'deg_x' : [2,3,4,5,6,7,8],
          'deg_y' : [2,4,6,8,10,12],
-         'fit_deg_y' : [2,4,6],
-         'fit_deg_x' : [1,2,3,4],
+         #'fit_deg_y' : [2,4,6],
+         #'fit_deg_x' : [1,2,3,4],
+         'fit_deg_y' : [2],
+         'fit_deg_x' : [1,2],
          'opts'   : {
              'opt_wp' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA2 --cA2x=1',
@@ -144,9 +150,11 @@ procs = {
     'A3' : {
         'deg_x' : [2,3,4,5,6,7,8],
         'deg_y' : [2,4,6,8,10,12],
-        'fit_deg_y' : [2,4,6,8,10],
-        'fit_deg_x' : [1,2,3,4],
-         'opts'   : {
+        #'fit_deg_y' : [2,4,6,8,10],
+        #'fit_deg_x' : [1,2,3,4],
+        'fit_deg_y' : [4],
+        'fit_deg_x' : [1,2],
+        'opts'   : {
              'opt_wp' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1 --cA3y=0',
                  'tag' : 'wp_A3',
@@ -183,11 +191,13 @@ procs = {
          },
      },
     'A4' : {
-         'deg_x' : [2,3,4,5,6,7,8],
-         'deg_y' : [1,3,5,7,9,11,13],
-        'fit_deg_y' : [2,4,6,8],
-        'fit_deg_x' : [1,2,3,4],
-         'opts'   : {
+        'deg_x' : [2,3,4,5,6,7,8],
+        'deg_y' : [1,3,5,7,9,11,13],
+        #'fit_deg_y' : [2,4,6,8],
+        #'fit_deg_x' : [1,2,3,4],
+        'fit_deg_y' : [4,6],
+        'fit_deg_x' : [1,2,3],
+        'opts'   : {
              'opt_wp' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA4 --cA4x=0',
                  'tag' : 'wp_A4',
@@ -220,8 +230,10 @@ procs = {
     'UL' : {
         'deg_y' : [6,8,10,12,14],
         'deg_x' : [8,10,12,14,16,18,20,22,24,26],
-        'fit_deg_y' : [2,4,6],
-        'fit_deg_x' : [6,7,8,9,10,11,12],
+        #'fit_deg_y' : [2,4,6],
+        #'fit_deg_x' : [6,7,8,9,10,11,12],
+        'fit_deg_y' : [4],
+        'fit_deg_x' : [5,6],
         'opts'   : {
              'opt_wp' : {
                  'cmd' : '--cULx=1 --run=wp --extrabinsX=10 --extrabinsY=10',
