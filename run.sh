@@ -7,8 +7,11 @@
 #python run.py --tag=NEWA3ZEROSMEARGW1p0Y3p5 --algo=jac2_systs_vsN --smear
 
 #python run.py --tag=REALISTICWPX0p3Y3p0 --algo=jac2_systs_vsN #--smear
-python run.py --tag=REALISTICWPX0p3Y3p0 --algo=fit_systs_vsN --post_tag=DEBUG --nevents=100000000
-#python run.py --tag=REALISTICWP --algo=fit_systs_vsN --post_tag=DEBUG --nevents=100000000
+#python run.py --tag=DEVRNDWPX0p3Y3p0 --algo=jac2_systs_vsN #--smear
+python run.py --tag=FULLPSWPX0p3Y3p0 --algo=jac2_systs_vsN #--smear
+#python run.py --tag=REALISTICWPX0p3Y3p0 --algo=fit_systs_vsN --post_tag=DEBUG --nevents=100000000
+#python run.py --tag=DEVRNDWPX0p3Y3p0 --algo=fit_systs_vsN --post_tag=DEBUG --nevents=100000000
+#python run.py --tag=FULLPSWPX0p3Y3p0 --algo=fit_systs_vsN --post_tag=DEBUG --nevents=100000000
 
 #python run.py --tag=NEWA3ZEROSMEARGW1p0 --algo=fit_systs_vsN --post_tag=DEBUG --nevents=100000000
 #python run.py --tag=NEWA3ZEROSMEARGW1p0 --algo=fit_systs_vsN --post_tag=DEBUGrebin23 --rebinX=2 --rebinY=3 --nevents=100000000

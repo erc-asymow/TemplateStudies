@@ -29,9 +29,9 @@ sample_sizes = {
     '10M':     10000000,
     '100M':   100000000,
     '1G':    1000000000,
-    '4G':    4000000000,
+    #'4G':    4000000000,
     #'10G':  10000000000,
-    ##'40G':  40000000000,
+    #'40G':  40000000000,
     ##'200G': 200000000000,
 }
 
@@ -132,6 +132,26 @@ pol_syst['corr'] = [10,6]
 
 pol_syst = copy.deepcopy(pol_default)
 pol_syst['run'] = "corr"
+pol_syst['corr'] = [8,6]
+pol_syst['A0']   = [3,2]
+pol_syst['A1']   = [3,2]
+pol_syst['A2']   = [3,2]
+pol_syst['A3']   = [3,4]
+pol_syst['A4']   = [4,8]
+pol_systs.append( pol_syst )
+
+pol_syst = copy.deepcopy(pol_default)
+pol_syst['run'] = "corr"
+pol_syst['corr'] = [5,4] #[8,6]
+pol_syst['A0']   = [2,2] #[3,2]
+pol_syst['A1']   = [2,2] #[3,2]
+pol_syst['A2']   = [2,2] #[3,2]
+pol_syst['A3']   = [2,4] #[3,4]
+pol_syst['A4']   = [2,6] #[4,8]
+#pol_systs.append( pol_syst )
+
+pol_syst = copy.deepcopy(pol_default)
+pol_syst['run'] = "corr"
 pol_syst['corr'] = [5,4] #[5,4] #[8,6]
 pol_syst['A0']   = [1,2] #[2,2] #[3,2]
 pol_syst['A1']   = [1,2] #[2,2] #[3,2]
@@ -171,7 +191,7 @@ pol_syst['A2']   = [1,2]
 pol_syst['A2']   = [1,2]
 pol_syst['A3']   = [1,2]
 pol_syst['A4']   = [1,2]
-pol_systs.append( pol_syst )
+#pol_systs.append( pol_syst )
 
 pol_syst = copy.deepcopy(pol_default)
 pol_syst['run'] = "corr"
@@ -182,7 +202,7 @@ pol_syst['A2']   = [1,2]
 pol_syst['A2']   = [1,2]
 pol_syst['A3']   = [1,2]
 pol_syst['A4']   = [1,2]
-pol_systs.append( pol_syst )
+#pol_systs.append( pol_syst )
 
 pol_syst = copy.deepcopy(pol_default)
 pol_syst['run'] = "corr"
@@ -294,6 +314,8 @@ elif args.algo=='jac2_systs_vsN':
                 command += ' --smear'
             command += ' --max_y=3.0 --max_x=0.3'
             command += ' --relativistic'
+            #command += ' --unweighted'
+            command += ' --fullphasespace'
             print(command)
             if not args.dryrun:
                 os.system(command)   

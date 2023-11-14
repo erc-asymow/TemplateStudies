@@ -107,7 +107,9 @@ int main(int argc, char* argv[])
 	//("toyTF2_corr",  bool_switch()->default_value(false), "toy TF2 corr(x,y)")
 	("seed", value<int>()->default_value(4357), "seed")
 	("fit_qt_y",  bool_switch()->default_value(false), "fit qt vs y")
-        ("relativistic",  bool_switch()->default_value(false), "relativistic");
+        ("unweighted",  bool_switch()->default_value(false), "unweighted")
+	("fullphasespace",  bool_switch()->default_value(false), "fullphasespace")
+	("relativistic",  bool_switch()->default_value(false), "relativistic");
 
       store(parse_command_line(argc, argv, desc), vm);
       notify(vm);
@@ -173,6 +175,8 @@ int main(int argc, char* argv[])
   double max_x = vm["max_x"].as<double>();
   double max_y = vm["max_y"].as<double>();
 
+  bool unweighted = vm["unweighted"].as<bool>();
+  bool fullphasespace = vm["fullphasespace"].as<bool>();
   bool relativistic = vm["relativistic"].as<bool>();
 
   bool do_cheb_as_modifiers = false;
@@ -385,14 +389,35 @@ int main(int argc, char* argv[])
   //auto toy_A3 = [](double x, double y)->double{ return 0.3*(x + x*x + x*x*x)*(0.1*y*y); };
   //auto toy_A4 = [](double x, double y)->double{ return (1-x)*(y + y*y*y/10.)/5; };
 
-  string f_realistic_inputs_name = "fout_syst_wm_x0p40_y3p50_V1.root";
+  string f_realistic_inputs_name = "fout_syst_wp_x0p40_y3p50_V1.root";
   int flip_CS = 1;
   if(f_realistic_inputs_name.find("wp")!=string::npos)
     flip_CS = -1;
   
   TFile* f_realistic_inputs = TFile::Open(f_realistic_inputs_name.c_str(), "READ");
   TH2D* h_pdf_UL = (TH2D*)f_realistic_inputs->Get("UL/h_pdf_UL");  
+  int nbinsX_UL = int(max_x/h_pdf_UL->GetXaxis()->GetBinWidth(1));
+  int nbinsY_UL = int(max_y/h_pdf_UL->GetYaxis()->GetBinWidth(1));
+  cout << nbinsX_UL << ":" << nbinsY_UL << endl;
+  TH2D* h_pdf_UL_gen = new TH2D("h_pdf_UL_gen", "", nbinsX_UL, 0.0, max_x, nbinsY_UL, 0., max_y);  
+  for(int ibx=1; ibx<=h_pdf_UL_gen->GetXaxis()->GetNbins();ibx++){
+    double ix = h_pdf_UL_gen->GetXaxis()->GetBinCenter(ibx);
+    for(int iby=1; iby<=h_pdf_UL_gen->GetYaxis()->GetNbins();iby++){      
+      double iy = h_pdf_UL_gen->GetYaxis()->GetBinCenter(iby);
+      double in_val = h_pdf_UL->GetBinContent( h_pdf_UL->FindBin(ix,iy) );
+      h_pdf_UL_gen->SetBinContent(ibx,iby, TMath::Max(in_val, 0.0) );      
+    }
+  }
+
+  // scale to be a pdf in [-y_max,y_max]
   h_pdf_UL->Scale(0.5);
+  h_pdf_UL_gen->Scale(0.5);
+
+  // needed to compute fIntegral
+  double xx,yy;
+  h_pdf_UL_gen->GetRandom2(xx,yy, 0);
+  //cout << xx << ", " << yy << endl;
+
   TH2D* h_pdf_A0 = (TH2D*)f_realistic_inputs->Get("A0/h_pdf_A0");
   TH2D* h_pdf_A1 = (TH2D*)f_realistic_inputs->Get("A1/h_pdf_A1");
   TH2D* h_pdf_A2 = (TH2D*)f_realistic_inputs->Get("A2/h_pdf_A2");
@@ -549,7 +574,7 @@ int main(int argc, char* argv[])
   auto dlast = std::make_unique<RNode>(d);
   std::vector<ROOT::RDF::RResultPtr<double> > sums = {};
 
-  dlast = std::make_unique<RNode>(dlast->DefineSlot("PS",[&](unsigned int nslot)->RVecD{
+  dlast = std::make_unique<RNode>(dlast->DefineSlot("PS",[&, h_pdf_UL_gen](unsigned int nslot)->RVecD{
     RVecD out;
     bool accept = false;
     double Q{0.0};
@@ -566,8 +591,22 @@ int main(int argc, char* argv[])
       }
       cos = rans[nslot]->Uniform(-1.0, 1.0);
       phi = rans[nslot]->Uniform(-TMath::Pi(), +TMath::Pi());
-      x   = rans[nslot]->Uniform(0.0, max_x);
-      y   = rans[nslot]->Uniform(-max_y, max_y);      
+
+      x   = rans[nslot]->Uniform(0.0, fullphasespace ? 0.45 : max_x);
+      y   = rans[nslot]->Uniform(fullphasespace ? -4.0 : -max_y, fullphasespace ? 4.0 : max_y);      
+
+      if(unweighted){
+	double xx = max_x*2;
+	double yy = max_y*2;
+	//cout << xx << ", " << yy << endl;
+	while(xx>max_x || TMath::Abs(yy)>max_y){
+	  h_pdf_UL_gen->GetRandom2(xx,yy, rans[nslot]);
+	  x = xx;
+	  y = std::copysign(yy, rans[nslot]->Uniform(-1,1));
+	  //cout << "GetRandom2: " << x << ", " << y << endl;
+	}
+      }
+      
       double qT2 = x*x*Q*Q;
       double qT = TMath::Sqrt(qT2);
       double XT = TMath::Sqrt(qT2 + Q*Q);
@@ -640,7 +679,10 @@ int main(int argc, char* argv[])
 						    for(unsigned int l = 0; l<=mid_deg; l++){
 						      double cheb_l = cheb(y, max_y, 0.0, deg, l) + cheb(y, max_y, 0.0, deg, deg-l) ;
 						      double alpha_l = l<mid_deg ? 1.0 : (deg%2==0 ? 0.5 : 1.0);
-						      out.emplace_back( corrx*(cheb_l*alpha_l) );
+						      if(fullphasespace && (x>max_x || TMath::Abs(y)>max_y))
+							out.emplace_back(0.0);
+						      else
+							out.emplace_back( corrx*(cheb_l*alpha_l) );
 						    }
 						  }
 						  return out;
@@ -659,8 +701,11 @@ int main(int argc, char* argv[])
 						      if(set_mid_to_zero) up_deg--;
 						      for(unsigned int l = 0; l<up_deg; l++){
 							double cheb_l = (cheb(y, max_y, 0.0, deg, l) + (is_odd? -1 : +1)*cheb(y, max_y, 0.0, deg, deg-l)) ;
-							double alpha_l = (!is_odd && l==(up_deg-1) && deg%2==0 && !set_mid_to_zero) ? 0.5 : 1.0;;
-							out.emplace_back( Ax*(cheb_l*alpha_l) );
+							double alpha_l = (!is_odd && l==(up_deg-1) && deg%2==0 && !set_mid_to_zero) ? 0.5 : 1.0;
+							if(fullphasespace && (x>max_x || TMath::Abs(y)>max_y))
+							  out.emplace_back(0.0);
+							else
+							  out.emplace_back( Ax*(cheb_l*alpha_l) );
 						      }						      
 						    }
 						    return out;
@@ -916,7 +961,10 @@ int main(int argc, char* argv[])
 	  RVecD out;
 	  double norm{3./16/TMath::Pi()};
 	  //double UL = toy_x(x)*toy_y(y);
+
 	  double UL = toy_UL_fast(ibin);
+	  if(unweighted) UL = 1.0;
+
 	  //double UL = toy_UL(x,y);
 	  //if(getbin_extTH2_corr)     UL *= th2_corrxy->GetBinContent( th2_corrxy->FindBin(TMath::Abs(y),x) );
 	  //else if(inter_extTH2_corr) UL *= th2_corrxy->Interpolate(TMath::Abs(y),x);
@@ -1175,6 +1223,8 @@ int main(int argc, char* argv[])
     histos1D.emplace_back(dlast->Histo1D({"wMC_pdfy",  "", 20, 0.0, max_y}, "y", "wMC"));      
     histos2D.emplace_back(dlast->Histo2D({"wMC_corrxy","", 20, 0.0, max_y, 20, 0.0, max_x}, "y", "x", "wMC"));      
     */
+    histos1D.emplace_back(dlast->Histo1D({"wMC_pdfx",  "", 80,    0.0, max_x}, "x", "wMC"));      
+    histos1D.emplace_back(dlast->Histo1D({"wMC_pdfy",  "", 80, -max_y, max_y}, "y", "wMC"));      
 
     dlast = std::make_unique<RNode>(dlast->Define("ibin",
 						  [&](double pt, double eta){
