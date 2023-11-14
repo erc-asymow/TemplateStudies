@@ -398,7 +398,7 @@ int main(int argc, char* argv[])
   TH2D* h_pdf_UL = (TH2D*)f_realistic_inputs->Get("UL/h_pdf_UL");  
   int nbinsX_UL = int(max_x/h_pdf_UL->GetXaxis()->GetBinWidth(1));
   int nbinsY_UL = int(max_y/h_pdf_UL->GetYaxis()->GetBinWidth(1));
-  cout << nbinsX_UL << ":" << nbinsY_UL << endl;
+  //cout << nbinsX_UL << ":" << nbinsY_UL << endl;
   TH2D* h_pdf_UL_gen = new TH2D("h_pdf_UL_gen", "", nbinsX_UL, 0.0, max_x, nbinsY_UL, 0., max_y);  
   for(int ibx=1; ibx<=h_pdf_UL_gen->GetXaxis()->GetNbins();ibx++){
     double ix = h_pdf_UL_gen->GetXaxis()->GetBinCenter(ibx);
@@ -651,10 +651,13 @@ int main(int argc, char* argv[])
   dlast = std::make_unique<RNode>(dlast->Define("eta_smear", [](RVecD PS){return PS.at(8);}, {"PS"}));
 
   dlast =std::make_unique<RNode>(dlast->Define("xybin",   [h_pdf_UL](double x, double y)->int{
-    if(x > h_pdf_UL->GetXaxis()->GetBinUpEdge( h_pdf_UL->GetXaxis()->GetNbins() ) || TMath::Abs(y) > h_pdf_UL->GetYaxis()->GetBinUpEdge( h_pdf_UL->GetYaxis()->GetNbins() ) )
-      return -99;
-    else
-      return h_pdf_UL->FindBin( x, TMath::Abs(y) );
+    if(x > 0.4 && TMath::Abs(y) > 4.0 )
+      return h_pdf_UL->FindBin( 0.40, 4.0 );
+    if(x > 0.4  )
+      return h_pdf_UL->FindBin( 0.40, TMath::Abs(y) );
+    if( TMath::Abs(y) > 4.0 )
+      return h_pdf_UL->FindBin( x, 4.0 );      	
+    return h_pdf_UL->FindBin( x, TMath::Abs(y) );
   }, {"x", "y"}));
   
   dlast = std::make_unique<RNode>(dlast->Define("weights_mass", 
@@ -1223,8 +1226,8 @@ int main(int argc, char* argv[])
     histos1D.emplace_back(dlast->Histo1D({"wMC_pdfy",  "", 20, 0.0, max_y}, "y", "wMC"));      
     histos2D.emplace_back(dlast->Histo2D({"wMC_corrxy","", 20, 0.0, max_y, 20, 0.0, max_x}, "y", "x", "wMC"));      
     */
-    histos1D.emplace_back(dlast->Histo1D({"wMC_pdfx",  "", 80,    0.0, max_x}, "x", "wMC"));      
-    histos1D.emplace_back(dlast->Histo1D({"wMC_pdfy",  "", 80, -max_y, max_y}, "y", "wMC"));      
+    histos1D.emplace_back(dlast->Histo1D({"wMC_pdfx",  "", 80,    0.0, fullphasespace ? 0.5 : max_x}, "x", "wMC"));      
+    histos1D.emplace_back(dlast->Histo1D({"wMC_pdfy",  "", 80, fullphasespace ? -4.0 : -max_y, fullphasespace ? 4.0 : max_y}, "y", "wMC"));      
 
     dlast = std::make_unique<RNode>(dlast->Define("ibin",
 						  [&](double pt, double eta){
