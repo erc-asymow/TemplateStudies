@@ -132,6 +132,7 @@ int main(int argc, char* argv[])
 	("shift_A2",   value<double>()->default_value(0.1), "max shift")
 	("shift_A3",   value<double>()->default_value(0.1), "max shift")
 	("shift_A4",   value<double>()->default_value(0.1), "max shift")
+	("clip",   bool_switch()->default_value(false), "clip")
 	("debug",   bool_switch()->default_value(false), "");
       
       store(parse_command_line(argc, argv, desc), vm);
@@ -160,6 +161,7 @@ int main(int argc, char* argv[])
   else if(run=="z")  run2="z";
   
   bool verbose      = vm["verbose"].as<bool>();
+  bool clip         = vm["clip"].as<bool>();
 
   bool syst_scet   = vm["syst_scet"].as<bool>();
   bool syst_pdf    = vm["syst_pdf"].as<bool>();
@@ -1361,8 +1363,8 @@ int main(int argc, char* argv[])
     int np = npx*npy;
     if(verbose) cout << "np = " << npx << " * " << npy << " = " << np << endl;
 
-    int nfpx = degf_map[iproc].at(0) + 1;
-    int nfpy = degf_map[iproc].at(1)/2 + 1;
+    int nfpx = degf_map[iproc].at(0) + 1 - int(clip);
+    int nfpy = degf_map[iproc].at(1)/2 + 1 - int(clip);
     //int nfp = nfpx*nfpy;
 
     if( syst_as_add_map[iproc] && (iproc!="A4" && iproc!="A0") ) nfpx--;
@@ -1567,7 +1569,7 @@ int main(int argc, char* argv[])
     cout << "Chi2/ndof = " << chi2val << " / " << ndof << " = " << chi2val/ndof  << endl;
     MatrixXd W = (A.transpose()*A).inverse();
     
-    TH1D* hinfo = new TH1D("h_info_"+iproc, "", 10, 0, 10);
+    TH1D* hinfo = new TH1D("h_info_"+iproc, "", 12, 0, 12);
     hinfo->SetBinContent(1, chi2val);
     hinfo->GetXaxis()->SetBinLabel(1, "chi2");
     hinfo->SetBinContent(2, ndof);
@@ -1588,6 +1590,11 @@ int main(int argc, char* argv[])
     hinfo->GetXaxis()->SetBinLabel(9, "nfpy");
     hinfo->SetBinContent(10, shift_map[iproc]);
     hinfo->GetXaxis()->SetBinLabel(10, "shift");
+    hinfo->SetBinContent(11, xf_max);
+    hinfo->GetXaxis()->SetBinLabel(11, "xmax");
+    hinfo->SetBinContent(12, yf_max);
+    hinfo->GetXaxis()->SetBinLabel(12, "ymax");
+
     TH2D* hdelta = (TH2D*)hdummy->Clone("h_delta_"+iproc);
     TH2D* hpull  = (TH2D*)hdummy->Clone("h_pull_"+iproc);
     TH2D* hratio = (TH2D*)hdummy->Clone("h_ratio_"+iproc);
@@ -1745,10 +1752,10 @@ int main(int argc, char* argv[])
     
     // now computing the polynomial approximant
     int count_pf = 0;
-    for(unsigned int ipx = 0; ipx<(degf_map[iproc].at(0) + 1); ipx++){
+    for(unsigned int ipx = 0; ipx<(degf_map[iproc].at(0) + 1 - int(clip)); ipx++){
       if( syst_as_add_map[iproc] && (iproc!="A4" && iproc!="A0") && ipx==0 )
 	continue;
-      for(unsigned int ipy = 0; ipy<degf_map[iproc].at(1) + 1; ipy++){	  
+      for(unsigned int ipy = (!clip ? 0 : 1); ipy<(degf_map[iproc].at(1) + 1); ipy++){	  
 	// it's a POI
 	if( ipy < (degf_map[iproc].at(1)/2 + 1) ){
 	  //cout << count_pf << ", " << ipx << ":" << ipy << endl;
