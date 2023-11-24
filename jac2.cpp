@@ -109,6 +109,7 @@ int main(int argc, char* argv[])
 	("fit_qt_y",  bool_switch()->default_value(false), "fit qt vs y")
         ("unweighted",  bool_switch()->default_value(false), "unweighted")
 	("fullphasespace",  bool_switch()->default_value(false), "fullphasespace")
+	("clip",  bool_switch()->default_value(false), "clip")
 	("relativistic",  bool_switch()->default_value(false), "relativistic");
 
       store(parse_command_line(argc, argv, desc), vm);
@@ -177,17 +178,23 @@ int main(int argc, char* argv[])
 
   bool unweighted = vm["unweighted"].as<bool>();
   bool fullphasespace = vm["fullphasespace"].as<bool>();
+  bool clip = vm["clip"].as<bool>();
   bool relativistic = vm["relativistic"].as<bool>();
 
   bool do_cheb_as_modifiers = false;
   if(run=="corr") do_cheb_as_modifiers = true;
   
-  int nbins_rap   = 25; 
+  int nbins_rap   = 24; 
   double rap_low  = 0.0;
-  double rap_high = +2.5;
-  int nbins_pt    = 35; 
-  double pt_low   = 25.;
-  double pt_high  = 60.;
+  //int nbins_rap   = 48; 
+  //double rap_low  = -2.4;
+  double rap_high = +2.4;
+  //int nbins_pt    = 35;
+  int nbins_pt    = 30; 
+  //double pt_low   = 25.;
+  double pt_low   = 26.;
+  //double pt_high  = 60.;
+  double pt_high  = 56.;
 
   if(fit_qt_y){
     nbins_rap   = 13; 
@@ -283,18 +290,18 @@ int main(int argc, char* argv[])
     njacs_A4_y     = (degs(pdf_type::A4_y)+1)/2;
   }
   else if(run=="corr"){
-    njacs_corrxy_x = degs(pdf_type::corr_x) + 1;
-    njacs_corrxy_y = degs(pdf_type::corr_y)/2 + 1;
-    njacs_A0_x     = degs(pdf_type::A0_x) + 1;
-    njacs_A0_y     = degs(pdf_type::A0_y)/2 + 1;
-    njacs_A1_x     = degs(pdf_type::A1_x) + 1;
-    njacs_A1_y     = degs(pdf_type::A1_y)/2 + 1;
-    njacs_A2_x     = degs(pdf_type::A2_x) + 1;
-    njacs_A2_y     = degs(pdf_type::A2_y)/2 + 1;
-    njacs_A3_x     = degs(pdf_type::A3_x) + 1;
-    njacs_A3_y     = degs(pdf_type::A3_y)/2 + 1;
-    njacs_A4_x     = degs(pdf_type::A4_x) + 1;
-    njacs_A4_y     = degs(pdf_type::A4_y)/2 + 1;
+    njacs_corrxy_x = degs(pdf_type::corr_x) + 1 - int(clip);
+    njacs_corrxy_y = degs(pdf_type::corr_y)/2 + 1 - int(clip);
+    njacs_A0_x     = degs(pdf_type::A0_x) + 1 - int(clip);
+    njacs_A0_y     = degs(pdf_type::A0_y)/2 + 1 - int(clip);
+    njacs_A1_x     = degs(pdf_type::A1_x) + 1 - int(clip);
+    njacs_A1_y     = degs(pdf_type::A1_y)/2 + 1 - int(clip);
+    njacs_A2_x     = degs(pdf_type::A2_x) + 1 - int(clip);
+    njacs_A2_y     = degs(pdf_type::A2_y)/2 + 1 - int(clip);
+    njacs_A3_x     = degs(pdf_type::A3_x) + 1 - int(clip);
+    njacs_A3_y     = degs(pdf_type::A3_y)/2 + 1 - int(clip);
+    njacs_A4_x     = degs(pdf_type::A4_x) + 1 - int(clip);
+    njacs_A4_y     = degs(pdf_type::A4_y)/2 + 1 - int(clip);
   }
   else if(run=="grid"){
     njacs_corrxy_x = degs(pdf_type::corr_x);
@@ -633,6 +640,7 @@ int main(int argc, char* argv[])
     out.emplace_back( y );
     out.emplace_back( pt );		
     out.emplace_back( TMath::Abs(eta) );
+    //out.emplace_back( eta );
     double pt_smear  = rans[nslot]->Gaus(pt*(1.0 + deltakOk), pt*deltapOp);
     double eta_smear = eta + rans[nslot]->Gaus(0.0, deltah);
     out.emplace_back( pt_smear );		
@@ -675,11 +683,11 @@ int main(int argc, char* argv[])
   dlast = std::make_unique<RNode>(dlast->Define("corrxy_vec", 
 						[&](double x, double y)->RVecD{
 						  RVecD out;						  
-						  for(unsigned int k = (do_cheb_as_modifiers ? 0 : 1); k<=degs(pdf_type::corr_x); k++){
+						  for(unsigned int k = (do_cheb_as_modifiers ? 0 : 1); k<=degs(pdf_type::corr_x) - int(clip); k++){
 						    double corrx = cheb(x, 0.5*max_x, 1.0, degs(pdf_type::corr_x), k);
 						    unsigned int deg = degs(pdf_type::corr_y);
 						    unsigned int mid_deg = deg/2;
-						    for(unsigned int l = 0; l<=mid_deg; l++){
+						    for(unsigned int l = (clip ? 1 : 0); l<=mid_deg; l++){
 						      double cheb_l = cheb(y, max_y, 0.0, deg, l) + cheb(y, max_y, 0.0, deg, deg-l) ;
 						      double alpha_l = l<mid_deg ? 1.0 : (deg%2==0 ? 0.5 : 1.0);
 						      if(fullphasespace && (x>max_x || TMath::Abs(y)>max_y))
@@ -696,13 +704,13 @@ int main(int argc, char* argv[])
 						    RVecD out;
 						    bool is_odd = !do_cheb_as_modifiers && (hel=="A1" || hel=="A4");
 						    unsigned int k0 = (do_cheb_as_modifiers || hel=="A4") ? 0 : 1;
-						    for(unsigned int k = k0; k<=degs(get_pdf_type(hel+"_x")); k++){
+						    for(unsigned int k = k0; k<=degs(get_pdf_type(hel+"_x")) - int(clip); k++){
 						      double Ax = cheb(x, 0.5*max_x, 1.0, degs(get_pdf_type(hel+"_x")), k);
 						      unsigned int deg = degs(get_pdf_type(hel+"_y"));
 						      unsigned int up_deg = is_odd ? (deg+1)/2 : deg/2+1 ;
 						      bool set_mid_to_zero = run=="full" && hel=="A3";
 						      if(set_mid_to_zero) up_deg--;
-						      for(unsigned int l = 0; l<up_deg; l++){
+						      for(unsigned int l = (clip ? 1 : 0); l<up_deg; l++){
 							double cheb_l = (cheb(y, max_y, 0.0, deg, l) + (is_odd? -1 : +1)*cheb(y, max_y, 0.0, deg, deg-l)) ;
 							double alpha_l = (!is_odd && l==(up_deg-1) && deg%2==0 && !set_mid_to_zero) ? 0.5 : 1.0;
 							if(fullphasespace && (x>max_x || TMath::Abs(y)>max_y))
@@ -807,9 +815,10 @@ int main(int argc, char* argv[])
     if(run!="grid"){
 
       int k0 = do_cheb_as_modifiers ? 0 : 1;
+      int l0 = 0; //clip ? 1 : 0;
       
       for(int k = k0; k<(njacs_corrxy_x+k0); k++){
-	for(int l = 0; l<njacs_corrxy_y; l++){      
+	for(int l = l0; l<njacs_corrxy_y; l++){      
 	  int idx = (degs(pdf_type::corr_y) + 1)*k + l; 
 	  corrxy_in.emplace_back( corr_xy[idx] );
 	  poi_val[poi_counter] = corr_xy[idx];
@@ -820,7 +829,7 @@ int main(int argc, char* argv[])
       }
             
       for(int k = k0; k<(njacs_A0_x+k0); k++){
-	for(int l = 0; l<njacs_A0_y; l++){      
+	for(int l = l0; l<njacs_A0_y; l++){      
 	int idx = (degs(pdf_type::A0_y)+1)*k + l; 
 	A0xy_in.emplace_back( A0_xy[idx] );
 	poi_val[poi_counter] = A0_xy[idx];
@@ -831,7 +840,7 @@ int main(int argc, char* argv[])
       }
 
       for(int k = k0; k<(njacs_A1_x+k0); k++){
-	for(int l = 0; l<njacs_A1_y; l++){      
+	for(int l = l0; l<njacs_A1_y; l++){      
 	  int idx = (degs(pdf_type::A1_y)+1)*k + l; 
 	  A1xy_in.emplace_back( A1_xy[idx] );
 	  poi_val[poi_counter] = A1_xy[idx];
@@ -842,7 +851,7 @@ int main(int argc, char* argv[])
       }
       
       for(int k = k0; k<(njacs_A2_x+k0); k++){
-	for(int l = 0; l<njacs_A2_y; l++){      
+	for(int l = l0; l<njacs_A2_y; l++){      
 	  int idx = (degs(pdf_type::A2_y)+1)*k + l; 
 	  A2xy_in.emplace_back( A2_xy[idx] );
 	  poi_val[poi_counter] = A2_xy[idx];
@@ -853,7 +862,7 @@ int main(int argc, char* argv[])
       }
 
       for(int k = k0; k<(njacs_A3_x+k0); k++){
-	for(int l = 0; l<njacs_A3_y; l++){      
+	for(int l = l0; l<njacs_A3_y; l++){      
 	  int idx = (degs(pdf_type::A3_y)+1)*k + l; 
 	  A3xy_in.emplace_back( A3_xy[idx] );
 	  poi_val[poi_counter] = A3_xy[idx];
@@ -864,7 +873,7 @@ int main(int argc, char* argv[])
       }
       
       for(int k = 0; k<njacs_A4_x; k++){
-	for(int l = 0; l<njacs_A4_y; l++){      
+	for(int l = l0; l<njacs_A4_y; l++){      
 	  int idx = (degs(pdf_type::A4_y)+1)*k + l; 
 	  A4xy_in.emplace_back( A4_xy[idx] );
 	  poi_val[poi_counter] = A4_xy[idx];
