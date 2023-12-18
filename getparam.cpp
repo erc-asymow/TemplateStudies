@@ -266,7 +266,7 @@ int main(int argc, char* argv[])
   if(runfit){
 						    
     //TFile* fin_nom  = TFile::Open("root/file_qtbyQ_and_qt_vs_absy_v3.root", "READ");
-    TFile* fin_nom  = TFile::Open(("/scratchnvme/tanmay/OutPut_2016/Final_Uses/V2/Plot_root_Files_ang_coeff_"+xvar+"_2d/root_files_ang_coeff_"+xvar+"_2d.root").c_str(), "READ");
+    TFile* fin_nom  = TFile::Open(("/scratchnvme/tanmay/OutPut_2016/Final_Uses/V3/Plot_root_Files_ang_coeff_"+xvar+"_2d/root_files_ang_coeff_"+xvar+"_2d.root").c_str(), "READ");
     if(fin_nom==0){
       cout << "Cannot find nominal file" << endl;
       return 0;
@@ -553,7 +553,7 @@ int main(int argc, char* argv[])
 	}
       }
       
-      TFile* fin_syst = TFile::Open( ("/scratchnvme/tanmay/OutPut_2016/Final_Uses/V2/Plot_root_Files_ang_coeff_"+xvar+"_pdf_msht20_vars_2d/root_files_ang_coeff_"+xvar+"_pdf_msht20_vars_2d.root").c_str(), "READ");
+      TFile* fin_syst = TFile::Open( ("/scratchnvme/tanmay/OutPut_2016/Final_Uses/V3/Plot_root_Files_ang_coeff_"+xvar+"_pdf_msht20_vars_2d/root_files_ang_coeff_"+xvar+"_pdf_msht20_vars_2d.root").c_str(), "READ");
       if(fin_syst==0){
 	cout << "Cannot find syst file" << endl;
 	return 0;
@@ -728,7 +728,7 @@ int main(int argc, char* argv[])
 	}
       }
 
-      TFile* fin_syst = TFile::Open(("/scratchnvme/tanmay/OutPut_2016/Final_Uses/V2/Plot_root_Files_ang_coeff_"+xvar+"_qcd_vars_2d/root_files_ang_coeff_"+xvar+"_qcd_vars_2d.root").c_str(), "READ");
+      TFile* fin_syst = TFile::Open(("/scratchnvme/tanmay/OutPut_2016/Final_Uses/V3/Plot_root_Files_ang_coeff_"+xvar+"_qcd_vars_2d/root_files_ang_coeff_"+xvar+"_qcd_vars_2d.root").c_str(), "READ");
       if(fin_syst==0){
 	cout << "Cannot find syst file" << endl;
 	return 0;
@@ -899,7 +899,7 @@ int main(int argc, char* argv[])
 	}
       }
 
-      TFile* fin_syst = TFile::Open(("/scratchnvme/tanmay/OutPut_2016/Final_Uses/V2/Plot_root_Files_ang_coeff_"+xvar+"_qcd_vars_31_points_2d/root_files_ang_coeff_"+xvar+"_qcd_vars_31_points_2d.root").c_str(), "READ");
+      TFile* fin_syst = TFile::Open(("/scratchnvme/tanmay/OutPut_2016/Final_Uses/V3/Plot_root_Files_ang_coeff_"+xvar+"_qcd_vars_31_points_2d/root_files_ang_coeff_"+xvar+"_qcd_vars_31_points_2d.root").c_str(), "READ");
 
       if(fin_syst==0){
 	cout << "Cannot find syst file" << endl;
@@ -1123,7 +1123,7 @@ int main(int argc, char* argv[])
       for(unsigned int isyst=0; isyst<pdf_alt_names.size(); isyst++){
 
 	TString iproc = pdf_alt_names[isyst];	
-	TFile* fin_syst = TFile::Open( "/scratchnvme/tanmay/OutPut_2016/Final_Uses/V2/Plot_root_Files_ang_coeff_"+TString(xvar.c_str())+"_pdf_"+iproc+"_vars_2d/root_files_ang_coeff_"+TString(xvar.c_str())+"_pdf_"+iproc+"_vars_2d.root", "READ");
+	TFile* fin_syst = TFile::Open( "/scratchnvme/tanmay/OutPut_2016/Final_Uses/V3/Plot_root_Files_ang_coeff_"+TString(xvar.c_str())+"_pdf_"+iproc+"_vars_2d/root_files_ang_coeff_"+TString(xvar.c_str())+"_pdf_"+iproc+"_vars_2d.root", "READ");
 	if(fin_syst==0){
 	  cout << "Cannot find syst file" << endl;
 	  continue;
@@ -1236,7 +1236,7 @@ int main(int argc, char* argv[])
   }
 
   //TFile* fin = TFile::Open(TString("root/file_qtbyQ_and_qt_vs_absy_v3")+(debug ? "_debug.root" : ".root"), "READ");
-  TFile* fin  = TFile::Open(("/scratchnvme/tanmay/OutPut_2016/Final_Uses/V2/Plot_root_Files_ang_coeff_"+xvar+"_2d/root_files_ang_coeff_"+xvar+"_2d.root").c_str(), "READ");
+  TFile* fin  = TFile::Open(("/scratchnvme/tanmay/OutPut_2016/Final_Uses/V3/Plot_root_Files_ang_coeff_"+xvar+"_2d/root_files_ang_coeff_"+xvar+"_2d.root").c_str(), "READ");
   if(fin==0 || fin==nullptr || fin->IsZombie()){
     cout << "File NOT found" << endl;
     return 0;

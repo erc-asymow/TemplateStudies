@@ -47,8 +47,7 @@ if __name__ == '__main__':
                     os.system(cmd_fit)
                     os.system(cmd_plot)
     elif do_syst:
-        posttag = ' --posttag=V3 '
-        #posttag = ' --posttag=add'
+        posttag = ' --posttag=V4 '
         for ips in phase_spaces:
             cms_syst = 'python run_getparam.py --algo=run --mt --syst ' + ips + ' ' + posttag #+' --dryrun'
             print(cms_syst)
@@ -60,4 +59,6 @@ V0  = start
 add = change jac to additive for A3
 V1  = increase UL:syst_deg_y 4 -> 6
 V2  = decrease all. Smaller ranges
+V3  = clip and revert to larger degrees
+V4  = switched to V3/ samples. Clip. Decrease all but A4 and UL
 '''
