@@ -48,3 +48,9 @@ estim: estim.cpp
 
 jac2tmp: jac2.cpp
 	$(GCC) $(CXXFLAGS) -o $(BINDIR)/jac2tmp jac2.cpp  
+
+getparam: getparam.cpp
+	$(GCC) $(CXXFLAGS) -o $(BINDIR)/getparam getparam.cpp  
+
+toy: toy.cpp
+	$(GCC) $(CXXFLAGS) -o $(BINDIR)/toy toy.cpp  
