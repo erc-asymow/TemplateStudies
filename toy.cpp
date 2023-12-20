@@ -6,6 +6,7 @@
 #include "TMath.h"
 #include "TF1.h"
 #include "TF2.h"
+#include "TGraphErrors.h"
 #include <TMatrixD.h>
 #include <TStopwatch.h>
 #include <ROOT/RVec.hxx>
@@ -27,7 +28,7 @@ using namespace boost::program_options;
 
 constexpr double MW = 0.500;
 constexpr double GW = 1.0; 
-constexpr int NMASS = 10;
+constexpr int NMASS = 9;
 constexpr double DELTAM = 0.2;
 
 auto cheb = [](double x, double scale, double offset, unsigned int n, unsigned int m){
@@ -136,14 +137,15 @@ int main(int argc, char* argv[])
 						}, {"x"}));
 
   dlast = std::make_unique<RNode>(dlast->Define("weights_jac", 
-						[&](double x)->RVecD{
+						[&](double x, ULong64_t rdfentry)->RVecD{
 						  RVecD out;						  
 						  for(unsigned int k = 0; k<=degs_x; k++){
 						    double corrx = cheb(x, 0.5, 1.0, degs_x, k);
+						    if(rdfentry%njacs!=k) corrx *= 0.;
 						    out.emplace_back( corrx );						    
 						  }
 						  return out;
-						}, {"x"} ));
+						}, {"x", "rdfentry_"} ));
   
   std::vector<ROOT::RDF::RResultPtr<TH1D> > histos1D;
 
@@ -179,31 +181,49 @@ int main(int argc, char* argv[])
 
   fout->cd();
   std::cout << "Writing histos..." << std::endl;
-  for(auto h : histos1D) h->Write();
+  double sf = double(lumi)/double(nevents);
+  for(auto h : histos1D){
+    h->Scale(sf);
+    h->Write();
+  }
+
   sw.Stop();
 
   std::cout << "Real time: " << sw.RealTime() << " seconds " << "(CPU time:  " << sw.CpuTime() << " seconds)" << std::endl;
   std::cout << "Total slots: " << dlast->GetNSlots() << std::endl;
 
   if(do_fit){
-    double sf = double(lumi)/double(nevents);
     unsigned int nbins = x_nbins;
     TH1D* h_nom = (TH1D*)fout->Get("h");
-    h_nom->Scale(sf);
+    TH1D* h_sum = (TH1D*)h_nom->Clone("h_sum");
+    h_sum->Reset();
     MatrixXd inv_sqrtV = MatrixXd::Zero(nbins, nbins);
-    for(unsigned int ib = 0; ib<nbins; ib++)
-      inv_sqrtV(ib,ib) = 1./TMath::Sqrt(h_nom->GetBinContent(ib+1));
     MatrixXd jac(nbins, njacs);
     for(unsigned int ij = 0; ij<njacs; ij++){
       TH1D* h_j = (TH1D*)fout->Get(Form("h_jac%d", ij));
-      h_j->Scale(sf);
       for(unsigned int ib = 0; ib<nbins; ib++){
-	jac(ib, ij) = rans[0]->Gaus(h_j->GetBinContent(ib+1), h_j->GetBinError(ib+1)*scalejac );
+	double val = h_sum->GetBinContent(ib+1);
+	double err = h_sum->GetBinError(ib+1);
+	double err2 = err*err;
+	double valj = h_j->GetBinContent(ib+1);
+	valj *= njacs;
+	double errj = h_j->GetBinError(ib+1);
+	errj *= njacs;
+	double errj2 = errj*errj;
+	h_sum->SetBinContent(ib+1, val + valj);
+	h_sum->SetBinError(ib+1, TMath::Sqrt(err2 + errj2));
+	//h_sum->SetBinError(ib+1, err + errj);
+	//jac(ib, ij) = rans[0]->Gaus(h_j->GetBinContent(ib+1), h_j->GetBinError(ib+1)*scalejac );
+	jac(ib, ij) = valj;
       }
     }
+    for(unsigned int ib = 0; ib<nbins; ib++){
+      inv_sqrtV(ib,ib) = 1./TMath::Sqrt( h_sum->GetBinContent(ib+1) + h_sum->GetBinError(ib+1)*h_sum->GetBinError(ib+1)*scalejac );
+    }
+
+    double xx_mass[NMASS], yy_chi2[NMASS], exx_mass[NMASS], eyy_chi2[NMASS];	
     for(unsigned int im = 0; im<NMASS; im++){
       TH1D* h_m = (TH1D*)fout->Get(Form("h_mass%d", im));
-      h_m->Scale(sf);
       VectorXd y(nbins);
       for(unsigned int ib=0;ib<nbins; ib++) y(ib) = h_m->GetBinContent(ib+1) - h_nom->GetBinContent(ib+1);
       MatrixXd A = inv_sqrtV*jac;
@@ -214,8 +234,29 @@ int main(int argc, char* argv[])
       int ndof = nbins-njacs;
       double chi2min = chi2(0,0);
       double chi2norm = chi2(0,0)/ndof;
-      cout << "mass " << im << ": chi2_min = " << chi2min << endl;
+      xx_mass[im] = MW - DELTAM*0.5 + DELTAM/(NMASS-1)*im; 
+      exx_mass[im] = 0.0;
+      yy_chi2[im] = chi2min;
+      eyy_chi2[im] = 0.0;
+      cout << "POI[" << im << "]" << ": chi2_min = " << chi2min << " at " << xx_mass[im] << endl;
     }
+
+    TGraphErrors* chi2_fit = new TGraphErrors(NMASS,xx_mass,yy_chi2,exx_mass,eyy_chi2);
+    chi2_fit->Fit("pol2", "Q");
+    chi2_fit->Write("chi2_vs_POI");      
+    TF1* parabola = chi2_fit->GetFunction("pol2");
+    float param0 = parabola->GetParameter(0); 
+    float param1 = parabola->GetParameter(1); 
+    float param2 = parabola->GetParameter(2); 
+    float deltaM = 1./TMath::Sqrt(param2);
+    float biasM = -param1/param2*0.5;
+    float pullM = (biasM-MW)/deltaM; 
+    cout << "DeltaM = " << deltaM << " " 
+	 << " -- bias: " << (biasM-MW)  << " "
+	 << ", pull: " << pullM 
+	 << endl;
+	
+    h_sum->Write();
   }
 
   
