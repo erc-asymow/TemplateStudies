@@ -129,7 +129,7 @@ int main(int argc, char* argv[])
   dlast = std::make_unique<RNode>(dlast->Define("weights_mass", 
 						[&](double x)->RVecD{
 						  RVecD out;
-						  double gen = toy_mass(x, MW, GW);
+ 						  double gen = toy_mass(x, MW, GW);
 						  out.emplace_back( toy_mass(x, MW, GW)/gen  );
 						  for(unsigned int i=0; i<NMASS; i++)
 						    out.emplace_back( toy_mass(x, MW - DELTAM*0.5 + DELTAM/(NMASS-1)*i,GW)/gen );
@@ -184,9 +184,48 @@ int main(int argc, char* argv[])
   double sf = double(lumi)/double(nevents);
   for(auto h : histos1D){
     h->Scale(sf);
+    string h_name = std::string(h->GetName());
+    if(h_name.find("jac")!=string::npos){
+      cout << "Scaling " << h_name << " by " << njacs << endl;
+      h->Scale(double(njacs));
+    }
     h->Write();
   }
 
+  TH1D* h_nom = (TH1D*)fout->Get("h");
+  TH1D* h_asy = (TH1D*)h_nom->Clone("h_asy");
+  h_asy->Reset();
+  for(unsigned int ib = 0; ib<x_nbins; ib++){
+    h_asy->SetBinContent(ib+1, double(lumi)/x_nbins);
+    h_asy->SetBinError(ib+1, 0.0);
+  }
+  h_asy->Write();
+  for(unsigned int ij = 0; ij<njacs; ij++){
+    TH1D* h_j = (TH1D*)fout->Get(Form("h_jac%d", ij));
+    TH1D* h_j_asy = (TH1D*)h_j->Clone(Form("h_jac%d_asy", ij));
+    h_j_asy->Reset();
+    for(unsigned int ib = 0; ib<x_nbins; ib++){
+      double x_i = h_j_asy->GetBinCenter(ib+1);
+      double ratio = cheb(x_i, 0.5, 1.0, degs_x, ij);
+      h_j_asy->SetBinContent(ib+1, h_asy->GetBinContent(ib+1)*ratio  );
+      h_j_asy->SetBinError(ib+1, 0.0 );
+    }
+    h_j_asy->Write();
+  }
+  for(unsigned int im=0; im<NMASS; im++){
+    TH1D* h_m = (TH1D*)fout->Get(Form("h_mass%d", im));
+    TH1D* h_m_asy = (TH1D*)h_m->Clone(Form("h_mass%d_asy", im));
+    h_m_asy->Reset();
+    for(unsigned int ib = 0; ib<x_nbins; ib++){
+      double x_i = h_m_asy->GetBinCenter(ib+1);
+      double ratio = toy_mass(x_i, MW - DELTAM*0.5 + DELTAM/(NMASS-1)*im,GW)/toy_mass(x_i, MW, GW);
+      h_m_asy->SetBinContent(ib+1, h_asy->GetBinContent(ib+1)*ratio  );
+      h_m_asy->SetBinError(ib+1, 0.0 );
+    }
+    h_m_asy->Write();
+  }
+
+  
   sw.Stop();
 
   std::cout << "Real time: " << sw.RealTime() << " seconds " << "(CPU time:  " << sw.CpuTime() << " seconds)" << std::endl;
@@ -195,50 +234,72 @@ int main(int argc, char* argv[])
   if(do_fit){
     unsigned int nbins = x_nbins;
     TH1D* h_nom = (TH1D*)fout->Get("h");
+    TH1D* h_nom_asy = (TH1D*)fout->Get("h_asy");
     TH1D* h_sum = (TH1D*)h_nom->Clone("h_sum");
     h_sum->Reset();
     MatrixXd inv_sqrtV = MatrixXd::Zero(nbins, nbins);
     MatrixXd jac(nbins, njacs);
+    MatrixXd jac_asy(nbins, njacs);
     for(unsigned int ij = 0; ij<njacs; ij++){
       TH1D* h_j = (TH1D*)fout->Get(Form("h_jac%d", ij));
+      TH1D* h_j_asy = (TH1D*)fout->Get(Form("h_jac%d_asy", ij));
       for(unsigned int ib = 0; ib<nbins; ib++){
 	double val = h_sum->GetBinContent(ib+1);
 	double err = h_sum->GetBinError(ib+1);
 	double err2 = err*err;
 	double valj = h_j->GetBinContent(ib+1);
-	valj *= njacs;
+	//valj *= njacs;
 	double errj = h_j->GetBinError(ib+1);
-	errj *= njacs;
+	//errj *= njacs;
 	double errj2 = errj*errj;
 	h_sum->SetBinContent(ib+1, val + valj);
 	h_sum->SetBinError(ib+1, TMath::Sqrt(err2 + errj2));
-	//h_sum->SetBinError(ib+1, err + errj);
-	//jac(ib, ij) = rans[0]->Gaus(h_j->GetBinContent(ib+1), h_j->GetBinError(ib+1)*scalejac );
 	jac(ib, ij) = valj;
+	jac_asy(ib, ij) = h_j_asy->GetBinContent(ib+1);
       }
     }
     for(unsigned int ib = 0; ib<nbins; ib++){
-      inv_sqrtV(ib,ib) = 1./TMath::Sqrt( h_sum->GetBinContent(ib+1) + h_sum->GetBinError(ib+1)*h_sum->GetBinError(ib+1)*scalejac );
+      double var_poisson = h_sum->GetBinContent(ib+1);
+      double var_mc = h_sum->GetBinError(ib+1)*h_sum->GetBinError(ib+1)*scalejac;
+      double var_tot = var_poisson + var_mc;
+      inv_sqrtV(ib,ib) = 1./TMath::Sqrt( var_tot );
     }
 
-    double xx_mass[NMASS], yy_chi2[NMASS], exx_mass[NMASS], eyy_chi2[NMASS];	
+    double xx_mass[NMASS], yy_chi2[NMASS], exx_mass[NMASS], eyy_chi2[NMASS];
+    double yy_jacasy_chi2[NMASS];
+    double yy_asy_chi2[NMASS];	
     for(unsigned int im = 0; im<NMASS; im++){
       TH1D* h_m = (TH1D*)fout->Get(Form("h_mass%d", im));
+      TH1D* h_m_asy = (TH1D*)fout->Get(Form("h_mass%d_asy", im));
       VectorXd y(nbins);
-      for(unsigned int ib=0;ib<nbins; ib++) y(ib) = h_m->GetBinContent(ib+1) - h_nom->GetBinContent(ib+1);
+      VectorXd y_asy(nbins);
+      for(unsigned int ib=0;ib<nbins; ib++){
+	y(ib)     = h_m->GetBinContent(ib+1) - h_nom->GetBinContent(ib+1);
+	y_asy(ib) = h_m_asy->GetBinContent(ib+1) - h_nom_asy->GetBinContent(ib+1);
+      }
       MatrixXd A = inv_sqrtV*jac;
+      MatrixXd A_asy = inv_sqrtV*jac_asy;
       VectorXd b = inv_sqrtV*y;
-      VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
-      MatrixXd chi2old = b.transpose()*b;
+      VectorXd b_asy = inv_sqrtV*y_asy;
+      VectorXd x        = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
+      VectorXd x_asy    = A_asy.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b_asy);
+      VectorXd x_jacasy = A_asy.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
+      MatrixXd chi2old  = b.transpose()*b;
       MatrixXd chi2 = ((b - A*x).transpose())*(b-A*x);
+      MatrixXd chi2_asy = ((b_asy - A_asy*x_asy).transpose())*(b_asy-A_asy*x_asy);
+      MatrixXd chi2_jacasy = ((b - A_asy*x_jacasy).transpose())*(b-A_asy*x_jacasy);
       int ndof = nbins-njacs;
       double chi2min = chi2(0,0);
+      double chi2min_asy = chi2_asy(0,0);
+      double chi2min_jacasy = chi2_jacasy(0,0);
       double chi2norm = chi2(0,0)/ndof;
       xx_mass[im] = MW - DELTAM*0.5 + DELTAM/(NMASS-1)*im; 
       exx_mass[im] = 0.0;
       yy_chi2[im] = chi2min;
+      yy_jacasy_chi2[im] = chi2min_jacasy;
+      yy_asy_chi2[im] = chi2min_asy;
       eyy_chi2[im] = 0.0;
-      cout << "POI[" << im << "]" << ": chi2_min = " << chi2min << " at " << xx_mass[im] << endl;
+      cout << "POI[" << im << "]" << ": chi2_min = " << chi2min << " (jac_asy: " << chi2min_jacasy << ", asy: " << chi2min_asy << ") at " << xx_mass[im] << endl;
     }
 
     TGraphErrors* chi2_fit = new TGraphErrors(NMASS,xx_mass,yy_chi2,exx_mass,eyy_chi2);
