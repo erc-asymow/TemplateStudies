@@ -54,7 +54,7 @@ int main(int argc, char* argv[])
   TStopwatch sw;
   sw.Start();
 
-  ROOT::EnableImplicitMT();
+  //ROOT::EnableImplicitMT();
 
   variables_map vm;
   try
@@ -267,6 +267,7 @@ int main(int argc, char* argv[])
 
     double xx_mass[NMASS], yy_chi2[NMASS], exx_mass[NMASS], eyy_chi2[NMASS];
     double yy_jacasy_chi2[NMASS];
+    double yy_basy_chi2[NMASS];
     double yy_asy_chi2[NMASS];	
     for(unsigned int im = 0; im<NMASS; im++){
       TH1D* h_m = (TH1D*)fout->Get(Form("h_mass%d", im));
@@ -284,22 +285,26 @@ int main(int argc, char* argv[])
       VectorXd x        = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
       VectorXd x_asy    = A_asy.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b_asy);
       VectorXd x_jacasy = A_asy.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
-      MatrixXd chi2old  = b.transpose()*b;
-      MatrixXd chi2 = ((b - A*x).transpose())*(b-A*x);
-      MatrixXd chi2_asy = ((b_asy - A_asy*x_asy).transpose())*(b_asy-A_asy*x_asy);
+      VectorXd x_basy   = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b_asy);
+      MatrixXd chi2old     = b.transpose()*b;
+      MatrixXd chi2        = ((b - A*x).transpose())*(b-A*x);
+      MatrixXd chi2_asy    = ((b_asy - A_asy*x_asy).transpose())*(b_asy-A_asy*x_asy);
       MatrixXd chi2_jacasy = ((b - A_asy*x_jacasy).transpose())*(b-A_asy*x_jacasy);
+      MatrixXd chi2_basy   = ((b_asy - A*x_basy).transpose())*(b_asy-A*x_basy);
       int ndof = nbins-njacs;
       double chi2min = chi2(0,0);
       double chi2min_asy = chi2_asy(0,0);
       double chi2min_jacasy = chi2_jacasy(0,0);
+      double chi2min_basy = chi2_basy(0,0);
       double chi2norm = chi2(0,0)/ndof;
       xx_mass[im] = MW - DELTAM*0.5 + DELTAM/(NMASS-1)*im; 
       exx_mass[im] = 0.0;
       yy_chi2[im] = chi2min;
       yy_jacasy_chi2[im] = chi2min_jacasy;
       yy_asy_chi2[im] = chi2min_asy;
+      yy_basy_chi2[im] = chi2min_basy;
       eyy_chi2[im] = 0.0;
-      cout << "POI[" << im << "]" << ": chi2_min = " << chi2min << " (jac_asy: " << chi2min_jacasy << ", asy: " << chi2min_asy << ") at " << xx_mass[im] << endl;
+      cout << "POI[" << im << "]" << ": chi2_min = " << chi2min << " (jac-asy: " << chi2min_jacasy << ", b-asy: " << chi2min_basy << ", full-asy: " << chi2min_asy << ") at " << xx_mass[im] << endl;
     }
 
     TGraphErrors* chi2_fit = new TGraphErrors(NMASS,xx_mass,yy_chi2,exx_mass,eyy_chi2);
@@ -312,12 +317,77 @@ int main(int argc, char* argv[])
     float deltaM = 1./TMath::Sqrt(param2);
     float biasM = -param1/param2*0.5;
     float pullM = (biasM-MW)/deltaM; 
-    cout << "DeltaM = " << deltaM << " " 
+    cout << "DeltaM        = " << deltaM << " " 
 	 << " -- bias: " << (biasM-MW)  << " "
 	 << ", pull: " << pullM 
 	 << endl;
-	
+
+    TGraphErrors* chi2_fit_basy = new TGraphErrors(NMASS,xx_mass,yy_basy_chi2,exx_mass,eyy_chi2);
+    chi2_fit_basy->Fit("pol2", "Q");
+    chi2_fit_basy->Write("chi2_basy_vs_POI");      
+    TF1* parabola_basy = chi2_fit_basy->GetFunction("pol2");
+    float param0_basy = parabola_basy->GetParameter(0); 
+    float param1_basy = parabola_basy->GetParameter(1); 
+    float param2_basy = parabola_basy->GetParameter(2); 
+    float deltaM_basy = 1./TMath::Sqrt(param2_basy);
+    float biasM_basy = -param1_basy/param2_basy*0.5;
+    float pullM_basy = (biasM_basy-MW)/deltaM_basy; 
+    cout << "DeltaM basy   = " << deltaM_basy << " " 
+	 << " -- bias: " << (biasM_basy-MW)  << " "
+	 << ", pull: " << pullM_basy 
+	 << endl;
+
+    TGraphErrors* chi2_fit_jacasy = new TGraphErrors(NMASS,xx_mass,yy_jacasy_chi2,exx_mass,eyy_chi2);
+    chi2_fit_jacasy->Fit("pol2", "Q");
+    chi2_fit_jacasy->Write("chi2_jacasy_vs_POI");      
+    TF1* parabola_jacasy = chi2_fit_jacasy->GetFunction("pol2");
+    float param0_jacasy = parabola_jacasy->GetParameter(0); 
+    float param1_jacasy = parabola_jacasy->GetParameter(1); 
+    float param2_jacasy = parabola_jacasy->GetParameter(2); 
+    float deltaM_jacasy = 1./TMath::Sqrt(param2_jacasy);
+    float biasM_jacasy = -param1_jacasy/param2_jacasy*0.5;
+    float pullM_jacasy = (biasM_jacasy-MW)/deltaM_jacasy; 
+    cout << "DeltaM jacasy = " << deltaM_jacasy << " " 
+	 << " -- bias: " << (biasM_jacasy-MW)  << " "
+	 << ", pull: " << pullM_jacasy 
+	 << endl;
+
+    TGraphErrors* chi2_fit_asy = new TGraphErrors(NMASS,xx_mass,yy_asy_chi2,exx_mass,eyy_chi2);
+    chi2_fit_asy->Fit("pol2", "Q");
+    chi2_fit_asy->Write("chi2_asy_vs_POI");      
+    TF1* parabola_asy = chi2_fit_asy->GetFunction("pol2");
+    float param0_asy = parabola_asy->GetParameter(0); 
+    float param1_asy = parabola_asy->GetParameter(1); 
+    float param2_asy = parabola_asy->GetParameter(2); 
+    float deltaM_asy = 1./TMath::Sqrt(param2_asy);
+    float biasM_asy = -param1_asy/param2_asy*0.5;
+    float pullM_asy = (biasM_asy-MW)/deltaM_asy; 
+    cout << "DeltaM asy    = " << deltaM_asy << " " 
+	 << " -- bias: " << (biasM_asy-MW)  << " "
+	 << ", pull: " << pullM_asy 
+	 << endl;
+
     h_sum->Write();
+
+    TTree* tree = new TTree("tree", "tree");
+    float n_data;
+    float n_effmc;
+    float n_genmc;
+    int n_par;
+    tree->Branch("sigma",        &deltaM,     "sigma/F");
+    tree->Branch("sigma_asy",    &deltaM_asy, "sigma_asy/F");
+    tree->Branch("sigma_jacasy", &deltaM_jacasy, "sigma_jacasy/F");
+    tree->Branch("sigma_basy",   &deltaM_basy, "sigma_basy/F");
+    tree->Branch("n_data",   &n_data,  "n_data/F");
+    tree->Branch("n_effmc",  &n_effmc, "n_effmc/F");
+    tree->Branch("n_genmc",  &n_genmc, "n_genmc/F");
+    tree->Branch("n_par",    &n_par,   "n_par/I");
+    n_effmc = float( h_sum->GetEffectiveEntries() );
+    n_genmc = float(nevents);
+    n_data = float(lumi);
+    n_par = njacs;
+    tree->Fill();
+    tree->Write();
   }
 
   
