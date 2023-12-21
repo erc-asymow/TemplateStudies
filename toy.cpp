@@ -54,7 +54,7 @@ int main(int argc, char* argv[])
   TStopwatch sw;
   sw.Start();
 
-  //ROOT::EnableImplicitMT();
+  ROOT::EnableImplicitMT();
 
   variables_map vm;
   try
@@ -110,7 +110,7 @@ int main(int argc, char* argv[])
 
   TFile* fout = TFile::Open(("root/toy_"+tag+"_"+run+".root").c_str(), "RECREATE");
 
-  ROOT::RDataFrame d(nevents);
+  ROOT::RDataFrame d(nevents*2);
 
   unsigned int nslots = d.GetNSlots();
   std::vector<TRandom3*> rans = {};
@@ -137,11 +137,15 @@ int main(int argc, char* argv[])
 						}, {"x"}));
 
   dlast = std::make_unique<RNode>(dlast->Define("weights_jac", 
-						[&](double x, ULong64_t rdfentry)->RVecD{
+						[&](double x , ULong64_t rdfentry)->RVecD{
 						  RVecD out;						  
 						  for(unsigned int k = 0; k<=degs_x; k++){
 						    double corrx = cheb(x, 0.5, 1.0, degs_x, k);
-						    if(rdfentry%njacs!=k) corrx *= 0.;
+						    //if(rdfentry%njacs!=k) corrx *= 0.;
+						    // divide events for jac_k based on pseudo-random number
+						    if( int(x*1e+05)%njacs!=k) corrx *= 0.;
+						    // select odd-numbered events for jacs 
+						    if( int(x*1e+07)%2==0) corrx *= 0.;
 						    out.emplace_back( corrx );						    
 						  }
 						  return out;
@@ -154,10 +158,21 @@ int main(int argc, char* argv[])
     return out;
   }, {"x"} ));
         
-  dlast = std::make_unique<RNode>(dlast->Define("weight", [](RVecD weights_mass){ return weights_mass.at(0);}, {"weights_mass"} ));
+  dlast = std::make_unique<RNode>(dlast->Define("weight", [](RVecD weights_mass, double x){
+    double out = weights_mass.at(0);
+    // select even-numbered events for templates
+    if( int(x*1e+07)%2==1) out *= 0.;
+    return out;
+  }, {"weights_mass", "x"} ));
+
   for(unsigned int i=0; i<NMASS; i++){
-    dlast = std::make_unique<RNode>(dlast->Define(Form("weight_mass%d", i), [i](RVecD weights_mass){ return weights_mass.at(1+i);}, {"weights_mass"} ));
+    dlast = std::make_unique<RNode>(dlast->Define(Form("weight_mass%d", i), [i](RVecD weights_mass, double x){
+      double out = weights_mass.at(1+i); 
+      if( int(x*1e+07)%2==1) out *= 0.;
+      return out;
+    }, {"weights_mass", "x"} ));
   }
+
   for(unsigned int i = 0; i < njacs; i++){
     dlast = std::make_unique<RNode>(dlast->Define(Form("weight_jac%d",i), [i](RVecD weights_jac, RVecD weights_mass){ return weights_jac.at(i)*weights_mass.at(0);},
 						  {"weights_jac", "weights_mass"} ));
@@ -238,6 +253,7 @@ int main(int argc, char* argv[])
     TH1D* h_sum = (TH1D*)h_nom->Clone("h_sum");
     h_sum->Reset();
     MatrixXd inv_sqrtV = MatrixXd::Zero(nbins, nbins);
+    MatrixXd inv_sqrtV_asy = MatrixXd::Zero(nbins, nbins);
     MatrixXd jac(nbins, njacs);
     MatrixXd jac_asy(nbins, njacs);
     for(unsigned int ij = 0; ij<njacs; ij++){
@@ -260,9 +276,11 @@ int main(int argc, char* argv[])
     }
     for(unsigned int ib = 0; ib<nbins; ib++){
       double var_poisson = h_sum->GetBinContent(ib+1);
+      double var_poisson_asy = h_asy->GetBinContent(ib+1);
       double var_mc = h_sum->GetBinError(ib+1)*h_sum->GetBinError(ib+1)*scalejac;
       double var_tot = var_poisson + var_mc;
       inv_sqrtV(ib,ib) = 1./TMath::Sqrt( var_tot );
+      inv_sqrtV_asy(ib,ib) = 1./TMath::Sqrt( var_poisson_asy );
     }
 
     double xx_mass[NMASS], yy_chi2[NMASS], exx_mass[NMASS], eyy_chi2[NMASS];
@@ -279,18 +297,20 @@ int main(int argc, char* argv[])
 	y_asy(ib) = h_m_asy->GetBinContent(ib+1) - h_nom_asy->GetBinContent(ib+1);
       }
       MatrixXd A = inv_sqrtV*jac;
-      MatrixXd A_asy = inv_sqrtV*jac_asy;
       VectorXd b = inv_sqrtV*y;
-      VectorXd b_asy = inv_sqrtV*y_asy;
+      MatrixXd A_jacasy = inv_sqrtV*jac_asy;
+      MatrixXd A_asy = inv_sqrtV_asy*jac_asy;
+      VectorXd b_asy  = inv_sqrtV_asy*y_asy;
+      VectorXd b_basy = inv_sqrtV*y_asy;
       VectorXd x        = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
       VectorXd x_asy    = A_asy.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b_asy);
-      VectorXd x_jacasy = A_asy.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
-      VectorXd x_basy   = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b_asy);
+      VectorXd x_jacasy = A_jacasy.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
+      VectorXd x_basy   = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b_basy);
       MatrixXd chi2old     = b.transpose()*b;
       MatrixXd chi2        = ((b - A*x).transpose())*(b-A*x);
       MatrixXd chi2_asy    = ((b_asy - A_asy*x_asy).transpose())*(b_asy-A_asy*x_asy);
-      MatrixXd chi2_jacasy = ((b - A_asy*x_jacasy).transpose())*(b-A_asy*x_jacasy);
-      MatrixXd chi2_basy   = ((b_asy - A*x_basy).transpose())*(b_asy-A*x_basy);
+      MatrixXd chi2_jacasy = ((b - A_jacasy*x_jacasy).transpose())*(b-A_jacasy*x_jacasy);
+      MatrixXd chi2_basy   = ((b_basy - A*x_basy).transpose())*(b_basy-A*x_basy);
       int ndof = nbins-njacs;
       double chi2min = chi2(0,0);
       double chi2min_asy = chi2_asy(0,0);
