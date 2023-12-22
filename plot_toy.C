@@ -3,15 +3,15 @@
 {
 
   TCanvas* c = new TCanvas("c", "canvas", 1200, 800);
-  c->SetGridy();
+  //c->SetGridy();
 
   TMultiGraph* mg = new TMultiGraph();
-  TLegend* leg1 = new TLegend(0.10, 0.75, 0.50, 0.90, "","brNDC");
+  TLegend* leg1 = new TLegend(0.65, 0.7, 0.90, 0.90, "","brNDC");
   leg1->SetFillStyle(0);
   leg1->SetBorderSize(0);
   leg1->SetTextSize(0.035);
   leg1->SetFillColor(10);
-  //leg1->SetNColumns(2);
+  leg1->SetNColumns(3);
   leg1->SetHeader("");
 
   
@@ -45,16 +45,23 @@
     TGraphErrors* h = new TGraphErrors(ch->GetEntries(),xx,yy,exx,eyy);
     TGraphErrors* h_jacasy = new TGraphErrors(ch->GetEntries(),xx,yy_jacasy,exx,eyy);
     TGraphErrors* h_basy = new TGraphErrors(ch->GetEntries(),xx,yy_basy,exx,eyy);
+    //h->SetMinimum(0.01);
+    //h_jacasy->SetMinimum(0.01);
+    //h_basy->SetMinimum(0.01);
     h->SetMarkerStyle(kFullCircle);
     h->SetMarkerSize(2.0);
     h->SetLineWidth(3);
-    leg1->AddEntry(h, Form("p = %d", degs[i]+1), "P");
+    leg1->AddEntry(h, Form("p = %d", degs[i]+1), "PL");
     h_jacasy->SetMarkerStyle(kOpenCircle);
     h_jacasy->SetLineStyle(kDashed);
     h_jacasy->SetMarkerSize(1.5);
+    h_jacasy->SetLineWidth(2);
+    leg1->AddEntry(h_jacasy, "U_{#infty}", "PL");
     h_basy->SetMarkerStyle(kOpenSquare);
     h_basy->SetLineStyle(kDotted);
     h_basy->SetMarkerSize(1.5);
+    h_basy->SetLineWidth(2);
+    leg1->AddEntry(h_basy, "b_{#infty}", "PL");
     if(i==0){
       h->SetMarkerColor(kRed);
       h->SetLineColor(kRed);
@@ -93,6 +100,8 @@
   }
 
   c->cd();
+  mg->SetMinimum(0.01);
+  mg->SetMaximum(4.0);
   mg->GetXaxis()->SetTitle("N/L");
   mg->GetXaxis()->SetTitleSize(0.045);
   mg->GetXaxis()->SetTitleOffset(0.9);
@@ -100,13 +109,28 @@
   mg->GetYaxis()->SetTitleOffset(0.7);
   mg->GetYaxis()->SetTitle("#hat{#sigma}/#hat{#sigma}_{#infty}");
   mg->GetYaxis()->SetLimits(0.01, 4);
-  mg->GetXaxis()->SetLimits(0.1, 40);
-  c->SetLogx();
-  //c->SetLogy();
+  mg->GetXaxis()->SetLimits(0.1, 50);
   mg->GetXaxis()->SetMoreLogLabels();
   mg->GetYaxis()->CenterTitle(true);
   
   mg->Draw("apl");
   leg1->Draw();
+
+  TF1* line = new TF1("line", "1.0", 0.1, 50 );
+  line->SetLineWidth(2);
+  line->SetLineStyle(9);
+  line->SetLineColor(kBlack);
+  line->Draw("same");
+  
+  mg->GetHistogram()->GetYaxis()->SetRangeUser(0.03, 5);
+  //mg->GetHistogram()->GetXaxis()->SetLimits(0.1, 40);
+  c->Modified();
+  c->Update();
+  c->SetLogx();
+  c->SetLogy();
+
+  c->SaveAs("toy_paper.eps");
+  c->SaveAs("toy_paper.pdf");
+  c->SaveAs("toy_paper.png");
   
 }
