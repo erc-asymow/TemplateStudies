@@ -303,6 +303,28 @@ int main(int argc, char* argv[])
       VectorXd b_asy  = inv_sqrtV_asy*y_asy;
       VectorXd b_basy = inv_sqrtV*y_asy;
       VectorXd x        = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
+
+      if(im==0 && true){
+	MatrixXd U = MatrixXd::Identity(y.size(),y.size()) - A*(A.transpose()*A).inverse()*A.transpose();
+	Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver(U);
+	if (eigensolver.info() != Eigen::Success){
+	  cout << "Could not eigendecompose U" << endl;
+	}
+	else{
+ 	  auto eigenvals = eigensolver.eigenvalues();
+	  auto eigenvecs = eigensolver.eigenvectors();
+	  if(true){
+	    cout << "Number of parameters: " << x.size() << ", points: " << y.size() << ", d.o.f.: " << y.size()-x.size() << endl;
+	    cout << "Sum of eigenvalues:" << eigenvals.sum() << " (num of 0/1 eigenvals = " << eigenvals.size() << ")" << endl;
+	    for(unsigned int ei = 0; ei<y.size(); ei++)
+	      std::cout << "Eigen(" << ei << ") = " << eigenvals(ei) << ": bT*uj = " << eigenvecs.col(ei).transpose()*b << endl;//"\n" << eigenvecs.col(ei) << std::endl;
+	    
+	  }
+	}
+      }
+
+
+
       VectorXd x_asy    = A_asy.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b_asy);
       VectorXd x_jacasy = A_jacasy.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
       VectorXd x_basy   = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b_basy);
