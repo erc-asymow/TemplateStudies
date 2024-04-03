@@ -148,7 +148,7 @@ pol_syst['A1']   = [2,2] #[3,2]
 pol_syst['A2']   = [2,2] #[3,2]
 pol_syst['A3']   = [2,4] #[3,4]
 pol_syst['A4']   = [2,6] #[4,8]
-#pol_systs.append( pol_syst )
+pol_systs.append( pol_syst )
 
 pol_syst = copy.deepcopy(pol_default)
 pol_syst['run'] = "corr"
@@ -158,7 +158,7 @@ pol_syst['A1']   = [2,2] #[2,2] #[3,2]
 pol_syst['A2']   = [2,2] #[2,2] #[3,2]
 pol_syst['A3']   = [3,4] #[2,4] #[3,4]
 pol_syst['A4']   = [2,6] #[2,6] #[4,8]
-pol_systs.append( pol_syst )
+#pol_systs.append( pol_syst )
 
 pol_syst = copy.deepcopy(pol_default)
 pol_syst['run'] = "corr"
@@ -168,7 +168,7 @@ pol_syst['A1']   = [2,2] #[2,2] #[3,2]
 pol_syst['A2']   = [2,2] #[2,2] #[3,2]
 pol_syst['A3']   = [3,4] #[2,4] #[3,4]
 pol_syst['A4']   = [3,6] #[2,6] #[4,8]
-pol_systs.append( pol_syst )
+#pol_systs.append( pol_syst )
 
 pol_syst = copy.deepcopy(pol_default)
 pol_syst['run'] = "corr"
@@ -178,7 +178,37 @@ pol_syst['A1']   = [3,2] #[2,2] #[3,2]
 pol_syst['A2']   = [3,2] #[2,2] #[3,2]
 pol_syst['A3']   = [3,4] #[2,4] #[3,4]
 pol_syst['A4']   = [3,6] #[2,6] #[4,8]
-pol_systs.append( pol_syst )
+#pol_systs.append( pol_syst )
+
+pol_syst = copy.deepcopy(pol_default)
+pol_syst['run'] = "corr"
+pol_syst['corr'] = [6,4] #[5,4] #[8,6]
+pol_syst['A0']   = [3,2] #[2,2] #[3,2]
+pol_syst['A1']   = [3,2] #[2,2] #[3,2]
+pol_syst['A2']   = [3,2] #[2,2] #[3,2]
+pol_syst['A3']   = [3,4] #[2,4] #[3,4]
+pol_syst['A4']   = [3,6] #[2,6] #[4,8]
+#pol_systs.append( pol_syst )
+
+pol_syst = copy.deepcopy(pol_default)
+pol_syst['run'] = "corr"
+pol_syst['corr'] = [7,4] #[5,4] #[8,6]
+pol_syst['A0']   = [3,2] #[2,2] #[3,2]
+pol_syst['A1']   = [3,2] #[2,2] #[3,2]
+pol_syst['A2']   = [3,2] #[2,2] #[3,2]
+pol_syst['A3']   = [3,4] #[2,4] #[3,4]
+pol_syst['A4']   = [3,6] #[2,6] #[4,8]
+#pol_systs.append( pol_syst )
+
+pol_syst = copy.deepcopy(pol_default)
+pol_syst['run'] = "corr"
+pol_syst['corr'] = [7,4] #[5,4] #[8,6]
+pol_syst['A0']   = [3,4] #[2,2] #[3,2]
+pol_syst['A1']   = [3,4] #[2,2] #[3,2]
+pol_syst['A2']   = [3,4] #[2,2] #[3,2]
+pol_syst['A3']   = [3,4] #[2,4] #[3,4]
+pol_syst['A4']   = [3,6] #[2,6] #[4,8]
+#pol_systs.append( pol_syst )
 
 pol_syst = copy.deepcopy(pol_default)
 pol_syst['run'] = "corr"
@@ -332,7 +362,7 @@ elif args.algo=='jac2_systs_vsN':
                     command += ' --degs_'+k+'_x='+str(syst[k][0])+' --degs_'+k+'_y='+str(syst[k][1])
             if args.smear:
                 command += ' --smear'
-            command += ' --max_y=3.0 --max_x=0.3'
+            command += ' --max_y=3.0 --max_x=0.35'
             command += ' --relativistic'
             command += ' --clip'
             #command += ' --unweighted'

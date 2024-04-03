@@ -2,9 +2,9 @@
 
   int do_pull = 1;
   
-  TString systname = "scale_A3";
+  TString systname = "scale_A4";
 
-  TString proc = "A3";
+  TString proc = "A4";
   
   vector<TString> phasespace = {"x0p30_y3p00",
 				"x0p40_y3p50"
@@ -33,7 +33,7 @@
 	      TCanvas* c = new TCanvas("c", "canvas", 1200, 600);
 	      c->Divide(2,1);
 	      for(int i = 0; i < ns; i++){
-		if(do_pull){
+ 		if(do_pull){
 		  TH2D* e_i = (TH2D*)fin->Get(Form("h_pull_%d",i));
 		  TH2D* d_i = (TH2D*)fin->Get(Form("h_data_%d",i));
 		  TH2D* d_i_clone = (TH2D*) d_i->Clone(phasespace[ip]+"_"+runs[ip2]+"_"+proc+"_x"+dx[idx]+"_y"+dy[idy]+"_"+TString(Form("%d",i)));

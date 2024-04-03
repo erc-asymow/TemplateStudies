@@ -422,6 +422,7 @@ int main(int argc, char* argv[])
     for(unsigned int ir = 0; ir<C.rows(); ir++){
       for(unsigned int ic = 0; ic<C.rows(); ic++){
 	rho(ir,ic) = C(ir,ic)/TMath::Sqrt(C(ir,ir)*C(ic,ic));
+	//rho(ir,ic) = Cp(ir,ic)/TMath::Sqrt(Cp(ir,ir)*Cp(ic,ic));
       }
     }
     if(verbose && m<0) cout << rho << endl;

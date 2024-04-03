@@ -27,9 +27,10 @@ using namespace boost::program_options;
 constexpr double MW = 80.;
 constexpr int NMAX  = 200;
 //constexpr int NMASS = 50;
-constexpr int NMASS = 3;
+//constexpr int NMASS = 3;
+constexpr int NMASS = 10;
 constexpr double DELTAM = 0.200;
-constexpr double MASSSHIFT = 0.050;
+constexpr double MASSSHIFT = 0.010;
 
 
 int main(int argc, char* argv[])
@@ -566,12 +567,14 @@ int main(int argc, char* argv[])
 	  cout << "Could not eigendecompose U" << endl;
 	}
 	else{
-	  auto eigenvals = eigensolver.eigenvalues();
+ 	  auto eigenvals = eigensolver.eigenvalues();
 	  auto eigenvecs = eigensolver.eigenvectors();
-	  cout << "Number of parameters: " << x.size() << ", points: " << y.size() << ", d.o.f.: " << y.size()-x.size() << endl;
-	  cout << "Sum of eigenvalues:" << eigenvals.sum() << " (num of 0/1 eigenvals = " << eigenvals.size() << ")" << endl;
-	  for(unsigned int ei = 0; ei<y.size(); ei++)
-	    std::cout << "Eigen(" << ei << ") = " << eigenvals(ei) << "\n" << eigenvecs.col(ei) << std::endl;
+	  if(verbose){
+	    cout << "Number of parameters: " << x.size() << ", points: " << y.size() << ", d.o.f.: " << y.size()-x.size() << endl;
+	    cout << "Sum of eigenvalues:" << eigenvals.sum() << " (num of 0/1 eigenvals = " << eigenvals.size() << ")" << endl;
+	    for(unsigned int ei = 0; ei<y.size(); ei++)
+	      std::cout << "Eigen(" << ei << ") = " << eigenvals(ei) << "\n" << eigenvecs.col(ei) << std::endl;
+	  }
 	}
       }
       
@@ -771,7 +774,7 @@ int main(int argc, char* argv[])
       chi2_start = chi2old(0,0);
       chi2_min = chi2(0,0);
       if(m>=0){
-	mass_test =  (MW - DELTAM*0.5 + DELTAM/(NMASS)*m);
+	mass_test =  (MW - DELTAM*0.5 + DELTAM/(NMASS-1)*m);
       }
       else if(jacmass==1) mass_test = MW + MASSSHIFT;
       else if(jacmass==2) mass_test = MW - MASSSHIFT;
@@ -781,7 +784,7 @@ int main(int argc, char* argv[])
       cout << "m=" << m << ": chi2_min=" << chi2_min << endl;
       
       if(m>=0){
-	xx_mass[m] = MW - DELTAM*0.5 + DELTAM/(NMASS)*m; 
+	xx_mass[m] = MW - DELTAM*0.5 + DELTAM/(NMASS-1)*m; 
 	exx_mass[m] = 0.0;
 	yy_chi2[m] = chi2(0,0);
 	eyy_chi2[m] = 0.0;
@@ -901,7 +904,7 @@ int main(int argc, char* argv[])
       
       int idx = 0;
       for(int m=0; m<NMASS; m++){
-	float mass_m = MW - DELTAM*0.5 + DELTAM/(NMASS)*m;
+	float mass_m = MW - DELTAM*0.5 + DELTAM/(NMASS-1)*m;
 	if(mass_m > (biasM - deltaM)){
 	  idx = m;
 	  break;
