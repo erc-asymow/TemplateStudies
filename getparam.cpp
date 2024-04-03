@@ -1236,7 +1236,9 @@ int main(int argc, char* argv[])
   }
 
   //TFile* fin = TFile::Open(TString("root/file_qtbyQ_and_qt_vs_absy_v3")+(debug ? "_debug.root" : ".root"), "READ");
-  TFile* fin  = TFile::Open(("/scratchnvme/tanmay/OutPut_2016/Final_Uses/V3/Plot_root_Files_ang_coeff_"+xvar+"_2d/root_files_ang_coeff_"+xvar+"_2d.root").c_str(), "READ");
+  //TFile* fin  = TFile::Open(("/scratchnvme/tanmay/OutPut_2016/Final_Uses/V3/Plot_root_Files_ang_coeff_"+xvar+"_2d/root_files_ang_coeff_"+xvar+"_2d.root").c_str(), "READ");
+  TFile* fin  = TFile::Open(("root/root_files_ang_coeff_"+xvar+"_2d.root").c_str(), "READ");
+  
   if(fin==0 || fin==nullptr || fin->IsZombie()){
     cout << "File NOT found" << endl;
     return 0;

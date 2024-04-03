@@ -47,7 +47,7 @@ if __name__ == '__main__':
                     os.system(cmd_fit)
                     os.system(cmd_plot)
     elif do_syst:
-        posttag = ' --posttag=V4 '
+        posttag = ' --posttag=V7 '
         for ips in phase_spaces:
             cms_syst = 'python run_getparam.py --algo=run --mt --syst ' + ips + ' ' + posttag #+' --dryrun'
             print(cms_syst)
@@ -61,4 +61,7 @@ V1  = increase UL:syst_deg_y 4 -> 6
 V2  = decrease all. Smaller ranges
 V3  = clip and revert to larger degrees
 V4  = switched to V3/ samples. Clip. Decrease all but A4 and UL
+V5  = switched to V3/ samples. Clip. Larger degrees
+V6  = switched to V3/ samples. Clip. Larger degrees
+V7  = switched to V4/ samples (CT18Z). Clip. Minimal degrees: (5,4), (1,2), ..., (2,2), (4,2)
 '''
