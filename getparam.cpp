@@ -71,6 +71,12 @@ int main(int argc, char* argv[])
 	("dA3y",   value<int>()->default_value(2), "max degree in y for A3")
 	("dA4x",   value<int>()->default_value(2), "max degree in x for A4")
 	("dA4y",   value<int>()->default_value(2), "max degree in y for A4")
+	("dA5x",   value<int>()->default_value(2), "max degree in x for A5")
+	("dA5y",   value<int>()->default_value(2), "max degree in y for A5")
+	("dA6x",   value<int>()->default_value(2), "max degree in x for A6")
+	("dA6y",   value<int>()->default_value(2), "max degree in y for A6")
+	("dA7x",   value<int>()->default_value(2), "max degree in x for A7")
+	("dA7y",   value<int>()->default_value(2), "max degree in y for A7")	
 	("cULx",   value<int>()->default_value(1), "constraint in x of corrxy")
 	("cULy",   value<int>()->default_value(0), "constraint in y of corrxy")
 	("cA0x",   value<int>()->default_value(1), "constraint to 0 in x=0 for A0")
@@ -83,6 +89,12 @@ int main(int argc, char* argv[])
 	("cA3y",   value<int>()->default_value(1), "constraint to 0 in y=0 for A3")
 	("cA4x",   value<int>()->default_value(0), "constraint to 0 in x=0 for A4")
 	("cA4y",   value<int>()->default_value(0), "constraint to 0 in y=0 for A4")
+	("cA5x",   value<int>()->default_value(1), "constraint to 0 in x=0 for A5")
+	("cA5y",   value<int>()->default_value(0), "constraint to 0 in y=0 for A5")
+	("cA6x",   value<int>()->default_value(1), "constraint to 0 in x=0 for A6")
+	("cA6y",   value<int>()->default_value(0), "constraint to 0 in y=0 for A6")
+	("cA7x",   value<int>()->default_value(1), "constraint to 0 in x=0 for A7")
+	("cA7y",   value<int>()->default_value(1), "constraint to 0 in y=0 for A7")
 	("fULx",   value<int>()->default_value(-1), "max degree of modifier in x of corrxy")
 	("fULy",   value<int>()->default_value(-1), "max degree of modifier in y of corrxy")
 	("fA0x",   value<int>()->default_value(-1), "max degree of modifier in x for A0")
@@ -95,6 +107,12 @@ int main(int argc, char* argv[])
 	("fA3y",   value<int>()->default_value(-1), "max degree of modifier in y for A3")
 	("fA4x",   value<int>()->default_value(-1), "max degree of modifier in x for A4")
 	("fA4y",   value<int>()->default_value(-1), "max degree of modifier in y for A4")
+	("fA5x",   value<int>()->default_value(-1), "max degree of modifier in x for A5")
+	("fA5y",   value<int>()->default_value(-1), "max degree of modifier in y for A5")
+	("fA6x",   value<int>()->default_value(-1), "max degree of modifier in x for A6")
+	("fA6y",   value<int>()->default_value(-1), "max degree of modifier in y for A6")
+	("fA7x",   value<int>()->default_value(-1), "max degree of modifier in x for A7")
+	("fA7y",   value<int>()->default_value(-1), "max degree of modifier in y for A7")
 	("x_max",   value<double>()->default_value(-1.0), "max x value for fit")
 	("y_max",  value<double>()->default_value(-1.0), "max y value for fit")
 	("xf_max",  value<double>()->default_value(-1.0), "max x value for syst")
@@ -107,7 +125,10 @@ int main(int argc, char* argv[])
 	("doA1",    bool_switch()->default_value(false), "")
 	("doA2",    bool_switch()->default_value(false), "")
 	("doA3",    bool_switch()->default_value(false), "")
-	("doA4",    bool_switch()->default_value(false), "")	
+	("doA4",    bool_switch()->default_value(false), "")
+	("doA5",    bool_switch()->default_value(false), "")
+	("doA6",    bool_switch()->default_value(false), "")
+	("doA7",    bool_switch()->default_value(false), "")	
       	("interpolate",   bool_switch()->default_value(false), "")
 	("savePdf",   bool_switch()->default_value(false), "")
 	("savePdf2data",  bool_switch()->default_value(false), "")
@@ -126,12 +147,18 @@ int main(int argc, char* argv[])
 	("syst_as_additive_A2",   bool_switch()->default_value(false), "")
 	("syst_as_additive_A3",   bool_switch()->default_value(false), "")
 	("syst_as_additive_A4",   bool_switch()->default_value(false), "")
+	("syst_as_additive_A5",   bool_switch()->default_value(false), "")
+	("syst_as_additive_A6",   bool_switch()->default_value(false), "")
+	("syst_as_additive_A7",   bool_switch()->default_value(false), "")
 	("shift_UL",   value<double>()->default_value(0.1), "max shift")
 	("shift_A0",   value<double>()->default_value(0.1), "max shift")
 	("shift_A1",   value<double>()->default_value(0.1), "max shift")
 	("shift_A2",   value<double>()->default_value(0.1), "max shift")
 	("shift_A3",   value<double>()->default_value(0.1), "max shift")
 	("shift_A4",   value<double>()->default_value(0.1), "max shift")
+	("shift_A5",   value<double>()->default_value(0.1), "max shift")
+	("shift_A6",   value<double>()->default_value(0.1), "max shift")
+	("shift_A7",   value<double>()->default_value(0.1), "max shift")
 	("clip",   bool_switch()->default_value(false), "clip")
 	("debug",   bool_switch()->default_value(false), "");
       
@@ -181,6 +208,9 @@ int main(int argc, char* argv[])
   bool doA2        = vm["doA2"].as<bool>();
   bool doA3        = vm["doA3"].as<bool>();
   bool doA4        = vm["doA4"].as<bool>();
+  bool doA5        = vm["doA5"].as<bool>();
+  bool doA6        = vm["doA6"].as<bool>();
+  bool doA7        = vm["doA7"].as<bool>();
 
   int dULx = vm["dULx"].as<int>();
   int dULy = vm["dULy"].as<int>();
@@ -194,6 +224,12 @@ int main(int argc, char* argv[])
   int dA3y   = vm["dA3y"].as<int>();
   int dA4x   = vm["dA4x"].as<int>();
   int dA4y   = vm["dA4y"].as<int>();
+  int dA5x   = vm["dA5x"].as<int>();
+  int dA5y   = vm["dA5y"].as<int>();
+  int dA6x   = vm["dA6x"].as<int>();
+  int dA6y   = vm["dA6y"].as<int>();
+  int dA7x   = vm["dA7x"].as<int>();
+  int dA7y   = vm["dA7y"].as<int>();
 
   int cULx   = vm["cULx"].as<int>();
   int cULy   = vm["cULy"].as<int>();
@@ -207,6 +243,12 @@ int main(int argc, char* argv[])
   int cA3y   = vm["cA3y"].as<int>();
   int cA4x   = vm["cA4x"].as<int>();
   int cA4y   = vm["cA4y"].as<int>();
+  int cA5x   = vm["cA5x"].as<int>();
+  int cA5y   = vm["cA5y"].as<int>();
+  int cA6x   = vm["cA6x"].as<int>();
+  int cA6y   = vm["cA6y"].as<int>();
+  int cA7x   = vm["cA7x"].as<int>();
+  int cA7y   = vm["cA7y"].as<int>();
 
   int fULx   = vm["fULx"].as<int>();
   int fULy   = vm["fULy"].as<int>();
@@ -220,6 +262,12 @@ int main(int argc, char* argv[])
   int fA3y   = vm["fA3y"].as<int>();
   int fA4x   = vm["fA4x"].as<int>();
   int fA4y   = vm["fA4y"].as<int>();
+  int fA5x   = vm["fA5x"].as<int>();
+  int fA5y   = vm["fA5y"].as<int>();
+  int fA6x   = vm["fA6x"].as<int>();
+  int fA6y   = vm["fA6y"].as<int>();
+  int fA7x   = vm["fA7x"].as<int>();
+  int fA7y   = vm["fA7y"].as<int>();
 
   bool syst_as_additive_UL = vm["syst_as_additive_UL"].as<bool>();
   bool syst_as_additive_A0 = vm["syst_as_additive_A0"].as<bool>();
@@ -227,7 +275,10 @@ int main(int argc, char* argv[])
   bool syst_as_additive_A2 = vm["syst_as_additive_A2"].as<bool>();
   bool syst_as_additive_A3 = vm["syst_as_additive_A3"].as<bool>();
   bool syst_as_additive_A4 = vm["syst_as_additive_A4"].as<bool>();
-
+  bool syst_as_additive_A5 = vm["syst_as_additive_A5"].as<bool>();
+  bool syst_as_additive_A6 = vm["syst_as_additive_A6"].as<bool>();
+  bool syst_as_additive_A7 = vm["syst_as_additive_A7"].as<bool>();
+  
   std::map<TString, bool> syst_as_add_map;
   syst_as_add_map.insert( std::make_pair<TString, bool >("UL", std::move(syst_as_additive_UL)) );
   syst_as_add_map.insert( std::make_pair<TString, bool >("A0", std::move(syst_as_additive_A0)) );
@@ -235,7 +286,10 @@ int main(int argc, char* argv[])
   syst_as_add_map.insert( std::make_pair<TString, bool >("A2", std::move(syst_as_additive_A2)) );
   syst_as_add_map.insert( std::make_pair<TString, bool >("A3", std::move(syst_as_additive_A3)) );
   syst_as_add_map.insert( std::make_pair<TString, bool >("A4", std::move(syst_as_additive_A4)) );
-
+  syst_as_add_map.insert( std::make_pair<TString, bool >("A5", std::move(syst_as_additive_A5)) );
+  syst_as_add_map.insert( std::make_pair<TString, bool >("A6", std::move(syst_as_additive_A6)) );
+  syst_as_add_map.insert( std::make_pair<TString, bool >("A7", std::move(syst_as_additive_A7)) );
+  
   double x_max   = vm["x_max"].as<double>();
   double y_max   = vm["y_max"].as<double>();
   double xf_max  = vm["xf_max"].as<double>();
@@ -247,7 +301,10 @@ int main(int argc, char* argv[])
   double shift_A2  = vm["shift_A2"].as<double>();
   double shift_A3  = vm["shift_A3"].as<double>();
   double shift_A4  = vm["shift_A4"].as<double>();
-
+  double shift_A5  = vm["shift_A5"].as<double>();
+  double shift_A6  = vm["shift_A6"].as<double>();
+  double shift_A7  = vm["shift_A7"].as<double>();
+    
   std::map<TString, double> shift_map;
   shift_map.insert( std::make_pair<TString, double >("UL", std::move(shift_UL)) );
   shift_map.insert( std::make_pair<TString, double >("A0", std::move(shift_A0)) );
@@ -255,6 +312,9 @@ int main(int argc, char* argv[])
   shift_map.insert( std::make_pair<TString, double >("A2", std::move(shift_A2)) );
   shift_map.insert( std::make_pair<TString, double >("A3", std::move(shift_A3)) );
   shift_map.insert( std::make_pair<TString, double >("A4", std::move(shift_A4)) );
+  shift_map.insert( std::make_pair<TString, double >("A5", std::move(shift_A5)) );
+  shift_map.insert( std::make_pair<TString, double >("A6", std::move(shift_A6)) );
+  shift_map.insert( std::make_pair<TString, double >("A7", std::move(shift_A7)) );
   
   std::vector<TString> proc = {"UL"};
   if(doA0) proc.emplace_back("A0");
@@ -262,7 +322,10 @@ int main(int argc, char* argv[])
   if(doA2) proc.emplace_back("A2");
   if(doA3) proc.emplace_back("A3");
   if(doA4) proc.emplace_back("A4");
-
+  if(doA5) proc.emplace_back("A5");
+  if(doA6) proc.emplace_back("A6");
+  if(doA7) proc.emplace_back("A7");
+  
   if(runfit){
 						    
     //TFile* fin_nom  = TFile::Open("root/file_qtbyQ_and_qt_vs_absy_v3.root", "READ");
@@ -1204,6 +1267,7 @@ int main(int argc, char* argv[])
     return 0;
   }
 
+  // DOING ANALYSIS HERE
   TFile *fout = TFile::Open(("fout_"+outtag+".root").c_str(), "RECREATE");
   
   // dummy file
@@ -1275,6 +1339,19 @@ int main(int argc, char* argv[])
   deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("A4", {dA4x,  dA4y}) );
   par_map.insert  ( std::make_pair<TString, std::array<int,2> >("A4", {0, -1}) );
   ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("A4", {cA4x,  cA4y}) );
+  //A5
+  deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("A5", {dA5x,  dA5y}) );
+  par_map.insert  ( std::make_pair<TString, std::array<int,2> >("A5", {0, +1}) );
+  ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("A5", {cA5x,  cA5y}) ); 
+  //A6
+  deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("A6", {dA6x,  dA6y}) );
+  par_map.insert  ( std::make_pair<TString, std::array<int,2> >("A6", {0, -1}) );
+  ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("A6", {cA6x,  cA6y}) ); 
+  //A7
+  deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("A7", {dA7x,  dA7y}) );
+  par_map.insert  ( std::make_pair<TString, std::array<int,2> >("A7", {0, +1}) );
+  ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("A7", {cA7x,  cA7y}) ); 
+
 
   degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("UL", {fULx,  fULy}) );
   degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A0", {fA0x,  fA0y}) );
@@ -1282,6 +1359,9 @@ int main(int argc, char* argv[])
   degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A2", {fA2x,  fA2y}) );
   degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A3", {fA3x,  fA3y}) );
   degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A4", {fA4x,  fA4y}) );
+  degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A5", {fA5x,  fA5y}) );
+  degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A6", {fA6x,  fA6y}) );
+  degf_map.insert  ( std::make_pair<TString, std::array<int,2> >("A7", {fA7x,  fA7y}) );
 
   TH2D* hpdf_UL = 0;
   TH2D* h_interpol_UL = 0;

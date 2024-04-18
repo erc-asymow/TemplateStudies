@@ -22,6 +22,9 @@ parser.add_argument('--doA1', action='store_true'  , help = '')
 parser.add_argument('--doA2', action='store_true'  , help = '')
 parser.add_argument('--doA3', action='store_true'  , help = '')
 parser.add_argument('--doA4', action='store_true'  , help = '')
+parser.add_argument('--doA5', action='store_true'  , help = '')
+parser.add_argument('--doA6', action='store_true'  , help = '')
+parser.add_argument('--doA7', action='store_true'  , help = '')
 parser.add_argument('--systname', default='scet'  , help = '')
 parser.add_argument('--posttag', default=''  , help = '')
 parser.add_argument('--xf_max', dest = 'xf_max'  , type = float,  default=0.4, help='')
@@ -165,7 +168,7 @@ procs = {
                  'cmd_syst': '--doA3 --cA3x=1 --cA3y=0 --shift_A3=0.2 --syst_as_additive_A3'
              },
              'opt_wm' : {
-                 'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1 --cA3y=0',
+                 'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1 --cA3y=0 --syst_as_additive_A3',
                  'tag' : 'wm_A3',
                  'nom_deg_x' : 6,
                  'nom_deg_y' : 6,
@@ -174,7 +177,7 @@ procs = {
                  'cmd_syst': '--doA3 --cA3x=1 --cA3y=0 --shift_A3=0.2 --syst_as_additive_A3'
              },
              'opt_z' : {
-                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1 --cA3y=0',
+                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1 --cA3y=0 --syst_as_additive_A3',
                  'tag' : 'z_A3',
                  'nom_deg_x' : 6,
                  'nom_deg_y' : 6,
@@ -197,8 +200,8 @@ procs = {
                  'tag' : 'wp_A4',
                  'nom_deg_x' : 7,
                  'nom_deg_y' : 13,
-                 'syst_deg_x' : 4, #4,
-                 'syst_deg_y' : 2, #8,
+                 'syst_deg_x' : 2, #4,
+                 'syst_deg_y' : 4, #8,
                  'cmd_syst': '--doA4 --cA4x=0 --shift_A4=0.5',
              },
              'opt_wm' : {
@@ -206,8 +209,8 @@ procs = {
                  'tag' : 'wm_A4',
                  'nom_deg_x' : 7,
                  'nom_deg_y' : 11,
-                 'syst_deg_x' : 4, #4,
-                 'syst_deg_y' : 2, #8,
+                 'syst_deg_x' : 2, #4,
+                 'syst_deg_y' : 4, #8,
                  'cmd_syst': '--doA4 --cA4x=0 --shift_A4=0.5',
              },
              'opt_z' : {
@@ -215,9 +218,114 @@ procs = {
                  'tag' : 'z_A4',
                  'nom_deg_x' : 7,
                  'nom_deg_y' : 11,
-                 'syst_deg_x' : 4, #4,
-                 'syst_deg_y' : 2, #8,
+                 'syst_deg_x' : 2, #4,
+                 'syst_deg_y' : 4, #8,
                  'cmd_syst': '--doA4 --cA4x=0 --shift_A4=0.5',
+             },
+         },
+     },
+     'A5' : {
+         'deg_x' : [2,3,4,5,6,7,8],
+         'deg_y' : [2,4,6,8,10,12],
+         'fit_deg_y' : [2],
+         'fit_deg_x' : [1,2],
+         'opts'   : {
+             'opt_wp' : {
+                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA5 --cA5x=1',
+                 'tag' : 'wp_A5',
+                 'nom_deg_x' : 7,
+                 'nom_deg_y' : 6,
+                 'syst_deg_x' : 1, #3,
+                 'syst_deg_y' : 2, #2,
+                 'cmd_syst': '--doA5 --cA5x=1 --shift_A5=2.0'
+             },
+             'opt_wm' : {
+                 'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA5 --cA5x=1',
+                 'tag' : 'wm_A5',
+                 'nom_deg_x' : 7,
+                 'nom_deg_y' : 6,
+                 'syst_deg_x' : 1, #3,
+                 'syst_deg_y' : 2, #2,
+                 'cmd_syst': '--doA5 --cA5x=1 --shift_A5=2.0'
+             },
+             'opt_z' : {
+                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA5 --cA5x=1',
+                 'tag' : 'z_A5',
+                 'nom_deg_x' : 7,
+                 'nom_deg_y' : 6,
+                 'syst_deg_x' : 1, #3,
+                 'syst_deg_y' : 2, #2,
+                 'cmd_syst': '--doA5 --cA5x=1 --shift_A5=2.0'
+             },
+         },
+     },
+    'A6' : {
+        'deg_x' : [1,2,3,4,5,6,7,8],
+        'deg_y' : [1,3,5,7,9],
+        'fit_deg_y' : [2],
+        'fit_deg_x' : [1,2],
+        'opts'   : {
+             'opt_wp' : {
+                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA6 --cA6x=1',
+                 'tag' : 'wp_A6',
+                 'nom_deg_x' : 8,
+                 'nom_deg_y' : 9,
+                 'syst_deg_x' : 1, #3,
+                 'syst_deg_y' : 2, #2,
+                 'cmd_syst': '--doA6 --cA6x=1 --shift_A6=2.0'
+             },
+            'opt_wm' : {
+                'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA6 --cA6x=1',
+                'tag' : 'wm_A6',
+                'nom_deg_x' : 8,
+                'nom_deg_y' : 7,
+                'syst_deg_x' : 1, #3,
+                'syst_deg_y' : 2, #2,
+                'cmd_syst': '--doA6 --cA6x=1 --shift_A6=2.0'
+             },
+             'opt_z' : {
+                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA6 --cA6x=1',
+                 'tag' : 'z_A6',
+                 'nom_deg_x' : 8,
+                 'nom_deg_y' : 7,
+                 'syst_deg_x' : 1, #3,
+                 'syst_deg_y' : 2, #2,
+                 'cmd_syst': '--doA6 --cA6x=1 --shift_A6=2.0'
+             },
+         },
+     },
+    'A7' : {
+        'deg_x' : [2,3,4,5,6,7,8],
+        'deg_y' : [2,4,6,8,10,12],
+        'fit_deg_y' : [6],
+        'fit_deg_x' : [1,2],
+        'opts'   : {
+             'opt_wp' : {
+                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA7 --cA7x=1 --cA7y=0',
+                 'tag' : 'wp_A7',
+                 'nom_deg_x' : 6,
+                 'nom_deg_y' : 6,
+                 'syst_deg_x' : 1, #3,
+                 'syst_deg_y' : 2, #4,
+                 'cmd_syst': '--doA7 --cA7x=1 --cA7y=0 --shift_A7=2.0'
+             },
+             'opt_wm' : {
+                 'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA7 --cA7x=1 --cA7y=0',
+                 'tag' : 'wm_A7',
+                 'nom_deg_x' : 6,
+                 'nom_deg_y' : 6,
+                 'syst_deg_x' : 1, #3,
+                 'syst_deg_y' : 2, #4,
+                 'cmd_syst': '--doA7 --cA7x=1 --cA7y=0 --shift_A7=2.0'
+             },
+             'opt_z' : {
+                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA7 --cA7x=1 --cA7y=0',
+                 'tag' : 'z_A7',
+                 'nom_deg_x' : 6,
+                 'nom_deg_y' : 6,
+                 'syst_deg_x' : 1, #3,
+                 'syst_deg_y' : 2, #4,
+                 'cmd_syst': '--doA7 --cA7x=1 --cA7y=0 --shift_A7=2.0'
              },
          },
      },
@@ -234,8 +342,8 @@ procs = {
                  'tag' : 'wp_UL',
                  'nom_deg_x' : 20,
                  'nom_deg_y' : 10,
-                 'syst_deg_x' : 5, #8,
-                 'syst_deg_y' : 4, #6,
+                 'syst_deg_x' : 8, #5,
+                 'syst_deg_y' : 6, #4,
                  'cmd_syst' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --shift_UL=0.5',
              },
              'opt_wm' : {
@@ -243,8 +351,8 @@ procs = {
                  'tag' : 'wm_UL',
                  'nom_deg_x' : 20,
                  'nom_deg_y' : 10,
-                 'syst_deg_x' : 5, #8,
-                 'syst_deg_y' : 4, #6,
+                 'syst_deg_x' : 8, #5,
+                 'syst_deg_y' : 6, #4,
                  'cmd_syst' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --shift_UL=0.5',
              },
              'opt_z' : {
@@ -252,8 +360,8 @@ procs = {
                  'tag' : 'z_UL',
                  'nom_deg_x' : 20,
                  'nom_deg_y' : 10,
-                 'syst_deg_x' : 5, #8,
-                 'syst_deg_y' : 4, #6,
+                 'syst_deg_x' : 8, #5,
+                 'syst_deg_y' : 6, #4,
                  'cmd_syst' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --shift_UL=0.5',
              },
         },
@@ -271,9 +379,17 @@ if args.doA3:
     allowed_procs = ["A3"]
 if args.doA4:
     allowed_procs = ["A4"]
+if args.doA5:
+    allowed_procs = ["A5"]
+if args.doA6:
+    allowed_procs = ["A6"]
+if args.doA7:
+    allowed_procs = ["A7"]
 
 if args.syst:
-    allowed_procs = ["UL","A0","A1","A2","A3","A4"]
+    allowed_procs = ["UL","A0","A1","A2","A3","A4",
+                     "A5","A6","A7"
+                     ]
     
 xf_max_str = ("%.2f" % args.xf_max).replace('.', 'p')
 yf_max_str = ("%.2f" % args.yf_max).replace('.', 'p')
