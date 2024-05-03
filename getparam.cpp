@@ -94,7 +94,7 @@ int main(int argc, char* argv[])
 	("cA6x",   value<int>()->default_value(1), "constraint to 0 in x=0 for A6")
 	("cA6y",   value<int>()->default_value(0), "constraint to 0 in y=0 for A6")
 	("cA7x",   value<int>()->default_value(1), "constraint to 0 in x=0 for A7")
-	("cA7y",   value<int>()->default_value(1), "constraint to 0 in y=0 for A7")
+	("cA7y",   value<int>()->default_value(0), "constraint to 0 in y=0 for A7")
 	("fULx",   value<int>()->default_value(-1), "max degree of modifier in x of corrxy")
 	("fULy",   value<int>()->default_value(-1), "max degree of modifier in y of corrxy")
 	("fA0x",   value<int>()->default_value(-1), "max degree of modifier in x for A0")
@@ -1341,15 +1341,15 @@ int main(int argc, char* argv[])
   ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("A4", {cA4x,  cA4y}) );
   //A5
   deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("A5", {dA5x,  dA5y}) );
-  par_map.insert  ( std::make_pair<TString, std::array<int,2> >("A5", {0, +1}) );
+  par_map.insert  ( std::make_pair<TString, std::array<int,2> >("A5", {0, -1}) );
   ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("A5", {cA5x,  cA5y}) ); 
   //A6
   deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("A6", {dA6x,  dA6y}) );
-  par_map.insert  ( std::make_pair<TString, std::array<int,2> >("A6", {0, -1}) );
+  par_map.insert  ( std::make_pair<TString, std::array<int,2> >("A6", {0, +1}) );
   ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("A6", {cA6x,  cA6y}) ); 
   //A7
   deg_map.insert  ( std::make_pair<TString, std::array<int,2> >("A7", {dA7x,  dA7y}) );
-  par_map.insert  ( std::make_pair<TString, std::array<int,2> >("A7", {0, +1}) );
+  par_map.insert  ( std::make_pair<TString, std::array<int,2> >("A7", {0, -1}) );
   ctr_map.insert  ( std::make_pair<TString, std::array<int,2> >("A7", {cA7x,  cA7y}) ); 
 
 
