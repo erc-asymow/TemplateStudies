@@ -1,25 +1,25 @@
 import os
 
-do_fits = False
-do_syst = True
+do_syst = False
+do_fits = not do_syst
 
 phase_spaces = [#"--xf_max=0.4 --yf_max=3.5",
                 "--xf_max=0.3 --yf_max=3.0"
                 ]
 
 systs = [
-    "scet",
+    #"scet",
     "scale",
-    "pdf",
-    "altpdf",
-    "scale_31point"
+    #"pdf",
+    #"altpdf",
+    #"scale_31point"
 ]
 
 procs = [#"UL",
-         #"A0",
+         "A0",
          #"A1",
          #"A2",
-         "A3",
+         #"A3",
          #"A4"
          ]
 
@@ -30,8 +30,8 @@ if __name__ == '__main__':
         for ips in phase_spaces:
             for iproc in procs:
                 do_str = (' --do'+iproc if iproc!="UL" else '' )
-                posttag = ' --posttag=add '
-                #posttag = ''
+                #posttag = ' --posttag=add '
+                posttag = ''
                 cmd_jac  = 'python run_getparam.py --algo=run --mt --jac ' + posttag + ips + do_str #+' --dryrun'
                 print(cmd_jac)
                 os.system(cmd_jac)
@@ -66,4 +66,5 @@ V6  = switched to V3/ samples. Clip. Larger degrees
 V7  = switched to V4/ samples (CT18Z). Clip. Minimal degrees: (5,4), (1,2), ..., (2,2), (4,2)
 V8  = switched to V4/ samples (CT18Z). Clip. Larger degrees for UL, same for others: (8,6), (1,2), ..., (2,2), (4,2)
 V9  = switched to V4/ samples (CT18Z). Fix to A4: (4,2) -> (2,4)
+V10 = Adding A5,A6,A7
 '''
