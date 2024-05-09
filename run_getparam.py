@@ -45,7 +45,7 @@ procs = {
          #'fit_deg_y' : [2,4,6],
          #'fit_deg_x' : [1,2,3,4],
          'fit_deg_y' : [2],
-         'fit_deg_x' : [1,2],         
+         'fit_deg_x' : [1],         
          'opts'   : {
              'opt_wp' : {
                  'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA0 --cA0x=0',
@@ -200,8 +200,8 @@ procs = {
                  'tag' : 'wp_A4',
                  'nom_deg_x' : 7,
                  'nom_deg_y' : 13,
-                 'syst_deg_x' : 2, #4,
-                 'syst_deg_y' : 4, #8,
+                 'syst_deg_x' : 4, #2,
+                 'syst_deg_y' : 1, #4,
                  'cmd_syst': '--doA4 --cA4x=0 --shift_A4=0.5',
              },
              'opt_wm' : {
@@ -209,8 +209,8 @@ procs = {
                  'tag' : 'wm_A4',
                  'nom_deg_x' : 8,
                  'nom_deg_y' : 11,
-                 'syst_deg_x' : 2, #4,
-                 'syst_deg_y' : 4, #8,
+                 'syst_deg_x' : 4, #2,
+                 'syst_deg_y' : 1, #4,
                  'cmd_syst': '--doA4 --cA4x=0 --shift_A4=0.5',
              },
              'opt_z' : {
@@ -218,8 +218,8 @@ procs = {
                  'tag' : 'z_A4',
                  'nom_deg_x' : 7,
                  'nom_deg_y' : 11,
-                 'syst_deg_x' : 2, #4,
-                 'syst_deg_y' : 4, #8,
+                 'syst_deg_x' : 4, #2,
+                 'syst_deg_y' : 1, #4,
                  'cmd_syst': '--doA4 --cA4x=0 --shift_A4=0.5',
              },
          },
@@ -387,8 +387,8 @@ if args.doA7:
     allowed_procs = ["A7"]
 
 if args.syst:
-    allowed_procs = ["UL","A0","A1","A2","A3","A4",
-                     "A5","A6","A7"
+    allowed_procs = ["UL", "A4", #"A0","A1","A2","A3","A4",
+                     #"A5","A6","A7"
                      ]
     
 xf_max_str = ("%.2f" % args.xf_max).replace('.', 'p')
@@ -659,7 +659,8 @@ def run_one_opt_syst(procs, iopt):
     fname = ('_'+args.posttag if args.posttag!='' else '')
     command = './getparam --outtag=syst_'+iopt+'_x'+xf_max_str+'_y'+yf_max_str+fname+\
         ' --xf_max='+str(args.xf_max)+' --yf_max='+str(args.yf_max)+\
-        ' --saveSyst --savePdf --clip '
+        ' --saveSyst --savePdf --saveSystNodes '\
+        ' --clip '
     for iproc in allowed_procs:
         command += procs[iproc]['opts']['opt_'+iopt]['cmd_syst'] +\
             ' --d'+iproc+'x='+str( procs[iproc]['opts']['opt_'+iopt]['nom_deg_x'])+' --d'+iproc+'y='+str(procs[iproc]['opts']['opt_'+iopt]['nom_deg_y'])+\

@@ -43,6 +43,13 @@ double cheb_fct(double *var, double *par){
   return num/den;
 }
 
+double cheb_node(double *var, double *par){
+  double xj = TMath::Cos((par[0]-par[3])*TMath::Pi()/par[0]);
+  xj *= par[2];
+  xj += par[1];
+  return xj;
+}
+
 int main(int argc, char* argv[])
 {
   
@@ -134,6 +141,7 @@ int main(int argc, char* argv[])
 	("savePdf2data",  bool_switch()->default_value(false), "")
 	("saveJac",   bool_switch()->default_value(false), "")
 	("saveSyst",  bool_switch()->default_value(false), "")
+	("saveSystNodes",  bool_switch()->default_value(false), "")
       	("runfit",   bool_switch()->default_value(false), "")
       	("verbose",   bool_switch()->default_value(false), "")
 	("syst_scet",   bool_switch()->default_value(false), "")
@@ -202,6 +210,7 @@ int main(int argc, char* argv[])
   bool savePdf2data = vm["savePdf2data"].as<bool>();
   bool saveJac     = vm["saveJac"].as<bool>();
   bool saveSyst    = vm["saveSyst"].as<bool>();
+  bool saveSystNodes = vm["saveSystNodes"].as<bool>();
   bool debug       = vm["debug"].as<bool>();
   bool doA0        = vm["doA0"].as<bool>();
   bool doA1        = vm["doA1"].as<bool>();
@@ -1460,17 +1469,26 @@ int main(int argc, char* argv[])
     
     TF1* cheb_x = new TF1("cheb_x", cheb_fct, X_edges[0], X_edges[X_nbins], 4); 
     cheb_x->SetParNames("n","offset","scale","m");
-    
     TF1* cheb_y = new TF1("cheb_y", cheb_fct, Y_edges[0], Y_edges[Y_nbins], 4); 
     cheb_y->SetParNames("n","offset","scale","m");
-
     cheb_x->SetParameter("offset", X_offset);
     cheb_x->SetParameter("scale",  X_scale);
     cheb_y->SetParameter("offset", Y_offset);
     cheb_y->SetParameter("scale",  Y_scale);
-
     cheb_x->SetParameter("n", deg_map[iproc].at(0) );
     cheb_y->SetParameter("n", deg_map[iproc].at(1) );
+
+    TF1* chebnode_x = new TF1("chebnode_x", cheb_node, X_edges[0], X_edges[X_nbins], 4); 
+    chebnode_x->SetParNames("n","offset","scale","m");    
+    TF1* chebnode_y = new TF1("chebnode_y", cheb_node, Y_edges[0], Y_edges[Y_nbins], 4); 
+    chebnode_y->SetParNames("n","offset","scale","m");
+    chebnode_x->SetParameter("offset", X_offset);
+    chebnode_x->SetParameter("scale",  X_scale);
+    chebnode_y->SetParameter("offset", Y_offset);
+    chebnode_y->SetParameter("scale",  Y_scale);
+    chebnode_x->SetParameter("n", deg_map[iproc].at(0) );
+    chebnode_y->SetParameter("n", deg_map[iproc].at(1) );
+
     
     int count_d=0;
     VectorXd y(nd);
@@ -1798,15 +1816,21 @@ int main(int argc, char* argv[])
     
     cheb_x->SetParameter("n", degf_map[iproc].at(0) );
     cheb_y->SetParameter("n", degf_map[iproc].at(1) );
+    chebnode_x->SetParameter("n", degf_map[iproc].at(0) );
+    chebnode_y->SetParameter("n", degf_map[iproc].at(1) );
 
     if(xf_max>0.){
       cheb_x->SetParameter("scale",  xf_max*0.5 );
       cheb_x->SetParameter("offset", xf_max*0.5 );
+      chebnode_x->SetParameter("scale",  xf_max*0.5 );
+      chebnode_x->SetParameter("offset", xf_max*0.5 );
     }
     else xf_max = X_max;
     if(yf_max>0.){
       cheb_y->SetParameter("scale",  yf_max );
       cheb_y->SetParameter("offset", 0.0 );
+      chebnode_y->SetParameter("scale",  yf_max );
+      chebnode_y->SetParameter("offset", 0.0 );
     } 
     else yf_max = Y_max; 
 
@@ -1840,7 +1864,7 @@ int main(int argc, char* argv[])
     if( iproc=="UL" ) hpdf2data_UL = (TH2D*)hpdf2data_p->Clone("hpdf2data_"+iproc);
     
     
-    // now computing the polynomial approximant
+    // now computing the polynomial approoximant
     int count_pf = 0;
     for(unsigned int ipx = 0; ipx<(degf_map[iproc].at(0) + 1 - int(clip)); ipx++){
       if( syst_as_add_map[iproc] && (iproc!="A4" && iproc!="A0") && ipx==0 )
@@ -1855,6 +1879,15 @@ int main(int argc, char* argv[])
 	    else if(syst==1) syst_name = "Up";
 	    else if(syst==2) syst_name = "Down";
 
+	    if(syst==0 && saveSystNodes){
+	      TH1D* hnodes_p = new TH1D("h_nodes_"+iproc+Form("_syst%d",count_pf) , "", 2, 0, 2);
+	      chebnode_x->SetParameter("m", ipx);
+	      chebnode_y->SetParameter("m", ipy);
+	      hnodes_p->SetBinContent(1, chebnode_x->Eval(0.0));
+	      hnodes_p->SetBinContent(2, chebnode_y->Eval(0.0));
+	      hnodes_p->Write();
+	    }
+	    
 	    // save pdf of varied f_syst as fine-grained TH2D
 	    TH2D* hpdf_p = (TH2D*)hpdf->Clone( syst==0 ?
 					       "h_pdf_"+iproc+Form("_jac%d",count_pf) :
@@ -1879,7 +1912,7 @@ int main(int argc, char* argv[])
 		double val = 0.0;
 		if(syst==0){
 		  val = hpdf->GetBinContent(idx,idy)*totx*toty ;
-		  if( syst_as_add_map[iproc] ) val = totx*toty;
+		  if( syst_as_add_map[iproc] ) val = totx*toty;		  
 		}
 		else{
 		  double shift = syst==1 ? +shift_map[iproc] : -shift_map[iproc];
