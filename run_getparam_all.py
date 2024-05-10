@@ -4,8 +4,9 @@ do_syst = True
 do_fits = not do_syst
 
 phase_spaces = [#"--xf_max=0.4 --yf_max=3.5",
-                "--xf_max=0.3 --yf_max=3.0"
-                ]
+                #"--xf_max=0.3 --yf_max=3.0"
+                "--xf_max=0.5 --yf_max=4.0",
+]
 
 systs = [
     #"scet",
@@ -41,17 +42,19 @@ if __name__ == '__main__':
                     if isys=="scale_31point" and iproc=="UL":
                         continue
                     cmd_fit  = 'python run_getparam.py --algo=run --mt --fit ' + posttag + ips + do_str + ' --systname='+isys
+                    cmd_fit += ' --doTraditionalFit '
                     cmd_plot = 'python run_getparam.py --algo=plot_fitres '    + posttag + ips + do_str + ' --systname='+isys + ' --batch'
                     print(cmd_fit)
                     print(cmd_plot)
                     os.system(cmd_fit)
-                    os.system(cmd_plot)
+                    #os.system(cmd_plot)
     elif do_syst:
         posttag = ' --posttag=DEBUG '
         for ips in phase_spaces:
-            cms_syst = 'python run_getparam.py --algo=run --mt --syst ' + ips + ' ' + posttag #+' --dryrun'
-            print(cms_syst)
-            os.system(cms_syst)
+            cmd_syst = 'python run_getparam.py --algo=run --mt --syst ' + ips + ' ' + posttag #+' --dryrun'
+            cmd_syst += ' --doTraditionalFit '
+            print(cmd_syst)
+            os.system(cmd_syst)
 
 '''
 Log-book:

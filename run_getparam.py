@@ -25,6 +25,7 @@ parser.add_argument('--doA4', action='store_true'  , help = '')
 parser.add_argument('--doA5', action='store_true'  , help = '')
 parser.add_argument('--doA6', action='store_true'  , help = '')
 parser.add_argument('--doA7', action='store_true'  , help = '')
+parser.add_argument('--doTraditionalFit', action='store_true'  , help = '')
 parser.add_argument('--systname', default='scet'  , help = '')
 parser.add_argument('--posttag', default=''  , help = '')
 parser.add_argument('--xf_max', dest = 'xf_max'  , type = float,  default=0.4, help='')
@@ -368,6 +369,15 @@ procs = {
      },
 }
 
+
+if args.doTraditionalFit:
+    procs['A0']['fit_deg_x'] = [1] 
+    procs['A0']['fit_deg_y'] = [2]
+    procs['A0']['opts']['opt_wp']['syst_deg_x'] = 5
+    procs['A0']['opts']['opt_wp']['syst_deg_y'] = 1
+
+
+
 allowed_procs = ["UL"]
 if args.doA0:
     allowed_procs = ["A0"]
@@ -387,7 +397,7 @@ if args.doA7:
     allowed_procs = ["A7"]
 
 if args.syst:
-    allowed_procs = ["UL", "A4", #"A0","A1","A2","A3","A4",
+    allowed_procs = ["UL", "A0", #"A0","A1","A2","A3","A4",
                      #"A5","A6","A7"
                      ]
     
@@ -659,8 +669,9 @@ def run_one_opt_syst(procs, iopt):
     fname = ('_'+args.posttag if args.posttag!='' else '')
     command = './getparam --outtag=syst_'+iopt+'_x'+xf_max_str+'_y'+yf_max_str+fname+\
         ' --xf_max='+str(args.xf_max)+' --yf_max='+str(args.yf_max)+\
-        ' --saveSyst --savePdf --saveSystNodes '\
-        ' --clip '
+        ' --saveSyst --savePdf --saveSystNodes '
+    if not args.doTraditionalFit:
+        command += ' --clip '
     for iproc in allowed_procs:
         command += procs[iproc]['opts']['opt_'+iopt]['cmd_syst'] +\
             ' --d'+iproc+'x='+str( procs[iproc]['opts']['opt_'+iopt]['nom_deg_x'])+' --d'+iproc+'y='+str(procs[iproc]['opts']['opt_'+iopt]['nom_deg_y'])+\
