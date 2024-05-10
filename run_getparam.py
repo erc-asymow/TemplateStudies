@@ -371,11 +371,15 @@ procs = {
 
 
 if args.doTraditionalFit:
-    procs['A0']['fit_deg_x'] = [1] 
-    procs['A0']['fit_deg_y'] = [2]
-    procs['A0']['opts']['opt_wp']['syst_deg_x'] = 5
-    procs['A0']['opts']['opt_wp']['syst_deg_y'] = 1
-
+    for ip in ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7']:
+        procs[ip]['fit_deg_x'] = [1] 
+        procs[ip]['fit_deg_y'] = [2]
+        for ic in ['wp', 'wm', 'z']:
+            procs[ip]['opts']['opt_'+ic]['syst_deg_x'] = 5
+            procs[ip]['opts']['opt_'+ic]['syst_deg_y'] = 1
+            if ip=='A3':
+                procs[ip]['opts']['opt_'+ic]['cmd_syst'].replace('--syst_as_additive_A3', '')
+print()
 
 
 allowed_procs = ["UL"]
@@ -397,8 +401,8 @@ if args.doA7:
     allowed_procs = ["A7"]
 
 if args.syst:
-    allowed_procs = ["UL", "A0", #"A0","A1","A2","A3","A4",
-                     #"A5","A6","A7"
+    allowed_procs = ["UL", "A0","A1","A2","A3","A4",
+                     "A5","A6","A7"
                      ]
     
 xf_max_str = ("%.2f" % args.xf_max).replace('.', 'p')

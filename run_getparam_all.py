@@ -16,13 +16,17 @@ systs = [
     #"scale_31point"
 ]
 
-procs = [#"UL",
-         "A0",
-         #"A1",
-         #"A2",
-         #"A3",
-         #"A4"
-         ]
+procs = [
+    #"UL",
+    "A0",
+    "A1",
+    "A2",
+    "A3",
+    "A4",
+    #"A5",
+    #"A6",
+    #"A7"
+]
 
 
 if __name__ == '__main__':
@@ -34,6 +38,7 @@ if __name__ == '__main__':
                 #posttag = ' --posttag=add '
                 posttag = ''
                 cmd_jac  = 'python run_getparam.py --algo=run --mt --jac ' + posttag + ips + do_str #+' --dryrun'
+                cmd_jac += ' --doTraditionalFit '
                 print(cmd_jac)
                 os.system(cmd_jac)
                 for isys in systs:                

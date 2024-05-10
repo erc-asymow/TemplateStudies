@@ -8,13 +8,25 @@
   vector<std::pair<TString,int>> scales;
   vector<TString> scales_names;
   scales.emplace_back( std::make_pair<TString,int>("twotwo", 1) );
-  scales_names.emplace_back("muRUp_muRUp");
+  scales_names.emplace_back("muRmuFUp");
+  scales.emplace_back( std::make_pair<TString,int>("point5point5", 2) );
+  scales_names.emplace_back("muRmuFDown");
+  scales.emplace_back( std::make_pair<TString,int>("onepoint5", 3) );
+  scales_names.emplace_back("muFDown");
+  scales.emplace_back( std::make_pair<TString,int>("onetwo", 6) );
+  scales_names.emplace_back("muFUp");
+  scales.emplace_back( std::make_pair<TString,int>("point5one", 4) );
+  scales_names.emplace_back("muRDown");
+  scales.emplace_back( std::make_pair<TString,int>("twoone", 5) );
+  scales_names.emplace_back("muRUp");
     
-  vector<TString> procs = {"A0"};
+  vector<TString> procs = {"A0",
+			   "A1", "A2", "A3", "A4"
+  };
   
   TFile* fout = TFile::Open("fout_systTrad_"+opt+"_"+input_tag+".root", "RECREATE");
 
-  TFile* fin = TFile::Open("fout_syst_"+opt+"_"+phase_space+"_"+input_tag+".root", "READ");
+  TFile* fin = TFile::Open("root/fout_syst_"+opt+"_"+phase_space+"_"+input_tag+".root", "READ");
 
   TH2D* h_syst_i = 0;
 
@@ -35,6 +47,9 @@
     int nfp = nfpx*nfpy;
     
     TH2D* h_pdf  = (TH2D*)fin->Get(proc+"/h_pdf_"+proc);
+    fout->cd(proc);
+    h_pdf->Write();
+
     for(int isyst=0; isyst<nfp; isyst++ ){
       cout << "Syst " << isyst << endl;
       
@@ -54,19 +69,28 @@
 	cout << "Scale " << iscale << endl;
 	TString scale_name = scales[iscale].first;
 	int scale_idx  = scales[iscale].second;
-	TFile* fin_iscale = TFile::Open("fout_fit_scale_"+proc+"_"+phase_space+"_"+opt+"_"+proc+"_x1_y2.root", "READ");
+	TFile* fin_iscale = TFile::Open("root/fout_fit_scale_"+proc+"_"+phase_space+"_"+opt+"_"+proc+"_x1_y2.root", "READ");
 	TH2D* h_data_nom    = (TH2D*)fin_iscale->Get("h_data_0");
 	TH2D* h_data_iscale = (TH2D*)fin_iscale->Get("h_data_"+TString(Form("%d", scale_idx)));
-	int ibin = h_data_nom->FindBin(node_x,node_y);
+	int ibin_x = h_data_nom->GetXaxis()->FindBin(node_x);
+	int ibin_y = h_data_nom->GetYaxis()->FindBin(node_y);
 	//h_data_nom->Print("all");
-	cout << "Bin:" << ibin << endl;
-	cout << h_data_iscale->GetBinContent( ibin ) << " / " << h_data_nom->GetBinContent( ibin ) << endl;
-	double ratio =
-	  h_data_iscale->GetBinContent( ibin ) /
-	  h_data_nom->GetBinContent( ibin );
-	double rescale = ratio/(1.0+shift);
-	cout << "rescale by " << ratio << "/" << 1+shift << " = " << rescale << endl;
-
+	//cout << "Bin:" << ibin << endl;
+	cout << h_data_iscale->GetBinContent( ibin_x, ibin_y ) << " / " << h_data_nom->GetBinContent( ibin_x, ibin_y ) << endl;	
+	double binned_ratio =
+	  h_data_iscale->GetBinContent( ibin_x, ibin_y ) /
+	  h_data_nom->GetBinContent( ibin_x, ibin_y );
+	double avgy_binned_ratio = 0.;
+	for(unsigned int k = 1 ; k<=h_data_nom->GetYaxis()->GetNbins(); k++){
+	  avgy_binned_ratio += h_data_iscale->GetBinContent( ibin_x, k ) / h_data_nom->GetBinContent( ibin_x, k );	  
+	}
+	avgy_binned_ratio /= h_data_nom->GetYaxis()->GetNbins();
+	cout << "binned_ratio at the y node: " << binned_ratio << ", avg = " << avgy_binned_ratio << endl;
+	binned_ratio = avgy_binned_ratio;
+	
+	double rescale = (binned_ratio-1.0)/shift;
+	cout << "rescale by " << (binned_ratio-1.0) << "/" << shift << " = " << rescale << endl;
+	
 	//fout->cd(proc);
 	TH2D* h_new_syst_i = (TH2D*)h_syst_i->Clone("h_pdf_"+proc+"_syst"+TString(Form("%d",isyst))+"_"+scales_names[iscale]);
 	for(unsigned int ix=1; ix<=h_new_syst_i->GetNbinsX(); ix++){
@@ -75,7 +99,9 @@
  	    if(h_new_syst_i->GetYaxis()->GetBinUpEdge(iy)>yf_max) continue;
 	    double nom_val = h_pdf->GetBinContent(ix,iy);
 	    double old_val = h_syst_i->GetBinContent(ix,iy);
-	    h_new_syst_i->SetBinContent(ix,iy, (old_val-nom_val)*rescale + nom_val);
+	    double corr = old_val>0. ? nom_val/old_val - 1.0 : 0.;
+	    corr *= rescale;
+	    h_new_syst_i->SetBinContent(ix,iy, nom_val*(1+corr));
 	  }
 	}
 	fout->cd(proc);
