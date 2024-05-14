@@ -166,7 +166,7 @@ procs = {
                  'nom_deg_y' : 10,
                  'syst_deg_x' : 2, #3,
                  'syst_deg_y' : 2, #4,
-                 'cmd_syst': '--doA3 --cA3x=1 --cA3y=0 --shift_A3=0.2 --syst_as_additive_A3'
+                 'cmd_syst': '--doA3 --cA3x=1 --cA3y=0  --syst_as_additive_A3 --shift_A3=0.2'
              },
              'opt_wm' : {
                  'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1 --cA3y=0 --syst_as_additive_A3',
@@ -175,7 +175,7 @@ procs = {
                  'nom_deg_y' : 8,
                  'syst_deg_x' : 2, #3,
                  'syst_deg_y' : 2, #4,
-                 'cmd_syst': '--doA3 --cA3x=1 --cA3y=0 --shift_A3=0.2 --syst_as_additive_A3'
+                 'cmd_syst': '--doA3 --cA3x=1 --cA3y=0  --syst_as_additive_A3 --shift_A3=0.2'
              },
              'opt_z' : {
                  'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1 --cA3y=0 --syst_as_additive_A3',
@@ -184,7 +184,7 @@ procs = {
                  'nom_deg_y' : 6,
                  'syst_deg_x' : 2, #3,
                  'syst_deg_y' : 2, #4,
-                 'cmd_syst': '--doA3 --cA3x=1 --cA3y=0 --shift_A3=0.2 --syst_as_additive_A3'
+                 'cmd_syst': '--doA3 --cA3x=1 --cA3y=0  --syst_as_additive_A3 --shift_A3=0.2'
              },
          },
      },
@@ -371,6 +371,7 @@ procs = {
 
 
 if args.doTraditionalFit:
+    print("Adapting to args.doTraditionalFit")
     for ip in ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7']:
         procs[ip]['fit_deg_x'] = [1] 
         procs[ip]['fit_deg_y'] = [2]
@@ -378,10 +379,14 @@ if args.doTraditionalFit:
             procs[ip]['opts']['opt_'+ic]['syst_deg_x'] = 5
             procs[ip]['opts']['opt_'+ic]['syst_deg_y'] = 1
             if ip=='A3':
-                procs[ip]['opts']['opt_'+ic]['cmd_syst'].replace('--syst_as_additive_A3', '')
-print()
+                procs[ip]['opts']['opt_'+ic]['cmd'] = procs[ip]['opts']['opt_'+ic]['cmd'].replace('--syst_as_additive_A3', '')
+                procs[ip]['opts']['opt_'+ic]['cmd_syst'] = procs[ip]['opts']['opt_'+ic]['cmd_syst'].replace('--syst_as_additive_A3', '')        
+            old_cmd = procs[ip]['opts']['opt_'+ic]['cmd_syst']
+            procs[ip]['opts']['opt_'+ic]['cmd_syst'] = old_cmd.replace( old_cmd[-3:len(old_cmd)], '0.1' )
+            print( procs[ip]['opts']['opt_'+ic]['cmd_syst'] )
+            
 
-
+                
 allowed_procs = ["UL"]
 if args.doA0:
     allowed_procs = ["A0"]
