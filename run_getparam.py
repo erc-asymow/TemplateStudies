@@ -26,6 +26,7 @@ parser.add_argument('--doA5', action='store_true'  , help = '')
 parser.add_argument('--doA6', action='store_true'  , help = '')
 parser.add_argument('--doA7', action='store_true'  , help = '')
 parser.add_argument('--doTraditionalFit', action='store_true'  , help = '')
+parser.add_argument('--doZFit', action='store_true'  , help = '')
 parser.add_argument('--systname', default='scet'  , help = '')
 parser.add_argument('--posttag', default=''  , help = '')
 parser.add_argument('--xf_max', dest = 'xf_max'  , type = float,  default=0.4, help='')
@@ -384,7 +385,24 @@ if args.doTraditionalFit:
             old_cmd = procs[ip]['opts']['opt_'+ic]['cmd_syst']
             procs[ip]['opts']['opt_'+ic]['cmd_syst'] = old_cmd.replace( old_cmd[-3:len(old_cmd)], '0.1' )
             print( procs[ip]['opts']['opt_'+ic]['cmd_syst'] )
-            
+
+if args.doZFit:
+    print("Adapting to args.doZFit")
+    for ip in ['UL', 'A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7']:
+        for ic in ['z']:
+            if ip[0]=='A':
+                procs[ip]['opts']['opt_'+ic]['syst_deg_x'] = 3
+                procs[ip]['opts']['opt_'+ic]['syst_deg_y'] = 4
+            else:
+                procs[ip]['opts']['opt_'+ic]['syst_deg_x'] = 8
+                procs[ip]['opts']['opt_'+ic]['syst_deg_y'] = 6                
+            if ip=='A3':
+                procs[ip]['opts']['opt_'+ic]['cmd'] = procs[ip]['opts']['opt_'+ic]['cmd'].replace('--syst_as_additive_A3', '')
+                procs[ip]['opts']['opt_'+ic]['cmd_syst'] = procs[ip]['opts']['opt_'+ic]['cmd_syst'].replace('--syst_as_additive_A3', '')        
+            old_cmd = procs[ip]['opts']['opt_'+ic]['cmd_syst']
+            procs[ip]['opts']['opt_'+ic]['cmd_syst'] = old_cmd.replace( old_cmd[-3:len(old_cmd)], '0.1' )
+            print( procs[ip]['opts']['opt_'+ic]['cmd_syst'] )
+
 
                 
 allowed_procs = ["UL"]
@@ -679,7 +697,7 @@ def run_one_opt_syst(procs, iopt):
     command = './getparam --outtag=syst_'+iopt+'_x'+xf_max_str+'_y'+yf_max_str+fname+\
         ' --xf_max='+str(args.xf_max)+' --yf_max='+str(args.yf_max)+\
         ' --saveSyst --savePdf --saveSystNodes '
-    if not args.doTraditionalFit:
+    if not (args.doTraditionalFit):
         command += ' --clip '
     for iproc in allowed_procs:
         command += procs[iproc]['opts']['opt_'+iopt]['cmd_syst'] +\
@@ -710,6 +728,8 @@ def run_all(procs):
 
     if args.algo=='run' and args.mt and args.syst:
         for iopt in ['wp','wm','z']:
+            if args.doZFit and iopt!='z':
+                continue
             p = Process(target=run_one_opt_syst, args=(procs,iopt))
             p.start()
             ps.append(p)
