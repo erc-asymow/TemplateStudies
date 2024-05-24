@@ -41,14 +41,15 @@ constexpr double GW = 2.5;
 
 
 class TheoryFcn : public FCNGradientBase {
+  //class TheoryFcn : public FCNBase {
 
 public:
   TheoryFcn(const int& debug) : errorDef_(1.0), debug_(debug)
   {
 
     ran = new TRandom3();
-    pt_edges_  = {25.0, 33.327, 38.4302, 42.2782, 45.9389, 55.0}; 
-    eta_edges_ = {-2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5};
+    pt_edges_  = {25.0, 30, 55.0}; 
+    eta_edges_ = {-2.5, 0.0, 2.5};
     
     n_pt_bins_  = pt_edges_.size()-1;
     n_eta_bins_ = eta_edges_.size()-1;
@@ -151,16 +152,23 @@ double TheoryFcn::operator()(const vector<double>& par) const {
     }
   }
   val /= n_dof_;
+
+  //val = 0.0;
+  //for(unsigned int ipar=0; ipar<par.size(); ipar++) val += (par[ipar]-0.001)*(par[ipar]-0.001);
   //cout << val << endl;
+  
   return val;
 }
 
 vector<double> TheoryFcn::Gradient(const vector<double> &par ) const {
-  vector<double> grad(par.size(),0.0);
+
+  cout << "Using gradient" << endl; 
+  vector<double> grad(par.size(), 0.0);
 
   for(unsigned int ipar = 0; ipar < par.size(); ipar++){
     unsigned int ieta     = ipar % n_eta_bins_;
     unsigned int par_type = ipar / n_eta_bins_;    
+    cout << "ipar " << ipar << ": " << ieta << ", " << par_type << endl;
     double grad_i = 0.0;    
     unsigned int ibin = 0;
     for(unsigned int ieta_p = 0; ieta_p < n_eta_bins_; ieta_p++){
@@ -189,20 +197,34 @@ vector<double> TheoryFcn::Gradient(const vector<double> &par ) const {
 	      else if( par_type==1) m_term = k_m;
 	      else                  m_term = +1./k_m;
 	    }
-	    double ival = (scales2_[ibin] - p_term*m_term)/scales2Err_[ibin];
-	    double ig = 2*ival/scales2Err_[ibin]*(-p_term*m_term);
+	    double ival = 2*(scales2_[ibin] - (1.0 + A_p + e_p*k_p - M_p/k_p)*(1.0 + A_m + e_m*k_m + M_m/k_m))/scales2Err_[ibin]/scales2Err_[ibin];
+	    double term = 0.0;
+	    if(ieta_p==ieta || ieta_m==ieta){
+	      if(ieta_p!=ieta_m) term = -p_term*m_term;
+	      else{
+		if(par_type==0)      term = -2.0*A_p;
+		else if(par_type==1) term = -2.0*e_p*k_p*k_p;
+		else                 term = +2.0*M_p/k_p/k_p;
+	      }
+	    }
+	    //cout << "ival " << ival << "," << term << endl; 
+	    double ig = ival*term;
 	    ig /= n_dof_;
-	    grad_i += (ieta_p==ieta || ieta_m==ieta) ? ig : 0.;
+	    cout << "ibin " << ibin << " += " << ig << endl;
+	    grad_i += ig;
 	    ibin++;
 	  }
 	}
       }
-    }    
-    grad.emplace_back(grad_i);
+    }
+    cout << "\t" << ipar << ": " << grad_i << endl;
+    //grad_i = 2*(par[ipar]-0.001);
+    grad[ipar] = grad_i;
   }
 
   return grad; 
 }
+
 
 int main(int argc, char* argv[])
 {
@@ -247,7 +269,7 @@ int main(int argc, char* argv[])
 
   TFile* fout = TFile::Open(("./massfit_"+tag+"_"+run+".root").c_str(), "RECREATE");
 
-  int verbosity = 4; 
+  int verbosity = 1; 
   ROOT::Minuit2::MnPrint::SetGlobalLevel(verbosity);
 
   int debug = 0;
@@ -277,7 +299,7 @@ int main(int argc, char* argv[])
   FunctionMinimum min = minimize(maxfcn, tolerance);
 
   for(unsigned int ipar = 0 ; ipar<n_parameters; ipar++){
-    cout << upar.GetName(ipar) << ":" << min.UserState().Value(ipar) << " +/- " << min.UserState().Error(ipar) << endl;
+    //cout << upar.GetName(ipar) << ":" << min.UserState().Value(ipar) << " +/- " << min.UserState().Error(ipar) << endl;
   }
   
   cout << "chi2/ndf: " << min.Fval() << " (prob: " << TMath::Prob(min.Fval()*fFCN.get_n_dof(), fFCN.get_n_dof() ) << ")" <<  endl;;
