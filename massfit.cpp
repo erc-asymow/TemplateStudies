@@ -8,6 +8,7 @@
 #include "TF2.h"
 #include "TGraphErrors.h"
 #include <TMatrixD.h>
+#include <TMatrixDSymfwd.h>
 #include <TStopwatch.h>
 #include <ROOT/RVec.hxx>
 #include <iostream>
@@ -44,13 +45,16 @@ class TheoryFcn : public FCNGradientBase {
   //class TheoryFcn : public FCNBase {
 
 public:
-  TheoryFcn(const int& debug) : errorDef_(1.0), debug_(debug)
+  TheoryFcn(const int& debug, const int& seed) : errorDef_(1.0), debug_(debug), seed_(seed)
   {
 
-    ran = new TRandom3();
+    ran_ = new TRandom3(seed);
     pt_edges_  = {25, 30, 35, 40, 45, 50, 55}; 
     eta_edges_ = {-3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0};
-    
+
+    // pt_edges_  = {25, 30, 35}; 
+    //eta_edges_ = {-3.0, -2.5, -2.0};
+
     n_pt_bins_  = pt_edges_.size()-1;
     n_eta_bins_ = eta_edges_.size()-1;
 
@@ -63,31 +67,27 @@ public:
       kmean_vals_.emplace_back( 0.5*(k_edges_[i]+k_edges_[i+1]) );
     }
 
-    double chi2_start = 0.;
-    unsigned int ibin = 0;
-    for(unsigned int ieta_p = 0; ieta_p<n_eta_bins_; ieta_p++){
-      for(unsigned int ipt_p = 0; ipt_p<n_pt_bins_; ipt_p++){
-	for(unsigned int ieta_m = 0; ieta_m<n_eta_bins_; ieta_m++){
-	  for(unsigned int ipt_m = 0; ipt_m<n_pt_bins_; ipt_m++){
-	    double ierr2   = 0.001;
-	    double iscale2 = ran->Gaus(1.1, ierr2);
-	    scales2_.emplace_back( iscale2 );
-	    scales2Err_.emplace_back( ierr2 );
-	    double dchi2 = (scales2_[ibin]-1.0)/scales2Err_[ibin];
-	    //cout << dchi2*dchi2 << endl;
-	    chi2_start += dchi2*dchi2 ;
-	    ibin++;
-	  }
-	}
-      }
-    }    
+    n_data_ = n_eta_bins_*n_eta_bins_*n_pt_bins_*n_pt_bins_;
+    scales2_.reserve(n_data_);
+    scales2Err_.reserve(n_data_);
+    for(unsigned int idata = 0; idata<n_data_; idata++){
+      scales2_.push_back( 0.0 );
+      scales2Err_.push_back( 0.0 );
+    }
+        
+    // generate initial set of data points;
+    //generate_data();
+
     n_data_ = scales2_.size();
     n_dof_ = n_data_ - n_pars_;
-    cout << "Inistial chi2/ndata = " << chi2_start/(n_data_-1) << " has prob " << TMath::Prob(chi2_start, n_data_-1 ) <<  endl;
   }
   
-  ~TheoryFcn() { delete ran;}
+  ~TheoryFcn() { delete ran_;}
 
+  void generate_data();
+
+  void set_seed(const int& seed){ ran_->SetSeed(seed);}
+  
   unsigned int get_n_params(){ return n_pars_;}
   unsigned int get_n_data(){ return n_data_;}
   unsigned int get_n_dof(){ return n_dof_;} 
@@ -117,11 +117,41 @@ private:
   unsigned int n_data_;
   unsigned int n_pars_;
   unsigned int n_dof_;
-  int debug_;  
+  int debug_;
+  int seed_;
   double errorDef_;
-  TRandom3* ran;
+  TRandom3* ran_;
 };
 
+void TheoryFcn::generate_data(){
+  //ran_->SetSeed(seed_);
+  double chi2_start = 0.;
+  unsigned int ibin = 0;
+  for(unsigned int ieta_p = 0; ieta_p<n_eta_bins_; ieta_p++){
+    for(unsigned int ipt_p = 0; ipt_p<n_pt_bins_; ipt_p++){
+      for(unsigned int ieta_m = 0; ieta_m<n_eta_bins_; ieta_m++){
+	for(unsigned int ipt_m = 0; ipt_m<n_pt_bins_; ipt_m++){
+	  double ierr2_nom = 0.001*(1+double(ieta_p)/n_eta_bins_)*(1+double(ieta_m)/n_eta_bins_);
+	  //*(2-0.1*double(ipt_p)/n_pt_bins_)*(2-0.1*double(ipt_m)/n_pt_bins_);
+	  double ierr2 = ran_->Gaus(ierr2_nom,  ierr2_nom*0.1);
+	  while(ierr2<=0.){
+	    ierr2 = ran_->Gaus(ierr2_nom,  ierr2_nom*0.1);
+	  }
+	  double iscale2 = ran_->Gaus(1.00, ierr2);
+	  //if(ibin<3) cout << iscale2 << endl;
+	  scales2_[ibin]    = iscale2 ;
+	  scales2Err_[ibin] =  ierr2 ;
+	  double dchi2 = (scales2_[ibin]-1.0)/scales2Err_[ibin];
+	  //cout << dchi2*dchi2 << endl;
+	  chi2_start += dchi2*dchi2 ;
+	  ibin++;
+	}
+      }
+    }
+  }
+  cout << "Inistial chi2/ndata = " << chi2_start/(n_data_-1) << " has prob " << TMath::Prob(chi2_start, n_data_-1 ) <<  endl;
+  return;
+}
 
 double TheoryFcn::operator()(const vector<double>& par) const {
 
@@ -153,9 +183,11 @@ double TheoryFcn::operator()(const vector<double>& par) const {
   }
   val /= n_dof_;
 
+  //val -= 1.0;
+  
   //val = 0.0;
   //for(unsigned int ipar=0; ipar<par.size(); ipar++) val += (par[ipar]-0.001)*(par[ipar]-0.001);
-  //cout << val << endl;
+  cout << val << endl;
   
   return val;
 }
@@ -226,6 +258,7 @@ vector<double> TheoryFcn::Gradient(const vector<double> &par ) const {
 }
 
 
+  
 int main(int argc, char* argv[])
 {
 
@@ -268,51 +301,121 @@ int main(int argc, char* argv[])
   int seed        = vm["seed"].as<int>();
 
   TFile* fout = TFile::Open(("./massfit_"+tag+"_"+run+".root").c_str(), "RECREATE");
-
-  int verbosity = 1; 
-  ROOT::Minuit2::MnPrint::SetGlobalLevel(verbosity);
+  TTree* tree = new TTree("tree", "tree");
+  vector<double> tpar;
+  vector<double> tparErr;
+  
+  //fFCN->set_seed(seed);
 
   int debug = 0;
-  TheoryFcn fFCN(debug);
-  fFCN.SetErrorDef(1.0 / fFCN.get_n_dof());
-
-  MnUserParameters upar;
-  double start=0.0, par_error=0.01;
-  unsigned int n_parameters = fFCN.get_n_params();
+  TheoryFcn* fFCN_0 = new TheoryFcn(debug, seed);   
+  
+  unsigned int n_parameters = fFCN_0->get_n_params();
   for (int i=0; i<n_parameters/3; i++){
-    upar.Add(Form("A%d",i), start, par_error);
+    tpar.emplace_back(0.0);
+    tparErr.emplace_back(0.0);
+    tree->Branch(Form("A%d",i), &(tpar[i]), Form("A%d/D",i));
+    tree->Branch(Form("A%derr",i), &(tparErr[i]), Form("A%derr/D",i));
   }
   for (int i=0; i<n_parameters/3; i++){
-    upar.Add(Form("e%d",i), start, par_error); 
+    tpar.emplace_back(0.0);
+    tparErr.emplace_back(0.0);
+    tree->Branch(Form("e%d",i), &(tpar[i+n_parameters/3]), Form("e%d/D",i));
+    tree->Branch(Form("e%derr",i), &(tparErr[i+n_parameters/3]), Form("e%derr/D",i));
   }
   for (int i=0; i<n_parameters/3; i++){
-    upar.Add(Form("M%d",i), start, par_error); 
+    tpar.emplace_back(0.0);
+    tparErr.emplace_back(0.0);
+    tree->Branch(Form("M%d",i), &(tpar[i+2*n_parameters/3]), Form("M%d/D",i));
+    tree->Branch(Form("M%derr",i), &(tparErr[i+2*n_parameters/3]), Form("M%derr/D",i));
   }
-    
-
-  MnMigrad minimize(fFCN, upar, 1);
+      
 
   unsigned int maxfcn(numeric_limits<unsigned int>::max());
+  double tolerance(0.001);
+  int verbosity = 1; 
+  ROOT::Minuit2::MnPrint::SetGlobalLevel(verbosity);
   
-  double tolerance(0.001); 
-  
-  FunctionMinimum min = minimize(maxfcn, tolerance);
+  for(unsigned int itoy=0; itoy<nevents; itoy++){
 
-  for(unsigned int ipar = 0 ; ipar<n_parameters; ipar++){
-    //cout << upar.GetName(ipar) << ":" << min.UserState().Value(ipar) << " +/- " << min.UserState().Error(ipar) << endl;
+    int debug = 0;
+    TheoryFcn* fFCN = new TheoryFcn(debug, seed+itoy);  
+    fFCN->generate_data();
+    fFCN->SetErrorDef(1.0 / fFCN->get_n_dof());
+    
+    MnUserParameters upar;
+    double start=0.0, par_error=0.01;
+    unsigned int n_parameters = fFCN->get_n_params();
+    for (int i=0; i<n_parameters/3; i++){
+      upar.Add(Form("A%d",i), start, par_error);
+    }
+    for (int i=0; i<n_parameters/3; i++){
+      upar.Add(Form("e%d",i), start, par_error);
+    }
+    for (int i=0; i<n_parameters/3; i++){
+      upar.Add(Form("M%d",i), start, par_error);      
+    }
+
+    MnMigrad minimize(*fFCN, upar, 1);    
+
+    //fFCN->set_seed(seed);
+
+    cout << "Minimize" << endl;
+    FunctionMinimum min = minimize(maxfcn, tolerance);
+
+    for(unsigned int ipar = 0 ; ipar<n_parameters; ipar++){
+      //cout << upar.GetName(ipar) << ":" << min.UserState().Value(ipar) << " +/- " << min.UserState().Error(ipar) << endl;
+      tpar[ipar] = min.UserState().Value(ipar) ;
+      tparErr[ipar] = min.UserState().Error(ipar) ;
+    }
+    tree->Fill();
+    
+    TH2D* hcov = new TH2D(Form("hcov_%d", itoy), "", n_parameters, 0, n_parameters, n_parameters, 0, n_parameters);
+    TH2D* hcor = new TH2D(Form("hcor_%d", itoy), "", n_parameters, 0, n_parameters, n_parameters, 0, n_parameters);  
+    for(unsigned int iparX = 0 ; iparX<n_parameters; iparX++){    
+      hcov->GetXaxis()->SetBinLabel(iparX+1, TString(upar.GetName(iparX).c_str()) );
+      hcor->GetXaxis()->SetBinLabel(iparX+1, TString(upar.GetName(iparX).c_str()) );
+      for(unsigned int iparY = 0 ; iparY<n_parameters; iparY++){
+	//cout << min.UserState().Covariance().Data()[iparX*n_parameters+iparY] << endl;
+	double cov_XY = iparX>iparY ?
+	  min.UserState().Covariance().Data()[iparY+ iparX*(iparX+1)/2] :
+	  min.UserState().Covariance().Data()[iparX+ iparY*(iparY+1)/2];
+	double cor_XY = cov_XY / (TMath::Sqrt(min.UserState().Covariance().Data()[iparX+ iparX*(iparX+1)/2])*
+				  TMath::Sqrt(min.UserState().Covariance().Data()[iparY+ iparY*(iparY+1)/2]));
+	hcov->SetBinContent(iparX+1, iparY+1, cov_XY);
+	hcov->GetYaxis()->SetBinLabel(iparY+1, TString(upar.GetName(iparY).c_str()) );
+	hcor->SetBinContent(iparX+1, iparY+1, cor_XY);
+	hcor->GetYaxis()->SetBinLabel(iparY+1, TString(upar.GetName(iparY).c_str()) );
+      }
+    }
+    hcor->SetMinimum(-1.0);
+    hcor->SetMaximum(+1.0);
+    fout->cd();
+    if(itoy<20){
+      hcor->Write();
+      //hcov->Write();
+    }
+
+    if(verbosity>1){
+      cout << "Data points: " << fFCN->get_n_data() << endl;
+      cout << "Number of parameters: " << fFCN->get_n_params() << endl;
+      cout << "chi2/ndf: " << min.Fval()+1 << " (prob: " << TMath::Prob((min.Fval()+1)*fFCN->get_n_dof(), fFCN->get_n_dof() ) << ")" <<  endl;;
+      cout << "min is valid: " << min.IsValid() << std::endl;
+      cout << "HesseFailed: " << min.HesseFailed() << std::endl;
+      cout << "HasCovariance: " << min.HasCovariance() << std::endl;
+      cout << "HasValidCovariance: " << min.HasValidCovariance() << std::endl;
+      cout << "HasValidParameters: " << min.HasValidParameters() << std::endl;
+      cout << "IsAboveMaxEdm: " << min.IsAboveMaxEdm() << std::endl;
+      cout << "HasReachedCallLimit: " << min.HasReachedCallLimit() << std::endl;
+      cout << "HasAccurateCovar: " << min.HasAccurateCovar() << std::endl;
+      cout << "HasPosDefCovar : " << min.HasPosDefCovar() << std::endl;
+      cout << "HasMadePosDefCovar : " << min.HasMadePosDefCovar() << std::endl;
+    }
+    delete fFCN;
   }
-  
-  cout << "chi2/ndf: " << min.Fval() << " (prob: " << TMath::Prob(min.Fval()*fFCN.get_n_dof(), fFCN.get_n_dof() ) << ")" <<  endl;;
-  cout << "min is valid: " << min.IsValid() << std::endl;
-  cout << "HesseFailed: " << min.HesseFailed() << std::endl;
-  cout << "HasCovariance: " << min.HasCovariance() << std::endl;
-  cout << "HasValidCovariance: " << min.HasValidCovariance() << std::endl;
-  cout << "HasValidParameters: " << min.HasValidParameters() << std::endl;
-  cout << "IsAboveMaxEdm: " << min.IsAboveMaxEdm() << std::endl;
-  cout << "HasReachedCallLimit: " << min.HasReachedCallLimit() << std::endl;
-  cout << "HasAccurateCovar: " << min.HasAccurateCovar() << std::endl;
-  cout << "HasPosDefCovar : " << min.HasPosDefCovar() << std::endl;
-  cout << "HasMadePosDefCovar : " << min.HasMadePosDefCovar() << std::endl;
+
+  fout->cd();
+  tree->Write();
   
   /*
   int x_nbins   = 100; 
