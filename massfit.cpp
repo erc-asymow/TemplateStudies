@@ -16,6 +16,7 @@
 #include "Minuit2/FunctionMinimum.h"
 #include "Minuit2/MnMinimize.h"
 #include "Minuit2/MnMigrad.h"
+#include "Minuit2/MnHesse.h"
 #include "Minuit2/MnPrint.h"
 #include "Minuit2/MnUserParameterState.h"
 #include "Minuit2/FCNGradientBase.h"
@@ -183,11 +184,11 @@ double TheoryFcn::operator()(const vector<double>& par) const {
   }
   val /= n_dof_;
 
-  //val -= 1.0;
+  val -= 1.0;
   
   //val = 0.0;
   //for(unsigned int ipar=0; ipar<par.size(); ipar++) val += (par[ipar]-0.001)*(par[ipar]-0.001);
-  cout << val << endl;
+  //cout << val << endl;
   
   return val;
 }
@@ -302,32 +303,41 @@ int main(int argc, char* argv[])
 
   TFile* fout = TFile::Open(("./massfit_"+tag+"_"+run+".root").c_str(), "RECREATE");
   TTree* tree = new TTree("tree", "tree");
-  vector<double> tpar;
-  vector<double> tparErr;
-  
+
+  double edm, fmin, prob;
+  int isvalid, hasAccurateCovar, hasPosDefCovar;
+  tree->Branch("edm", &edm, "edm/D");
+  tree->Branch("fmin", &fmin, "fmin/D");
+  tree->Branch("prob", &prob, "prob/D");
+  tree->Branch("isvalid", &isvalid, "isvalid/I");
+  tree->Branch("hasAccurateCovar", &hasAccurateCovar, "hasAccurateCovar/I");
+  tree->Branch("hasPosDefCovar", &hasPosDefCovar, "hasPosDefCovar/I");
   //fFCN->set_seed(seed);
 
   int debug = 0;
   TheoryFcn* fFCN_0 = new TheoryFcn(debug, seed);   
-  
   unsigned int n_parameters = fFCN_0->get_n_params();
-  for (int i=0; i<n_parameters/3; i++){
-    tpar.emplace_back(0.0);
-    tparErr.emplace_back(0.0);
-    tree->Branch(Form("A%d",i), &(tpar[i]), Form("A%d/D",i));
-    tree->Branch(Form("A%derr",i), &(tparErr[i]), Form("A%derr/D",i));
+  
+  vector<double> tpar(n_parameters);
+  vector<double> tparErr(n_parameters);
+
+   for (int i=0; i<n_parameters/3; i++){
+    //tpar.emplace_back(0.0);
+    //tparErr.emplace_back(0.0);
+    tree->Branch(Form("A%d",i), &tpar[i], Form("A%d/D",i));
+    tree->Branch(Form("A%derr",i), &tparErr[i], Form("A%derr/D",i));
   }
   for (int i=0; i<n_parameters/3; i++){
-    tpar.emplace_back(0.0);
-    tparErr.emplace_back(0.0);
-    tree->Branch(Form("e%d",i), &(tpar[i+n_parameters/3]), Form("e%d/D",i));
-    tree->Branch(Form("e%derr",i), &(tparErr[i+n_parameters/3]), Form("e%derr/D",i));
+    //tpar.emplace_back(0.0);
+    //tparErr.emplace_back(0.0);
+    tree->Branch(Form("e%d",i), &tpar[i+n_parameters/3], Form("e%d/D",i));
+    tree->Branch(Form("e%derr",i), &tparErr[i+n_parameters/3], Form("e%derr/D",i));
   }
   for (int i=0; i<n_parameters/3; i++){
-    tpar.emplace_back(0.0);
-    tparErr.emplace_back(0.0);
-    tree->Branch(Form("M%d",i), &(tpar[i+2*n_parameters/3]), Form("M%d/D",i));
-    tree->Branch(Form("M%derr",i), &(tparErr[i+2*n_parameters/3]), Form("M%derr/D",i));
+    //tpar.emplace_back(0.0);
+    //tparErr.emplace_back(0.0);
+    tree->Branch(Form("M%d",i), &tpar[i+2*n_parameters/3], Form("M%d/D",i));
+    tree->Branch(Form("M%derr",i), &tparErr[i+2*n_parameters/3], Form("M%derr/D",i));
   }
       
 
@@ -356,16 +366,27 @@ int main(int argc, char* argv[])
       upar.Add(Form("M%d",i), start, par_error);      
     }
 
-    MnMigrad minimize(*fFCN, upar, 1);    
+    MnMigrad migrad(*fFCN, upar, 1);    
 
     //fFCN->set_seed(seed);
 
-    cout << "Minimize" << endl;
-    FunctionMinimum min = minimize(maxfcn, tolerance);
+    cout << "Migrad" << endl;
+    FunctionMinimum min = migrad(maxfcn, tolerance);
 
+    edm = double(min.Edm());
+    fmin = double(min.Fval());
+    prob = TMath::Prob((min.Fval()+1)*fFCN->get_n_dof(), fFCN->get_n_dof() );
+    isvalid = int(min.IsValid());
+    hasAccurateCovar = int(min.HasAccurateCovar());
+    hasPosDefCovar = int(min.HasPosDefCovar());
+
+    cout << "Hesse" << endl;
+    MnHesse hesse(1);
+    hesse(*fFCN, min);
+    
     for(unsigned int ipar = 0 ; ipar<n_parameters; ipar++){
       //cout << upar.GetName(ipar) << ":" << min.UserState().Value(ipar) << " +/- " << min.UserState().Error(ipar) << endl;
-      tpar[ipar] = min.UserState().Value(ipar) ;
+      tpar[ipar]    = min.UserState().Value(ipar) ;
       tparErr[ipar] = min.UserState().Error(ipar) ;
     }
     tree->Fill();
@@ -395,7 +416,7 @@ int main(int argc, char* argv[])
       hcor->Write();
       //hcov->Write();
     }
-
+    
     if(verbosity>1){
       cout << "Data points: " << fFCN->get_n_data() << endl;
       cout << "Number of parameters: " << fFCN->get_n_params() << endl;
