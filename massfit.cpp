@@ -50,8 +50,10 @@ public:
   {
 
     ran_ = new TRandom3(seed);
-    pt_edges_  = {25, 30, 35, 40, 45, 50, 55}; 
-    eta_edges_ = {-3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0};
+    pt_edges_  = {25, 30, 35, 40, 45, 55}; 
+    eta_edges_ = {-2.4, -2.2, -2.0, -1.8, -1.6, -1.4, -1.2, -1.0, -0.8, -0.6, -0.4, -0.2, 0.0,
+		  0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4
+    };
 
     // pt_edges_  = {25, 30, 35}; 
     //eta_edges_ = {-3.0, -2.5, -2.0};
@@ -391,6 +393,8 @@ int main(int argc, char* argv[])
   
   for(unsigned int itoy=0; itoy<nevents; itoy++){
 
+    if(itoy/10==0) cout << "Toy n." << itoy << "/" << nevents << endl;
+    
     fFCN->generate_data();
     
     MnUserParameters upar;
@@ -510,61 +514,37 @@ int main(int argc, char* argv[])
 
   fout->cd();
   tree->Write();
+
+  TH1D* hpulls = new TH1D("hpulls", "", n_parameters, 0, n_parameters);
+  for (int i=0; i<n_parameters; i++){
+    TH1D* h = new TH1D(Form("h%d", i), "", 100,-3,3);
+    int ip = i%(n_parameters/3);
+    if(i<n_parameters/3){
+      tree->Draw(Form("A%d/A%derr>>h%d", ip, ip, i), "", "");
+      hpulls->GetXaxis()->SetBinLabel(i+1, Form("A%d", ip));
+    }
+    else if(i>=n_parameters/3 && i<2*n_parameters/3){
+      tree->Draw(Form("e%d/e%derr>>h%d", ip, ip, i), "", "");
+      hpulls->GetXaxis()->SetBinLabel(i+1, Form("e%d", ip));
+    }
+    else{
+      tree->Draw(Form("M%d/M%derr>>h%d", ip, ip, i), "", "");
+      hpulls->GetXaxis()->SetBinLabel(i+1, Form("M%d", ip));
+    }
+    //cout << i << "-->" << h->GetMean() << endl;
+    h->Fit("gaus", "Q");
+    TF1* gaus = (TF1*)h->GetFunction("gaus");
+    if(gaus==0){
+      cout << "no func" << endl;
+      continue;
+    }
+    hpulls->SetBinContent(i+1, gaus->GetParameter(1));
+    hpulls->SetBinError(i+1, gaus->GetParameter(2));
+    delete h;
+  }
+  hpulls->Write();
+
   
-  /*
-  int x_nbins   = 100; 
-  double x_low  = 0.0;
-  double x_high = 1.0;
-
-  auto toy_mass = [&](double x, double M, double G){
-    return 1./TMath::Pi()/(1 + (x-M)*(x-M)/(G*G/4))*2./G; // non-relativistic
-  };
-
-
-  TFile* fout = TFile::Open(("./massfit_"+tag+"_"+run+".root").c_str(), "RECREATE");
-
-  ROOT::RDataFrame d(nevents);
-
-  unsigned int nslots = d.GetNSlots();
-  std::vector<TRandom3*> rans = {};
-  for(unsigned int i = 0; i < nslots; i++){
-    rans.emplace_back( new TRandom3(seed + i*10) );
-  }
-
-  auto dlast = std::make_unique<RNode>(d);
-
-  dlast = std::make_unique<RNode>(dlast->DefineSlot("x", [&](unsigned int nslot)->double{
-    double out;
-    out = rans[nslot]->Uniform(0.0, 1.0);
-    return out;
-  } ));
-          
-  dlast = std::make_unique<RNode>(dlast->Define("weight", [](RVecD weights_mass, double x){
-    double out = weights_mass.at(0);
-    // select even-numbered events for templates
-    if( int(x*1e+07)%2==1) out *= 0.;
-    return out;
-  }, {"weights_mass", "x"} ));
-
-
-  std::vector<ROOT::RDF::RResultPtr<TH1D> > histos1D;
-  histos1D.emplace_back(dlast->Histo1D({"h", "nominal", x_nbins, x_low, x_high}, "x", "weight"));      
-
-  auto colNames = dlast->GetColumnNames();
-  std::cout << colNames.size() << " columns created" << std::endl;
-
-  double total = *(dlast->Count());  
-
-  fout->cd();
-  std::cout << "Writing histos..." << std::endl;
-  double sf = double(lumi)/double(nevents);
-  for(auto h : histos1D){
-    h->Scale(sf);
-    string h_name = std::string(h->GetName());
-    h->Write();
-  }
-  //std::cout << "Total slots: " << dlast->GetNSlots() << std::endl;
-  */
   sw.Stop();
 
   std::cout << "Real time: " << sw.RealTime() << " seconds " << "(CPU time:  " << sw.CpuTime() << " seconds)" << std::endl;
