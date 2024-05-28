@@ -43,10 +43,10 @@ constexpr double GW = 2.5;
 
 
 class TheoryFcn : public FCNGradientBase {
-  //class TheoryFcn : public FCNBase {
+//class TheoryFcn : public FCNBase {
 
 public:
-  TheoryFcn(const int& debug, const int& seed) : errorDef_(1.0), debug_(debug), seed_(seed)
+  TheoryFcn(const int& debug, const int& seed, const int& bias) : errorDef_(1.0), debug_(debug), seed_(seed), bias_(bias)
   {
 
     ran_ = new TRandom3(seed);
@@ -79,7 +79,53 @@ public:
       scales2_.push_back( 0.0 );
       scales2Err_.push_back( 0.0 );
     }
-        
+
+    x_vals_ = VectorXd(n_pars_);
+    A_vals_ = VectorXd(n_eta_bins_);
+    e_vals_ = VectorXd(n_eta_bins_);
+    M_vals_ = VectorXd(n_eta_bins_);
+    for(unsigned int i=0; i<n_eta_bins_; i++){
+      A_vals_(i) = 0.0;
+      e_vals_(i) = 0.0;
+      M_vals_(i) = 0.0;
+    }
+    for(unsigned int i=0; i<n_pars_; i++){
+      x_vals_(i) = 0.0;
+    }
+
+    if(bias_>0){
+      // bias for A out
+      for(unsigned int i=0; i<n_eta_bins_; i++){
+	double val = ran_->Uniform(-0.001, 0.001);
+	if(bias_==2){
+	  double mid_point = double(n_eta_bins_)*0.5;
+	  val = (i-mid_point)*(i-mid_point)/mid_point/mid_point*0.001;
+	}
+	A_vals_(i) = val;
+	x_vals_(i) = val;
+      }
+      // bias for e out
+      for(unsigned int i=0; i<n_eta_bins_; i++){
+	double val = ran_->Uniform(-0.0001/kmean_val_, 0.0001/kmean_val_);
+	if(bias_==2){
+	  double mid_point = double(n_eta_bins_)*0.5;
+	  val = -(i-mid_point)*(i-mid_point)/mid_point/mid_point*0.0001;
+	}
+	e_vals_(i) = val;
+	x_vals_(i+n_eta_bins_) = val;
+      }
+      // bias for M out
+      for(unsigned int i=0; i<n_eta_bins_; i++){
+	double val = ran_->Uniform(-0.001*kmean_val_, 0.001*kmean_val_);
+	if(bias_==2){
+	  double mid_point = double(n_eta_bins_)*0.5;
+	  val = (i-mid_point)/mid_point*0.001;
+	}
+	M_vals_(i) = val;
+	x_vals_(i+2*n_eta_bins_) = val;
+      }            
+    }
+    
     // generate initial set of data points;
     //generate_data();
 
@@ -113,6 +159,13 @@ public:
   void generate_data();
 
   void set_seed(const int& seed){ ran_->SetSeed(seed);}
+
+  double get_true_params(const unsigned int& i, const bool& external){
+    if(external)
+      return x_vals_(i);
+    else
+      return (U_*x_vals_)(i);
+  }
   
   unsigned int get_n_params(){ return n_pars_;}
   unsigned int get_n_data(){ return n_data_;}
@@ -136,6 +189,10 @@ private:
   vector<double> pt_edges_;
   vector<double> k_edges_;
   vector<double> kmean_vals_;
+  VectorXd A_vals_;
+  VectorXd e_vals_;
+  VectorXd M_vals_;
+  VectorXd x_vals_;
   double kmean_val_;
   vector<double> eta_edges_;
   unsigned int n_pt_bins_;
@@ -145,6 +202,7 @@ private:
   unsigned int n_dof_;
   int debug_;
   int seed_;
+  int bias_;
   double errorDef_;
   MatrixXd U_;
   TRandom3* ran_;
@@ -156,15 +214,23 @@ void TheoryFcn::generate_data(){
   unsigned int ibin = 0;
   for(unsigned int ieta_p = 0; ieta_p<n_eta_bins_; ieta_p++){
     for(unsigned int ipt_p = 0; ipt_p<n_pt_bins_; ipt_p++){
+      double k_p = kmean_vals_[ipt_p];
       for(unsigned int ieta_m = 0; ieta_m<n_eta_bins_; ieta_m++){
 	for(unsigned int ipt_m = 0; ipt_m<n_pt_bins_; ipt_m++){
+	  double k_m = kmean_vals_[ipt_m];
+
 	  double ierr2_nom = 0.001*(1+double(ieta_p)/n_eta_bins_)*(1+double(ieta_m)/n_eta_bins_);
 	  //*(2-0.1*double(ipt_p)/n_pt_bins_)*(2-0.1*double(ipt_m)/n_pt_bins_);
 	  double ierr2 = ran_->Gaus(ierr2_nom,  ierr2_nom*0.1);
 	  while(ierr2<=0.){
 	    ierr2 = ran_->Gaus(ierr2_nom,  ierr2_nom*0.1);
 	  }
-	  double iscale2 = ran_->Gaus(1.00, ierr2);
+	  
+	  double iscale2_bias =
+	    (1.0 + A_vals_(ieta_p) + e_vals_(ieta_p)*k_p - M_vals_(ieta_p)/k_p)*
+	    (1.0 + A_vals_(ieta_m) + e_vals_(ieta_m)*k_m + M_vals_(ieta_m)/k_m);
+	  double iscale2 = ran_->Gaus(iscale2_bias, ierr2);
+
 	  //if(ibin<3) cout << iscale2 << endl;
 	  scales2_[ibin]    = iscale2 ;
 	  scales2Err_[ibin] =  ierr2 ;
@@ -313,6 +379,7 @@ int main(int argc, char* argv[])
 	("lumi",        value<long>()->default_value(1000), "number of events")
 	("tag",         value<std::string>()->default_value("closure"), "run type")
 	("run",         value<std::string>()->default_value("closure"), "run type")
+	("bias",        value<int>()->default_value(0), "bias")
 	("seed",        value<int>()->default_value(4357), "seed");
 
       store(parse_command_line(argc, argv, desc), vm);
@@ -334,6 +401,7 @@ int main(int argc, char* argv[])
   long lumi       = vm["lumi"].as<long>();
   std::string tag = vm["tag"].as<std::string>();
   std::string run = vm["run"].as<std::string>();
+  int bias        = vm["bias"].as<int>();
   int seed        = vm["seed"].as<int>();
 
   TFile* fout = TFile::Open(("./massfit_"+tag+"_"+run+".root").c_str(), "RECREATE");
@@ -350,7 +418,7 @@ int main(int argc, char* argv[])
   //fFCN->set_seed(seed);
 
   int debug = 0;
-  TheoryFcn* fFCN = new TheoryFcn(debug, seed);  
+  TheoryFcn* fFCN = new TheoryFcn(debug, seed, bias);  
   fFCN->SetErrorDef(1.0 / fFCN->get_n_dof());
   unsigned int n_parameters = fFCN->get_n_params();
   MatrixXd U(n_parameters,n_parameters);
@@ -361,34 +429,42 @@ int main(int argc, char* argv[])
   }
   MatrixXd Uinv = U.inverse();
   
+  vector<double> tparIn0(n_parameters);
   vector<double> tparIn(n_parameters);
   vector<double> tparInErr(n_parameters);
+  vector<double> tparOut0(n_parameters);
   vector<double> tparOut(n_parameters);
   vector<double> tparOutErr(n_parameters);
 
   for (int i=0; i<n_parameters/3; i++){
-    tree->Branch(Form("A%d",i),    &tparOut[i],    Form("A%d/D",i));
-    tree->Branch(Form("A%derr",i), &tparOutErr[i], Form("A%derr/D",i));
-    tree->Branch(Form("Ain%d",i),    &tparIn[i],    Form("Ain%d/D",i));
-    tree->Branch(Form("Ain%derr",i), &tparInErr[i], Form("Ain%derr/D",i));
+    tree->Branch(Form("A%d",i),       &tparOut[i],    Form("A%d/D",i));
+    tree->Branch(Form("A%d_true",i),  &tparOut0[i],   Form("A%d_true/D",i));
+    tree->Branch(Form("A%d_err",i),   &tparOutErr[i], Form("A%d_err/D",i));
+    tree->Branch(Form("A%d_in",i),    &tparIn[i],    Form("A%d_in/D",i));
+    tree->Branch(Form("A%d_intrue",i),&tparIn0[i],    Form("A%d_intrue/D",i));
+    tree->Branch(Form("A%d_inerr",i), &tparInErr[i], Form("A%d_inerr/D",i));
   }
   for (int i=0; i<n_parameters/3; i++){
-    tree->Branch(Form("e%d",i),      &tparOut[i+n_parameters/3], Form("e%d/D",i));
-    tree->Branch(Form("e%derr",i),   &tparOutErr[i+n_parameters/3], Form("e%derr/D",i));
-    tree->Branch(Form("ein%d",i),    &tparIn[i+n_parameters/3], Form("ein%d/D",i));
-    tree->Branch(Form("ein%derr",i), &tparInErr[i+n_parameters/3], Form("ein%derr/D",i));
+    tree->Branch(Form("e%d",i),        &tparOut[i+n_parameters/3],    Form("e%d/D",i));
+    tree->Branch(Form("e%d_true",i),   &tparOut0[i+n_parameters/3],   Form("e%d_true/D",i));
+    tree->Branch(Form("e%d_err",i),    &tparOutErr[i+n_parameters/3], Form("e%d_err/D",i));
+    tree->Branch(Form("e%d_in",i),     &tparIn[i+n_parameters/3],     Form("e%d_in/D",i));
+    tree->Branch(Form("e%d_intrue",i), &tparIn0[i+n_parameters/3],    Form("e%d_intrue/D",i));
+    tree->Branch(Form("e%d_inerr",i),  &tparInErr[i+n_parameters/3],  Form("e%d_inerr/D",i));
   }
   for (int i=0; i<n_parameters/3; i++){
-    tree->Branch(Form("M%d",i),      &tparOut[i+2*n_parameters/3], Form("M%d/D",i));
-    tree->Branch(Form("M%derr",i),   &tparOutErr[i+2*n_parameters/3], Form("M%derr/D",i));
-    tree->Branch(Form("Min%d",i),    &tparIn[i+2*n_parameters/3], Form("Min%d/D",i));
-    tree->Branch(Form("Min%derr",i), &tparInErr[i+2*n_parameters/3], Form("Min%derr/D",i));
+    tree->Branch(Form("M%d",i),        &tparOut[i+2*n_parameters/3],    Form("M%d/D",i));
+    tree->Branch(Form("M%d_true",i),   &tparOut0[i+2*n_parameters/3],   Form("M%d_true/D",i));
+    tree->Branch(Form("M%d_err",i),    &tparOutErr[i+2*n_parameters/3], Form("M%d_err/D",i));
+    tree->Branch(Form("M%d_in",i),     &tparIn[i+2*n_parameters/3],     Form("M%d_in/D",i));
+    tree->Branch(Form("M%d_intrue",i), &tparIn0[i+2*n_parameters/3],    Form("M%d_in/D",i));
+    tree->Branch(Form("M%d_inerr",i),  &tparInErr[i+2*n_parameters/3],  Form("M%d_inerr/D",i));
   }
       
 
   unsigned int maxfcn(numeric_limits<unsigned int>::max());
   double tolerance(0.001);
-  int verbosity = 0; 
+  int verbosity = int(nevents<2); 
   ROOT::Minuit2::MnPrint::SetGlobalLevel(verbosity);
   
   for(unsigned int itoy=0; itoy<nevents; itoy++){
@@ -413,7 +489,7 @@ int main(int argc, char* argv[])
 
     //fFCN->set_seed(seed);
 
-    cout << "Migrad" << endl;
+    cout << "\tMigrad..." << endl;
     FunctionMinimum min = migrad(maxfcn, tolerance);
 
     edm = double(min.Edm());
@@ -423,10 +499,12 @@ int main(int argc, char* argv[])
     hasAccurateCovar = int(min.HasAccurateCovar());
     hasPosDefCovar = int(min.HasPosDefCovar());
 
-    cout << "Hesse" << endl;
+    cout << "\tHesse..." << endl;
     MnHesse hesse(1);
     hesse(*fFCN, min);
 
+    cout << "\t => final chi2/ndf: " << min.Fval()+1 << " (prob: " << TMath::Prob((min.Fval()+1)*fFCN->get_n_dof(), fFCN->get_n_dof() ) << ")" <<  endl;;
+    
     MatrixXd Vin(n_parameters,n_parameters);    
     for(unsigned int i = 0 ; i<n_parameters; i++){    
       for(unsigned int j = 0 ; j<n_parameters; j++){
@@ -450,9 +528,12 @@ int main(int argc, char* argv[])
     }    
     for(unsigned int i = 0 ; i<n_parameters; i++){
       tparIn[i]     = xin(i);
+      tparIn0[i]    = fFCN->get_true_params(i, false) ;
       tparInErr[i]  = xinErr(i);
       tparOut[i]    = x(i);
-      tparOutErr[i] = xErr(i);      
+      tparOut0[i]   = fFCN->get_true_params(i, true) ;
+      tparOutErr[i] = xErr(i);
+      //cout << "Param " << i << ": " << x(i) << " +/- " << xErr(i) << ". True value is " << fFCN->get_true_params(i, true) << endl;
     }
 
     TH2D* hcov = new TH2D(Form("hcov_%d", itoy), "", n_parameters, 0, n_parameters, n_parameters, 0, n_parameters);
@@ -494,8 +575,8 @@ int main(int argc, char* argv[])
       hcorin->Write();
       hcovin->Write();
     }
-    
-    if(verbosity>1){
+
+    if(verbosity){
       cout << "Data points: " << fFCN->get_n_data() << endl;
       cout << "Number of parameters: " << fFCN->get_n_params() << endl;
       cout << "chi2/ndf: " << min.Fval()+1 << " (prob: " << TMath::Prob((min.Fval()+1)*fFCN->get_n_dof(), fFCN->get_n_dof() ) << ")" <<  endl;;
@@ -521,15 +602,15 @@ int main(int argc, char* argv[])
     TH1D* h = new TH1D(Form("h%d", i), "", 100,-3,3);
     int ip = i%(n_parameters/3);
     if(i<n_parameters/3){
-      tree->Draw(Form("A%d/A%derr>>h%d", ip, ip, i), "", "");
+      tree->Draw(Form("(A%d - A%d_true)/A%d_err>>h%d", ip, ip, ip, i), "", "");
       hpulls->GetXaxis()->SetBinLabel(i+1, Form("A%d", ip));
     }
     else if(i>=n_parameters/3 && i<2*n_parameters/3){
-      tree->Draw(Form("e%d/e%derr>>h%d", ip, ip, i), "", "");
+      tree->Draw(Form("(e%d - e%d_true)/e%d_err>>h%d", ip, ip, ip, i), "", "");
       hpulls->GetXaxis()->SetBinLabel(i+1, Form("e%d", ip));
     }
     else{
-      tree->Draw(Form("M%d/M%derr>>h%d", ip, ip, i), "", "");
+      tree->Draw(Form("(M%d - M%d_true)/M%d_err>>h%d", ip, ip, ip, i), "", "");
       hpulls->GetXaxis()->SetBinLabel(i+1, Form("M%d", ip));
     }
     //cout << i << "-->" << h->GetMean() << endl;
