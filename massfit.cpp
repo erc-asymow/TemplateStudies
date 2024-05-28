@@ -67,8 +67,10 @@ public:
     for(unsigned int i = 0; i < n_pt_bins_; i++){
       kmean_vals_.emplace_back( 0.5*(k_edges_[i]+k_edges_[i+1]) );
     }
+    kmean_val_ = 0.5*(kmean_vals_[n_pt_bins_-1] + kmean_vals_[0]);
 
     n_data_ = n_eta_bins_*n_eta_bins_*n_pt_bins_*n_pt_bins_;
+
     scales2_.reserve(n_data_);
     scales2Err_.reserve(n_data_);
     for(unsigned int idata = 0; idata<n_data_; idata++){
@@ -81,6 +83,27 @@ public:
 
     n_data_ = scales2_.size();
     n_dof_ = n_data_ - n_pars_;
+
+    U_ = MatrixXd(n_pars_,n_pars_);
+    for(unsigned int i=0; i<n_pars_; i++){
+      for(unsigned int j=0; j<n_pars_; j++){
+	// block(A,A)
+	if(i<n_eta_bins_ && j<n_eta_bins_)
+	  U_(i,j) = i==j ? 1.0 : 0.0;
+	// block(A,e)
+	else if(i<n_eta_bins_ && (j>=n_eta_bins_ && j<2*n_eta_bins_) )
+	  U_(i,j) = i==(j-n_eta_bins_) ? kmean_val_ : 0.0;
+	// block(e,e)
+	else if(i>=n_eta_bins_ && i<2*n_eta_bins_ && j>=n_eta_bins_ && j<2*n_eta_bins_)
+	  U_(i,j) = i==j ? kmean_val_ : 0.0;
+	// block(M,M)
+	else if(i>=2*n_eta_bins_  && j>=2*n_eta_bins_)
+	  U_(i,j) = i==j ? 1.0/kmean_val_ : 0.0;
+	else U_(i,j) = 0.0;
+      }
+    }
+    //cout << U_ << endl;
+    
   }
   
   ~TheoryFcn() { delete ran_;}
@@ -92,6 +115,10 @@ public:
   unsigned int get_n_params(){ return n_pars_;}
   unsigned int get_n_data(){ return n_data_;}
   unsigned int get_n_dof(){ return n_dof_;} 
+
+  double get_U(const unsigned int& i, const unsigned int& j){
+    return U_(i,j);
+  }
   
   virtual double Up() const {return errorDef_;}
   virtual void SetErrorDef(double def) {errorDef_ = def;}
@@ -100,11 +127,6 @@ public:
   virtual vector<double> Gradient(const vector<double>& ) const;
   virtual bool CheckGradient() const {return true;} 
 
-  static constexpr double scaling_A = 0.001;
-  static constexpr double scaling_e = 0.001 * 40.0;
-  static constexpr double scaling_M = 0.001 / 40.0;
-  static constexpr double scaling_e_prime = 0.001 / 0.01; 
-
 private:
 
   vector<double> scales2_;
@@ -112,6 +134,7 @@ private:
   vector<double> pt_edges_;
   vector<double> k_edges_;
   vector<double> kmean_vals_;
+  double kmean_val_;
   vector<double> eta_edges_;
   unsigned int n_pt_bins_;
   unsigned int n_eta_bins_;
@@ -121,6 +144,7 @@ private:
   int debug_;
   int seed_;
   double errorDef_;
+  MatrixXd U_;
   TRandom3* ran_;
 };
 
@@ -166,14 +190,14 @@ double TheoryFcn::operator()(const vector<double>& par) const {
     double M_p = par[ieta_p+2*n_eta_bins_]; 
     for(unsigned int ipt_p = 0; ipt_p < n_pt_bins_; ipt_p++){   
       double k_p = kmean_vals_[ipt_p];
-      double p_term = (1.0 + A_p + e_p*k_p - M_p/k_p );
+      double p_term = (1.0 + A_p + e_p*(k_p-kmean_val_)/kmean_val_ - M_p/k_p*kmean_val_ );
       for(unsigned int ieta_m = 0; ieta_m < n_eta_bins_; ieta_m++){
 	double A_m = par[ieta_m];
 	double e_m = par[ieta_m+n_eta_bins_];
 	double M_m = par[ieta_m+2*n_eta_bins_];
 	for(unsigned int ipt_m = 0; ipt_m < n_pt_bins_; ipt_m++){	  
 	  double k_m = kmean_vals_[ipt_m];
-	  double m_term = (1.0 + A_m + e_m*k_m + M_m/k_m);
+	  double m_term = (1.0 + A_m + e_m*(k_m-kmean_val_)/kmean_val_ + M_m/k_m*kmean_val_);
 	  double ival = (scales2_[ibin] - p_term*m_term)/scales2Err_[ibin];
 	  double ival2 = ival*ival;
 	  val += ival2;
@@ -211,11 +235,11 @@ vector<double> TheoryFcn::Gradient(const vector<double> &par ) const {
       for(unsigned int ipt_p = 0; ipt_p < n_pt_bins_; ipt_p++){   
 	double k_p = kmean_vals_[ipt_p];
 	double p_term = 0.;
-	if(ieta_p != ieta) p_term = (1.0 + A_p + e_p*k_p - M_p/k_p);
+	if(ieta_p != ieta) p_term = (1.0 + A_p + e_p*(k_p-kmean_val_)/kmean_val_ - M_p/k_p*kmean_val_);
 	else{
 	  if(par_type==0)       p_term = 1.0;
-	  else if( par_type==1) p_term = k_p;
-	  else                  p_term = -1./k_p;
+	  else if( par_type==1) p_term = (k_p-kmean_val_)/kmean_val_;
+	  else                  p_term = -1./k_p*kmean_val_;
 	}
 	for(unsigned int ieta_m = 0; ieta_m < n_eta_bins_; ieta_m++){
 	  double A_m = par[ieta_m];
@@ -224,20 +248,29 @@ vector<double> TheoryFcn::Gradient(const vector<double> &par ) const {
 	  for(unsigned int ipt_m = 0; ipt_m < n_pt_bins_; ipt_m++){	  
 	    double k_m = kmean_vals_[ipt_m];
 	    double m_term = 0.;
-	    if(ieta_m != ieta) m_term = (1.0 + A_m + e_m*k_m + M_m/k_m);
+	    if(ieta_m != ieta) m_term = (1.0 + A_m + e_m*(k_m-kmean_val_)/kmean_val_ + M_m/k_m*kmean_val_);
 	    else{
 	      if(par_type==0)       m_term = 1.0;
-	      else if( par_type==1) m_term = k_m;
-	      else                  m_term = +1./k_m;
+	      else if( par_type==1) m_term = (k_m-kmean_val_)/kmean_val_;
+	      else                  m_term = +1./k_m*kmean_val_;
 	    }
-	    double ival = -2*(scales2_[ibin] - (1.0 + A_p + e_p*k_p - M_p/k_p)*(1.0 + A_m + e_m*k_m + M_m/k_m))/scales2Err_[ibin]/scales2Err_[ibin];
+	    double ival = -2*(scales2_[ibin] - (1.0 + A_p + e_p*(k_p-kmean_val_)/kmean_val_ - M_p/k_p*kmean_val_)*
+			      (1.0 + A_m + e_m*(k_m-kmean_val_)/kmean_val_ + M_m/k_m*kmean_val_))
+	      /scales2Err_[ibin]/scales2Err_[ibin];
+
 	    double term = 0.0;
 	    if(ieta_p==ieta || ieta_m==ieta){
 	      if(ieta_p!=ieta_m) term = p_term*m_term;
 	      else{
-		if(par_type==0)      term = 1.0*(1.0 + A_m + e_m*k_m + M_m/k_m) + (1.0 + A_p + e_p*k_p - M_p/k_p)*1.0;
-		else if(par_type==1) term = k_p*(1.0 + A_m + e_m*k_m + M_m/k_m) + (1.0 + A_p + e_p*k_p - M_p/k_p)*k_m;
-		else                 term = -1/k_p*(1.0 + A_m + e_m*k_m + M_m/k_m) + (1.0 + A_p + e_p*k_p - M_p/k_p)/k_m;
+		if(par_type==0)
+		  term = 1.0*(1.0 + A_m + e_m*(k_m-kmean_val_)/kmean_val_ + M_m/k_m*kmean_val_) +
+		    (1.0 + A_p + e_p*(k_p-kmean_val_)/kmean_val_ - M_p/k_p*kmean_val_)*1.0;
+		else if(par_type==1)
+		  term = (k_p-kmean_val_)/kmean_val_ * (1.0 + A_m + e_m*(k_m-kmean_val_)/kmean_val_ + M_m/k_m*kmean_val_) +
+		    (1.0 + A_p + e_p*(k_p-kmean_val_)/kmean_val_ - M_p/k_p*kmean_val_) * (k_m-kmean_val_)/kmean_val_;
+		else
+		  term = -1.0/k_p*kmean_val_ * (1.0 + A_m + e_m*(k_m-kmean_val_)/kmean_val_ + M_m/k_m*kmean_val_) +
+		    (1.0 + A_p + e_p*(k_p-kmean_val_)/kmean_val_ - M_p/k_p*kmean_val_) * 1.0/k_m*kmean_val_;
 	      }
 	    }
 	    //cout << "ival " << ival << "," << term << endl; 
@@ -315,29 +348,39 @@ int main(int argc, char* argv[])
   //fFCN->set_seed(seed);
 
   int debug = 0;
-  TheoryFcn* fFCN_0 = new TheoryFcn(debug, seed);   
-  unsigned int n_parameters = fFCN_0->get_n_params();
+  TheoryFcn* fFCN = new TheoryFcn(debug, seed);  
+  fFCN->SetErrorDef(1.0 / fFCN->get_n_dof());
+  unsigned int n_parameters = fFCN->get_n_params();
+  MatrixXd U(n_parameters,n_parameters);
+  for (int i=0; i<n_parameters; i++){
+    for (int j=0; j<n_parameters; j++){
+      U(i,j) = fFCN->get_U(i,j);
+    }
+  }
+  MatrixXd Uinv = U.inverse();
   
-  vector<double> tpar(n_parameters);
-  vector<double> tparErr(n_parameters);
+  vector<double> tparIn(n_parameters);
+  vector<double> tparInErr(n_parameters);
+  vector<double> tparOut(n_parameters);
+  vector<double> tparOutErr(n_parameters);
 
-   for (int i=0; i<n_parameters/3; i++){
-    //tpar.emplace_back(0.0);
-    //tparErr.emplace_back(0.0);
-    tree->Branch(Form("A%d",i), &tpar[i], Form("A%d/D",i));
-    tree->Branch(Form("A%derr",i), &tparErr[i], Form("A%derr/D",i));
+  for (int i=0; i<n_parameters/3; i++){
+    tree->Branch(Form("A%d",i),    &tparOut[i],    Form("A%d/D",i));
+    tree->Branch(Form("A%derr",i), &tparOutErr[i], Form("A%derr/D",i));
+    tree->Branch(Form("Ain%d",i),    &tparIn[i],    Form("Ain%d/D",i));
+    tree->Branch(Form("Ain%derr",i), &tparInErr[i], Form("Ain%derr/D",i));
   }
   for (int i=0; i<n_parameters/3; i++){
-    //tpar.emplace_back(0.0);
-    //tparErr.emplace_back(0.0);
-    tree->Branch(Form("e%d",i), &tpar[i+n_parameters/3], Form("e%d/D",i));
-    tree->Branch(Form("e%derr",i), &tparErr[i+n_parameters/3], Form("e%derr/D",i));
+    tree->Branch(Form("e%d",i),      &tparOut[i+n_parameters/3], Form("e%d/D",i));
+    tree->Branch(Form("e%derr",i),   &tparOutErr[i+n_parameters/3], Form("e%derr/D",i));
+    tree->Branch(Form("ein%d",i),    &tparIn[i+n_parameters/3], Form("ein%d/D",i));
+    tree->Branch(Form("ein%derr",i), &tparInErr[i+n_parameters/3], Form("ein%derr/D",i));
   }
   for (int i=0; i<n_parameters/3; i++){
-    //tpar.emplace_back(0.0);
-    //tparErr.emplace_back(0.0);
-    tree->Branch(Form("M%d",i), &tpar[i+2*n_parameters/3], Form("M%d/D",i));
-    tree->Branch(Form("M%derr",i), &tparErr[i+2*n_parameters/3], Form("M%derr/D",i));
+    tree->Branch(Form("M%d",i),      &tparOut[i+2*n_parameters/3], Form("M%d/D",i));
+    tree->Branch(Form("M%derr",i),   &tparOutErr[i+2*n_parameters/3], Form("M%derr/D",i));
+    tree->Branch(Form("Min%d",i),    &tparIn[i+2*n_parameters/3], Form("Min%d/D",i));
+    tree->Branch(Form("Min%derr",i), &tparInErr[i+2*n_parameters/3], Form("Min%derr/D",i));
   }
       
 
@@ -348,14 +391,10 @@ int main(int argc, char* argv[])
   
   for(unsigned int itoy=0; itoy<nevents; itoy++){
 
-    int debug = 0;
-    TheoryFcn* fFCN = new TheoryFcn(debug, seed+itoy);  
     fFCN->generate_data();
-    fFCN->SetErrorDef(1.0 / fFCN->get_n_dof());
     
     MnUserParameters upar;
     double start=0.0, par_error=0.01;
-    unsigned int n_parameters = fFCN->get_n_params();
     for (int i=0; i<n_parameters/3; i++){
       upar.Add(Form("A%d",i), start, par_error);
     }
@@ -383,38 +422,73 @@ int main(int argc, char* argv[])
     cout << "Hesse" << endl;
     MnHesse hesse(1);
     hesse(*fFCN, min);
-    
-    for(unsigned int ipar = 0 ; ipar<n_parameters; ipar++){
-      //cout << upar.GetName(ipar) << ":" << min.UserState().Value(ipar) << " +/- " << min.UserState().Error(ipar) << endl;
-      tpar[ipar]    = min.UserState().Value(ipar) ;
-      tparErr[ipar] = min.UserState().Error(ipar) ;
-    }
-    tree->Fill();
-    
-    TH2D* hcov = new TH2D(Form("hcov_%d", itoy), "", n_parameters, 0, n_parameters, n_parameters, 0, n_parameters);
-    TH2D* hcor = new TH2D(Form("hcor_%d", itoy), "", n_parameters, 0, n_parameters, n_parameters, 0, n_parameters);  
-    for(unsigned int iparX = 0 ; iparX<n_parameters; iparX++){    
-      hcov->GetXaxis()->SetBinLabel(iparX+1, TString(upar.GetName(iparX).c_str()) );
-      hcor->GetXaxis()->SetBinLabel(iparX+1, TString(upar.GetName(iparX).c_str()) );
-      for(unsigned int iparY = 0 ; iparY<n_parameters; iparY++){
-	//cout << min.UserState().Covariance().Data()[iparX*n_parameters+iparY] << endl;
-	double cov_XY = iparX>iparY ?
-	  min.UserState().Covariance().Data()[iparY+ iparX*(iparX+1)/2] :
-	  min.UserState().Covariance().Data()[iparX+ iparY*(iparY+1)/2];
-	double cor_XY = cov_XY / (TMath::Sqrt(min.UserState().Covariance().Data()[iparX+ iparX*(iparX+1)/2])*
-				  TMath::Sqrt(min.UserState().Covariance().Data()[iparY+ iparY*(iparY+1)/2]));
-	hcov->SetBinContent(iparX+1, iparY+1, cov_XY);
-	hcov->GetYaxis()->SetBinLabel(iparY+1, TString(upar.GetName(iparY).c_str()) );
-	hcor->SetBinContent(iparX+1, iparY+1, cor_XY);
-	hcor->GetYaxis()->SetBinLabel(iparY+1, TString(upar.GetName(iparY).c_str()) );
+
+    MatrixXd Vin(n_parameters,n_parameters);    
+    for(unsigned int i = 0 ; i<n_parameters; i++){    
+      for(unsigned int j = 0 ; j<n_parameters; j++){
+	Vin(i,j) = i>j ?
+	  min.UserState().Covariance().Data()[j+ i*(i+1)/2] :
+	  min.UserState().Covariance().Data()[i+ j*(j+1)/2];;
       }
     }
+    MatrixXd Vout = Uinv*Vin*Uinv.transpose();
+
+    VectorXd xin(n_parameters);
+    VectorXd xinErr(n_parameters);     
+    for(unsigned int i = 0 ; i<n_parameters; i++){
+      xin(i)    = min.UserState().Value(i) ;
+      xinErr(i) = min.UserState().Error(i) ;
+    }
+    VectorXd x = Uinv*xin;
+    VectorXd xErr(n_parameters);
+    for(unsigned int i = 0 ; i<n_parameters; i++){
+      xErr(i) = TMath::Sqrt(Vout(i,i));
+    }    
+    for(unsigned int i = 0 ; i<n_parameters; i++){
+      tparIn[i]     = xin(i);
+      tparInErr[i]  = xinErr(i);
+      tparOut[i]    = x(i);
+      tparOutErr[i] = xErr(i);      
+    }
+
+    TH2D* hcov = new TH2D(Form("hcov_%d", itoy), "", n_parameters, 0, n_parameters, n_parameters, 0, n_parameters);
+    TH2D* hcor = new TH2D(Form("hcor_%d", itoy), "", n_parameters, 0, n_parameters, n_parameters, 0, n_parameters);  
+    TH2D* hcovin = new TH2D(Form("hcovin_%d", itoy), "", n_parameters, 0, n_parameters, n_parameters, 0, n_parameters);
+    TH2D* hcorin = new TH2D(Form("hcorin_%d", itoy), "", n_parameters, 0, n_parameters, n_parameters, 0, n_parameters);  
+
+    for(unsigned int i = 0 ; i<n_parameters; i++){    
+      hcov->GetXaxis()->SetBinLabel(i+1, TString(upar.GetName(i).c_str()) );
+      hcor->GetXaxis()->SetBinLabel(i+1, TString(upar.GetName(i).c_str()) );
+      hcovin->GetXaxis()->SetBinLabel(i+1, TString(upar.GetName(i).c_str()) );
+      hcorin->GetXaxis()->SetBinLabel(i+1, TString(upar.GetName(i).c_str()) );
+      for(unsigned int j = 0 ; j<n_parameters; j++){
+	double covin_ij = Vin(i,j);
+	double corin_ij = Vin(i,j)/TMath::Sqrt(Vin(i,i)*Vin(j,j)); 
+	double cov_ij = Vout(i,j);
+	double cor_ij = Vout(i,j)/TMath::Sqrt(Vout(i,i)*Vout(j,j)); 
+	hcov->GetYaxis()->SetBinLabel(j+1, TString(upar.GetName(j).c_str()) );
+	hcor->GetYaxis()->SetBinLabel(j+1, TString(upar.GetName(j).c_str()) );
+	hcovin->GetYaxis()->SetBinLabel(j+1, TString(upar.GetName(j).c_str()) );
+	hcorin->GetYaxis()->SetBinLabel(j+1, TString(upar.GetName(j).c_str()) );
+	hcovin->SetBinContent(i+1, j+1, covin_ij);
+	hcorin->SetBinContent(i+1, j+1, corin_ij);
+	hcov->SetBinContent(i+1, j+1, cov_ij);
+	hcor->SetBinContent(i+1, j+1, cor_ij);
+      }
+    }
+
+    tree->Fill();
+
     hcor->SetMinimum(-1.0);
     hcor->SetMaximum(+1.0);
+    hcorin->SetMinimum(-1.0);
+    hcorin->SetMaximum(+1.0);
     fout->cd();
-    if(itoy<20){
+    if(itoy<1){
       hcor->Write();
-      //hcov->Write();
+      hcov->Write();
+      hcorin->Write();
+      hcovin->Write();
     }
     
     if(verbosity>1){
@@ -432,7 +506,6 @@ int main(int argc, char* argv[])
       cout << "HasPosDefCovar : " << min.HasPosDefCovar() << std::endl;
       cout << "HasMadePosDefCovar : " << min.HasMadePosDefCovar() << std::endl;
     }
-    delete fFCN;
   }
 
   fout->cd();
