@@ -388,12 +388,12 @@ int main(int argc, char* argv[])
 
   unsigned int maxfcn(numeric_limits<unsigned int>::max());
   double tolerance(0.001);
-  int verbosity = 1; 
+  int verbosity = 0; 
   ROOT::Minuit2::MnPrint::SetGlobalLevel(verbosity);
   
   for(unsigned int itoy=0; itoy<nevents; itoy++){
 
-    if(itoy/10==0) cout << "Toy n." << itoy << "/" << nevents << endl;
+    if(itoy%10==0) cout << "Toy " << itoy << " / " << nevents << endl;
     
     fFCN->generate_data();
     
@@ -516,6 +516,7 @@ int main(int argc, char* argv[])
   tree->Write();
 
   TH1D* hpulls = new TH1D("hpulls", "", n_parameters, 0, n_parameters);
+  TH1D* hsigma = new TH1D("hsigma", "", n_parameters, 0, n_parameters);
   for (int i=0; i<n_parameters; i++){
     TH1D* h = new TH1D(Form("h%d", i), "", 100,-3,3);
     int ip = i%(n_parameters/3);
@@ -539,10 +540,13 @@ int main(int argc, char* argv[])
       continue;
     }
     hpulls->SetBinContent(i+1, gaus->GetParameter(1));
-    hpulls->SetBinError(i+1, gaus->GetParameter(2));
+    hpulls->SetBinError(i+1, gaus->GetParError(1));
+    hsigma->SetBinContent(i+1, gaus->GetParameter(2));
+    hsigma->SetBinError(i+1, gaus->GetParError(2));
     delete h;
   }
   hpulls->Write();
+  hsigma->Write();
 
   
   sw.Stop();
