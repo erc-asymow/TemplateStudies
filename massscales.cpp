@@ -67,7 +67,10 @@ int main(int argc, char* argv[])
 	("lumi",        value<long>()->default_value(1000), "number of events")
 	("tag",         value<std::string>()->default_value("closure"), "run type")
 	("run",         value<std::string>()->default_value("closure"), "run type")
+	("dofits",      bool_switch()->default_value(false), "")
 	("bias",        value<int>()->default_value(0), "bias")
+	("event_cut",   value<int>()->default_value(10), "bias")
+	("rebin",       value<int>()->default_value(1), "rebin")
 	("seed",        value<int>()->default_value(4357), "seed");
 
       store(parse_command_line(argc, argv, desc), vm);
@@ -91,6 +94,9 @@ int main(int argc, char* argv[])
   std::string run = vm["run"].as<std::string>();
   int bias        = vm["bias"].as<int>();
   int seed        = vm["seed"].as<int>();
+  int event_cut   = vm["event_cut"].as<int>();
+  int rebin       = vm["rebin"].as<int>();
+  bool dofits     = vm["dofits"].as<bool>();
 
   vector<float> pt_edges  = {25, 30, 35, 40, 45, 55}; 
   vector<float> eta_edges = {-2.4, -2.2, -2.0, -1.8, -1.6, -1.4, -1.2, -1.0, -0.8, -0.6, -0.4, -0.2, 0.0,
@@ -102,26 +108,11 @@ int main(int argc, char* argv[])
 
   std::vector<string> recos = {"reco", "smear0", "smear1"}; 
 
-  /*
-  TH1D* h_mean_reco_bin_dm   = 0;
-  TH1D* h_rms_reco_bin_dm    = 0;
-  TH1D* h_mean_smear0_bin_dm = 0;
-  TH1D* h_rms_smear0_bin_dm  = 0;
-  TH1D* h_mean_smear1_bin_dm = 0;
-  TH1D* h_rms_smear1_bin_dm  = 0;
-  std::map<string, TH1D*> h_map;
-  h_map.insert( std::make_pair<string, TH1D* >("mean_reco", h_mean_reco_bin_dm ) );
-  h_map.insert( std::make_pair<string, TH1D* >("rms_reco",  h_rms_reco_bin_dm ) );
-  h_map.insert( std::make_pair<string, TH1D* >("mean_smear0", h_mean_smear0_bin_dm ) );
-  h_map.insert( std::make_pair<string, TH1D* >("rms_smear0",  h_rms_smear0_bin_dm ) );
-  h_map.insert( std::make_pair<string, TH1D* >("mean_smear1", h_mean_smear1_bin_dm ) );
-  h_map.insert( std::make_pair<string, TH1D* >("rms_smear1",  h_rms_smear1_bin_dm ) );
-  */
-
   std::map<string, TH1D*> h_map;
   for(unsigned int r = 0; r<recos.size(); r++){
     h_map.insert( std::make_pair<string, TH1D* >("mean_"+recos[r], 0 ) );
     h_map.insert( std::make_pair<string, TH1D* >("rms_"+recos[r],  0 ) );
+    h_map.insert( std::make_pair<string, TH1D* >("mask_"+recos[r],  0 ) );
   }
 
   // map of positions in RVecF "masses"
@@ -130,10 +121,11 @@ int main(int argc, char* argv[])
   idx_map.insert( std::make_pair<string, unsigned int >("smear0", 2 ) );
   idx_map.insert( std::make_pair<string, unsigned int >("smear1", 3 ) );
 
-  TFile* fout = TFile::Open(("./massscales_"+tag+"_"+run+".root").c_str(), "RECREATE");
+  TFile* fout = TFile::Open(("./massscales_"+tag+"_"+run+".root").c_str(), !dofits ? "RECREATE" : "UPDATE");
   
-  for(unsigned int iter=0; iter<2; iter++){
+  for(unsigned int iter=0; iter<3; iter++){
 
+    if(dofits && iter!=2) continue;    
     cout << "Iter " << iter << endl;
     //TTree* tree = new TTree("tree", "tree");
 
@@ -412,6 +404,9 @@ int main(int argc, char* argv[])
 	histos2D.emplace_back(dlast->Histo2D({ "h_"+TString(recos[r].c_str())+"_bin_m",    "nominal", n_bins, 0, double(n_bins), x_nbins, x_low, x_high}, "index_"+TString(recos[r].c_str()), TString(recos[r].c_str())+"_m", "weight"));
 	histos2D.emplace_back(dlast->Histo2D({ "h_"+TString(recos[r].c_str())+"_bin_dm",   "nominal", n_bins, 0, double(n_bins), 24, -6.0, 6.0},          "index_"+TString(recos[r].c_str()), TString(recos[r].c_str())+"_dm", "weight"));
       }
+      auto colNames = dlast->GetColumnNames();
+      double total = *(dlast->Count());  
+      std::cout << colNames.size() << " columns created. Total event count is " << total  << std::endl;
     }
     else if(iter==1){
       for(unsigned int r = 0 ; r<recos.size(); r++){
@@ -420,10 +415,6 @@ int main(int argc, char* argv[])
       }
     }
     
-    auto colNames = dlast->GetColumnNames();
-    std::cout << colNames.size() << " columns created" << std::endl;
-    double total = *(dlast->Count());  
-
     fout->cd();
     std::cout << "Writing histos..." << std::endl;
     double sf = 1.0; //double(lumi)/double(nevents);
@@ -440,95 +431,175 @@ int main(int argc, char* argv[])
     }    
     std::cout << "Total slots: " << dlast->GetNSlots() << std::endl;
 
-    if(iter>0) continue;
-
-
-    for(unsigned int r = 0 ; r<recos.size(); r++){
-      TH2D* h_reco_dm = (TH2D*)fout->Get(TString( ("h_"+recos[r]+"_bin_dm").c_str()) );
-      TH2D* h_reco_m  = (TH2D*)fout->Get(TString( ("h_"+recos[r]+"_bin_m").c_str()) );
-      if( h_reco_dm==0 || h_reco_m==0 ){
-	cout << "h_reco_dm/h_reco_m NOT FOUND" << endl;
-	continue;
-      }
-      h_map["mean_"+recos[r]] = new TH1D( TString( ("h_mean_"+recos[r]+"_bin_dm").c_str() ),"", n_bins, 0, double(n_bins));
-      h_map["rms_"+recos[r]]  = new TH1D( TString( ("h_rms_"+recos[r]+"_bin_dm").c_str() ),"", n_bins, 0, double(n_bins));
-      for(unsigned int i = 0; i<n_bins; i++ ){
-	TString projname(Form("bin_%d_", i));
-	projname += TString( recos[r].c_str() );
-	TH1D* hi   = (TH1D*)h_reco_dm->ProjectionY( projname+"_dm", i+1, i+1 );
-	TH1D* hi_m = (TH1D*)h_reco_m->ProjectionY( projname+"_m", i+1, i+1 );
-	double mean_i = 0.0;
-	double meanerr_i = 0.0;
-	double rms_i = 0.0;
-	double rmserr_i = 0.0;
-	//cout << hi_m->Integral() << ", " << hi->Integral() << ", " << hi_m->GetMean() << endl;
-	if( hi_m->Integral() > nevents && hi->Integral() > nevents  &&  hi_m->GetMean()>75. && hi_m->GetMean()<105. ){
-	  TF1* gf = new TF1("gf","[0]/TMath::Sqrt(2)/[2]*TMath::Exp( -0.5*(x-[1])*(x-[1])/[2]/[2] )",
-			    hi->GetXaxis()->GetBinLowEdge(1), hi->GetXaxis()->GetBinUpEdge( hi->GetXaxis()->GetNbins() ));      
-	  gf->SetParameter(0, hi->Integral());
-	  gf->SetParameter(1, hi->GetMean());
-	  gf->SetParameter(2, hi->GetRMS() );
-	  hi->Fit("gf", "QR", "", -6.0, 6.0);
-	  mean_i    = gf->GetParameter(1);
-	  meanerr_i = gf->GetParError(1);
-	  rms_i     = TMath::Abs(gf->GetParameter(2));
-	  rmserr_i  = gf->GetParError(2);
-	  //cout << "Fit " << mean_i << endl;
-	  delete gf;
+    // fill histos
+    if(iter==0){
+      for(unsigned int r = 0 ; r<recos.size(); r++){
+	TH2D* h_reco_dm = (TH2D*)fout->Get(TString( ("h_"+recos[r]+"_bin_dm").c_str()) );
+	TH2D* h_reco_m  = (TH2D*)fout->Get(TString( ("h_"+recos[r]+"_bin_m").c_str()) );
+	if( h_reco_dm==0 || h_reco_m==0 ){
+	  cout << "h_reco_dm/h_reco_m NOT FOUND" << endl;
+	  continue;
 	}
-	//else{
-	//
-	//cout << "Skip " << mean_i << endl;
-	//	}
-	h_map.at("mean_"+recos[r])->SetBinContent(i+1, mean_i);
-	h_map.at("mean_"+recos[r])->SetBinError(i+1, meanerr_i);
-	h_map.at("rms_"+recos[r])->SetBinContent(i+1, rms_i);
-	h_map.at("rms_"+recos[r])->SetBinError(i+1, rmserr_i);
-      } 
+	h_map["mean_"+recos[r]] = new TH1D( TString( ("h_mean_"+recos[r]+"_bin_dm").c_str() ),"", n_bins, 0, double(n_bins));
+	h_map["rms_"+recos[r]]  = new TH1D( TString( ("h_rms_"+recos[r]+"_bin_dm").c_str() ),"", n_bins, 0, double(n_bins));
+	h_map["mask_"+recos[r]] = new TH1D( TString( ("h_mask_"+recos[r]+"_bin_dm").c_str() ),"", n_bins, 0, double(n_bins));
+	for(unsigned int i = 0; i<n_bins; i++ ){
+	  TString projname(Form("bin_%d_", i));
+	  projname += TString( recos[r].c_str() );
+	  TH1D* hi   = (TH1D*)h_reco_dm->ProjectionY( projname+"_dm", i+1, i+1 );
+	  TH1D* hi_m = (TH1D*)h_reco_m->ProjectionY( projname+"_m", i+1, i+1 );
+	  double mean_i = 0.0;
+	  double meanerr_i = 0.0;
+	  double rms_i = 0.0;
+	  double rmserr_i = 0.0;
+	  //cout << hi_m->Integral() << ", " << hi->Integral() << ", " << hi_m->GetMean() << endl;
+	  if( hi_m->Integral() > nevents && hi->Integral() > nevents  &&  hi_m->GetMean()>75. && hi_m->GetMean()<105. ){
+	    h_map.at("mask_"+recos[r])->SetBinContent(i+1, 1);
+	    TF1* gf = new TF1("gf","[0]/TMath::Sqrt(2)/[2]*TMath::Exp( -0.5*(x-[1])*(x-[1])/[2]/[2] )",
+			      hi->GetXaxis()->GetBinLowEdge(1), hi->GetXaxis()->GetBinUpEdge( hi->GetXaxis()->GetNbins() ));      
+	    gf->SetParameter(0, hi->Integral());
+	    gf->SetParameter(1, hi->GetMean());
+	    gf->SetParameter(2, hi->GetRMS() );
+	    hi->Fit("gf", "QR", "", -6.0, 6.0);
+	    mean_i    = gf->GetParameter(1);
+	    meanerr_i = gf->GetParError(1);
+	    rms_i     = TMath::Abs(gf->GetParameter(2));
+	    rmserr_i  = gf->GetParError(2);
+	    //cout << "Fit " << mean_i << endl;
+	    delete gf;
+	  }
+	  else{
+	    h_map.at("mask_"+recos[r])->SetBinContent(i+1, 0);
+	  }
+	  h_map.at("mean_"+recos[r])->SetBinContent(i+1, mean_i);
+	  h_map.at("mean_"+recos[r])->SetBinError(i+1, meanerr_i);
+	  h_map.at("rms_"+recos[r])->SetBinContent(i+1, rms_i);
+	  h_map.at("rms_"+recos[r])->SetBinError(i+1, rmserr_i);
+	} 
+      }
+      
+      fout->cd();
+    
+      for(unsigned int r = 0 ; r<recos.size(); r++){	  
+	h_map["mean_"+recos[r]]->Write();
+	h_map["rms_"+recos[r]]->Write();
+	h_map["mask_"+recos[r]]->Write();
+      }
     }
 
-    /*
-    TH2D* h_reco_bin_dm = (TH2D*)fout->Get("h_reco_bin_dm");
-    if( h_reco_bin_dm==0 || h_gen_bin_m==0 ){
-      cout << "h_reco_bin_dm/h_gen_bin_m NOT FOUND" << endl;
-      continue;
-    }
-    h_mean_reco_bin_dm = new TH1D("h_mean_reco_bin_dm","", n_bins, 0, double(n_bins));
-    h_rms_reco_bin_dm  = new TH1D("h_rms_reco_bin_dm", "", n_bins, 0, double(n_bins));
-    for(unsigned int i = 0; i<n_bins; i++ ){
-      TH1D* hi = (TH1D*)h_reco_bin_dm->ProjectionY( Form("h_reco_bin_dm_%d", i), i+1, i+1 );
-      TH1D* hi_m = (TH1D*)h_gen_bin_m->ProjectionY( Form("h_gen_bin_m_%d", i), i+1, i+1 );
-      double mean_i = 0.0;
-      double meanerr_i = 0.0;
-      double rms_i = 0.0;
-      double rmserr_i = 0.0;
-      if( hi_m->Integral() > 100. && hi->Integral()>100.  &&  hi_m->GetMean()>75. && hi_m->GetMean()<105. ){
-	TF1* gf = new TF1("gf","[0]/TMath::Sqrt(2)/[2]*TMath::Exp( -0.5*(x-[1])*(x-[1])/[2]/[2] )",
-			  hi->GetXaxis()->GetBinLowEdge(1), hi->GetXaxis()->GetBinUpEdge( hi->GetXaxis()->GetNbins() ));      
-	gf->SetParameter(0, hi->Integral());
-	gf->SetParameter(1, hi->GetMean());
-	gf->SetParameter(2, hi->GetRMS() );
-	hi->Fit("gf", "QR", "", -6.0, 6.0);
-	mean_i    = gf->GetParameter(1);
-	meanerr_i = gf->GetParError(1);
-	rms_i     = TMath::Abs(gf->GetParameter(2));
-	rmserr_i  = gf->GetParError(2);
-	delete gf;
+    if(iter==2){
+
+      TH1D* h_scales  = new TH1D("h_scales", "", n_bins, 0, double(n_bins));
+      TH1D* h_widths  = new TH1D("h_widths", "", n_bins, 0, double(n_bins));
+      TH1D* h_norms   = new TH1D("h_norms", "", n_bins, 0, double(n_bins));
+      TH1D* h_probs   = new TH1D("h_probs", "", n_bins, 0, double(n_bins));
+      TH1D* h_masks   = new TH1D("h_masks", "", n_bins, 0, double(n_bins));
+
+      TH2D* h_data_2D   = (TH2D*)fout->Get("h_smear1_bin_m");
+      TH1D* h_nom_mask  = (TH1D*)fout->Get("h_mask_smear0_bin_dm");
+      TH2D* h_nom_2D    = (TH2D*)fout->Get("h_smear0_bin_m");
+      TH2D* h_jscale_2D = (TH2D*)fout->Get("h_smear0_bin_jac_scale");
+      TH2D* h_jwidth_2D = (TH2D*)fout->Get("h_smear0_bin_jac_width");
+
+      for(unsigned int ibin=0; ibin<n_bins; ibin++){
+
+	if( h_nom_mask->GetBinContent(ibin+1)<0.5 ) continue;
+
+	TH1D* h_data_i    = (TH1D*)h_data_2D->ProjectionY( Form("h_data_i_%d",ibin ),   ibin+1, ibin+1 );
+	TH1D* h_nom_i     = (TH1D*)h_nom_2D->ProjectionY( Form("h_nom_i_%d", ibin),       ibin+1, ibin+1 );
+	TH1D* h_jscale_i  = (TH1D*)h_jscale_2D->ProjectionY( Form("h_jscale_i_%d", ibin), ibin+1, ibin+1 );
+	TH1D* h_jwidth_i  = (TH1D*)h_jwidth_2D->ProjectionY( Form("h_jwidth_i_%d", ibin), ibin+1, ibin+1 );	
+
+	if(rebin>1){
+	  h_data_i->Rebin(rebin);
+	  h_nom_i->Rebin(rebin);
+	  h_jscale_i->Rebin(rebin);
+	  h_jwidth_i->Rebin(rebin);
+	}
+	
+	//const float event_cut = 10.; 
+	unsigned int n_mass_bins = 0;
+	// skip bins with less than 4 high-stat (>10) mass bins
+	for(int im = 1 ; im<=h_data_i->GetXaxis()->GetNbins(); im++){
+	  if( h_data_i->GetBinContent(im)>event_cut ) n_mass_bins++;
+	}
+	if( n_mass_bins<4 ){
+	  h_scales->SetBinContent(ibin+1, 0.0);
+	  h_widths->SetBinContent(ibin+1, 0.0);
+	  h_norms->SetBinContent(ibin+1, 0.0);
+	  h_probs->SetBinContent(ibin+1, 0.0);
+	  h_masks->SetBinContent(ibin+1, 0.0);
+	  continue;
+	}
+
+	// the data
+	MatrixXd inv_sqrtV(n_mass_bins,n_mass_bins);
+	MatrixXd inv_V(n_mass_bins,n_mass_bins);
+	for(unsigned int ibm = 0; ibm<n_mass_bins; ibm++ ){
+	  for(unsigned int jbm = 0; jbm<n_mass_bins; jbm++ ){
+	    inv_sqrtV(ibm,jbm) = 0.;
+	    inv_V(ibm,jbm) = 0.;
+	  }
+	}
+	VectorXd y(n_mass_bins);
+	VectorXd y0(n_mass_bins);
+	VectorXd jscale(n_mass_bins);
+	VectorXd jwidth(n_mass_bins);
+	unsigned int bin_counter = 0;
+	for(int im = 0 ; im<h_data_i->GetXaxis()->GetNbins(); im++){
+	  if( h_data_i->GetBinContent(im+1)>event_cut ){
+	    y0(bin_counter) = h_nom_i->GetBinContent(im+1);	    
+	    y(bin_counter)  = h_data_i->GetBinContent(im+1) - y0(bin_counter);
+	    jscale(bin_counter) = h_jscale_i->GetBinContent(im+1);
+	    jwidth(bin_counter) = h_jwidth_i->GetBinContent(im+1);  
+	    inv_V(bin_counter,bin_counter) = 1./(y(bin_counter) + h_nom_i->GetBinError(im+1)*h_nom_i->GetBinError(im+1) );
+	    inv_sqrtV(bin_counter,bin_counter) = TMath::Sqrt( inv_V(bin_counter,bin_counter) );
+	    bin_counter++;
+	  }
+	}
+	
+	MatrixXd jac(n_mass_bins, 3);
+	for(unsigned int ib=0; ib<n_mass_bins;ib++){
+	  jac(ib, 0) = y0(ib);
+	  jac(ib, 1) = jscale(ib);
+	  jac(ib, 2) = jwidth(ib);
+	}
+
+	MatrixXd A = inv_sqrtV*jac;
+	VectorXd b = inv_sqrtV*y;
+	VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
+	MatrixXd C = (jac.transpose()*inv_V*jac).inverse();
+	MatrixXd rho( C.rows(), C.rows() ) ;
+	for(unsigned int ir = 0; ir<C.rows(); ir++){
+	  for(unsigned int ic = 0; ic<C.rows(); ic++){
+	    rho(ir,ic) = C(ir,ic)/TMath::Sqrt(C(ir,ir)*C(ic,ic));
+	  }
+	}
+	MatrixXd chi2old = b.transpose()*b;
+	MatrixXd chi2new = ((b - A*x).transpose())*(b-A*x);
+	int ndof = n_mass_bins-3;
+	double chi2norm_old = chi2old(0,0)/ndof;
+	double chi2norm_new = chi2new(0,0)/ndof;
+	cout << "Bin: " << ibin << ": mass fits with " << n_mass_bins << " mass bins: " << chi2norm_old << " ---> " << chi2norm_new << " (prob = " << TMath::Prob(chi2norm_new*ndof, ndof ) << endl;      	
+	h_scales->SetBinContent(ibin+1, x(1)+1.0);
+	h_scales->SetBinError(ibin+1, TMath::Sqrt(C(1,1)));
+	h_norms->SetBinContent(ibin+1, x(0)+1.0);
+	h_norms->SetBinError(ibin+1, TMath::Sqrt(C(0,0)));
+	h_widths->SetBinContent(ibin+1, x(2)+1.0);
+	h_widths->SetBinError(ibin+1, TMath::Sqrt(C(2,2)));
+	h_probs->SetBinContent(ibin+1, TMath::Prob(chi2norm_new*ndof, ndof ));
+	h_probs->SetBinError(ibin+1, 0.);
+	h_masks->SetBinContent(ibin+1, 1.0);
       }
-      h_mean_reco_bin_dm->SetBinContent(i+1, mean_i);
-      h_mean_reco_bin_dm->SetBinError(i+1, meanerr_i);
-      h_rms_reco_bin_dm->SetBinContent(i+1, rms_i);
-      h_rms_reco_bin_dm->SetBinError(i+1, rmserr_i);
-    } 
-    */   
-    fout->cd();
-    
-    for(unsigned int r = 0 ; r<recos.size(); r++){	  
-      h_map["mean_"+recos[r]]->Write();
-      h_map["rms_"+recos[r]]->Write();
+      fout->cd();
+      h_scales->Write(0,TObject::kOverwrite);
+      h_norms->Write(0,TObject::kOverwrite);
+      h_widths->Write(0,TObject::kOverwrite);
+      h_probs->Write(0,TObject::kOverwrite);
+      h_masks->Write(0,TObject::kOverwrite);
+      cout << h_masks->Integral() << " scales have been computed" << endl;
     }
-    //h_mean_reco_bin_dm->Write();
-    //h_rms_reco_bin_dm->Write();
+
   }
   
   sw.Stop();
