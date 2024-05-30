@@ -68,6 +68,7 @@ int main(int argc, char* argv[])
 	("tag",         value<std::string>()->default_value("closure"), "run type")
 	("run",         value<std::string>()->default_value("closure"), "run type")
 	("dofits",      bool_switch()->default_value(false), "")
+	("savehistos",  bool_switch()->default_value(false), "")
 	("bias",        value<int>()->default_value(0), "bias")
 	("event_cut",   value<int>()->default_value(10), "bias")
 	("rebin",       value<int>()->default_value(1), "rebin")
@@ -88,7 +89,7 @@ int main(int argc, char* argv[])
       std::cerr << ex.what() << '\n';
     }
 
-  int nevents    = vm["nevents"].as<int>();
+  int nevents     = vm["nevents"].as<int>();
   long lumi       = vm["lumi"].as<long>();
   std::string tag = vm["tag"].as<std::string>();
   std::string run = vm["run"].as<std::string>();
@@ -97,6 +98,7 @@ int main(int argc, char* argv[])
   int event_cut   = vm["event_cut"].as<int>();
   int rebin       = vm["rebin"].as<int>();
   bool dofits     = vm["dofits"].as<bool>();
+  bool savehistos     = vm["savehistos"].as<bool>();
 
   vector<float> pt_edges  = {25, 30, 35, 40, 45, 55}; 
   vector<float> eta_edges = {-2.4, -2.2, -2.0, -1.8, -1.6, -1.4, -1.2, -1.0, -0.8, -0.6, -0.4, -0.2, 0.0,
@@ -489,6 +491,9 @@ int main(int argc, char* argv[])
 
     if(iter==2){
 
+      if(savehistos)
+	fout->mkdir("postfit");
+      
       TH1D* h_scales  = new TH1D("h_scales", "", n_bins, 0, double(n_bins));
       TH1D* h_widths  = new TH1D("h_widths", "", n_bins, 0, double(n_bins));
       TH1D* h_norms   = new TH1D("h_norms", "", n_bins, 0, double(n_bins));
@@ -590,13 +595,31 @@ int main(int argc, char* argv[])
 	h_probs->SetBinContent(ibin+1, TMath::Prob(chi2norm_new*ndof, ndof ));
 	h_probs->SetBinError(ibin+1, 0.);
 	h_masks->SetBinContent(ibin+1, 1.0);
+
+	if(savehistos){
+	  TH1D* h_pre_i   = (TH1D*)h_nom_i->Clone(Form("h_prefit_%d", ibin));
+	  TH1D* h_post_i  = (TH1D*)h_nom_i->Clone(Form("h_postfit_%d", ibin));
+	  unsigned int bin_counter = 0;
+	  for(int im = 0 ; im<h_post_i->GetXaxis()->GetNbins(); im++){	  
+	    if( h_data_i->GetBinContent(im+1)>event_cut ){
+	      h_post_i->SetBinContent( im+1, y0(bin_counter)+(jac*x)(bin_counter) );
+	      bin_counter++;
+	    }
+	  }
+	  fout->cd("postfit/");
+	  h_data_i->Write(Form("h_data_%d", ibin) ,TObject::kOverwrite);
+	  h_pre_i->Write(TString(h_pre_i->GetName()) ,TObject::kOverwrite);
+	  h_post_i->Write(TString(h_post_i->GetName()),TObject::kOverwrite);
+	}	
       }
+      
       fout->cd();
       h_scales->Write(0,TObject::kOverwrite);
       h_norms->Write(0,TObject::kOverwrite);
       h_widths->Write(0,TObject::kOverwrite);
       h_probs->Write(0,TObject::kOverwrite);
       h_masks->Write(0,TObject::kOverwrite);
+
       cout << h_masks->Integral() << " scales have been computed" << endl;
     }
 
