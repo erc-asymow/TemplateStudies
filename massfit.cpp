@@ -46,14 +46,35 @@ class TheoryFcn : public FCNGradientBase {
 //class TheoryFcn : public FCNBase {
 
 public:
-  TheoryFcn(const int& debug, const int& seed, const int& bias) : errorDef_(1.0), debug_(debug), seed_(seed), bias_(bias)
+  TheoryFcn(const int& debug, const int& seed, const int& bias, string fname)
+    : errorDef_(1.0), debug_(debug), seed_(seed), bias_(bias)
   {
 
     ran_ = new TRandom3(seed);
-    pt_edges_  = {25, 30, 35, 40, 45, 55}; 
-    eta_edges_ = {-2.4, -2.2, -2.0, -1.8, -1.6, -1.4, -1.2, -1.0, -0.8, -0.6, -0.4, -0.2, 0.0,
-		  0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4
-    };
+
+    if( bias==-1 ){
+      TFile* fin = TFile::Open(fname.c_str(), "READ");
+      TH1F* h_pt_edges = (TH1F*)fin->Get("h_pt_edges");
+      TH1F* h_eta_edges = (TH1F*)fin->Get("h_eta_edges");
+      unsigned int pt_edges_size  = h_pt_edges->GetXaxis()->GetNbins()+1;
+      unsigned int eta_edges_size = h_eta_edges->GetXaxis()->GetNbins()+1;
+      
+      pt_edges_.reserve( pt_edges_size );
+      for(unsigned int i=0; i<h_pt_edges->GetXaxis()->GetNbins(); i++)
+	pt_edges_.push_back( h_pt_edges->GetXaxis()->GetBinLowEdge(i+1) );
+      pt_edges_.push_back( h_pt_edges->GetXaxis()->GetBinUpEdge( h_pt_edges->GetXaxis()->GetNbins() ));
+
+      eta_edges_.reserve( eta_edges_size );
+      for(unsigned int i=0; i<h_eta_edges->GetXaxis()->GetNbins(); i++)
+	eta_edges_.push_back( h_eta_edges->GetXaxis()->GetBinLowEdge(i+1) );
+      eta_edges_.push_back( h_eta_edges->GetXaxis()->GetBinUpEdge( h_eta_edges->GetXaxis()->GetNbins() ));
+    }
+    else{
+      pt_edges_  = {25, 30, 35, 40, 45, 55}; 
+      eta_edges_ = {-2.4, -2.2, -2.0, -1.8, -1.6, -1.4, -1.2, -1.0, -0.8, -0.6, -0.4, -0.2, 0.0,
+	0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4
+      };
+    }
 
     // pt_edges_  = {25, 30, 35}; 
     //eta_edges_ = {-3.0, -2.5, -2.0};
@@ -72,12 +93,15 @@ public:
     kmean_val_ = 0.5*(kmean_vals_[n_pt_bins_-1] + kmean_vals_[0]);
 
     n_data_ = n_eta_bins_*n_eta_bins_*n_pt_bins_*n_pt_bins_;
-
+    n_dof_ = 0;
+    
     scales2_.reserve(n_data_);
     scales2Err_.reserve(n_data_);
+    masks_.reserve(n_data_);
     for(unsigned int idata = 0; idata<n_data_; idata++){
       scales2_.push_back( 0.0 );
       scales2Err_.push_back( 0.0 );
+      masks_.push_back(1);
     }
 
     x_vals_ = VectorXd(n_pars_);
@@ -125,12 +149,52 @@ public:
 	x_vals_(i+2*n_eta_bins_) = val;
       }            
     }
+
+    else if(bias==-1){
+      TFile* fin = TFile::Open(fname.c_str(), "READ");
+      TH1D* h_scales = (TH1D*)fin->Get("h_scales");
+      TH1D* h_masks = (TH1D*)fin->Get("h_masks");
+      assert( h_scales->GetXaxis()->GetNbins() == n_data_);
+
+      unsigned int n_unmasked_bins = 0;  
+      for(unsigned int ibin=0;ibin<h_scales->GetXaxis()->GetNbins(); ibin++){
+	scales2_[ibin]    = h_scales->GetBinContent(ibin+1)*h_scales->GetBinContent(ibin+1);
+	scales2Err_[ibin] = 2*TMath::Abs(h_scales->GetBinContent(ibin+1))*h_scales->GetBinError(ibin+1);
+	masks_[ibin] = h_masks->GetBinContent(ibin+1);
+	if( masks_[ibin]>0.5 ) n_unmasked_bins++;
+      }
+
+      n_dof_ = n_unmasked_bins - n_pars_;
+
+      TH1D* h_A_vals = (TH1D*)fin->Get("h_A_vals");
+      TH1D* h_e_vals = (TH1D*)fin->Get("h_e_vals");
+      TH1D* h_M_vals = (TH1D*)fin->Get("h_M_vals");
+
+      assert( h_A_vals->GetXaxis()->GetNbins() == n_eta_bins_ );
+      assert( h_e_vals->GetXaxis()->GetNbins() == n_eta_bins_ );
+      assert( h_M_vals->GetXaxis()->GetNbins() == n_eta_bins_ );
+	
+      for(unsigned int i=0; i<n_eta_bins_; i++){
+	A_vals_(i) = h_A_vals->GetBinContent(i+1);
+	x_vals_(i) = A_vals_(i);
+      }
+      for(unsigned int i=0; i<n_eta_bins_; i++){
+	e_vals_(i) = h_e_vals->GetBinContent(i+1);
+	x_vals_(i+n_eta_bins_) = e_vals_(i);
+      }
+      for(unsigned int i=0; i<n_eta_bins_; i++){
+	M_vals_(i) = h_M_vals->GetBinContent(i+1);
+	x_vals_(i+2*n_eta_bins_) = M_vals_(i);
+      }
+      fin->Close();
+    }
     
     // generate initial set of data points;
     //generate_data();
 
     n_data_ = scales2_.size();
-    n_dof_ = n_data_ - n_pars_;
+    if(bias>=0)
+      n_dof_ = n_data_ - n_pars_;
 
     U_ = MatrixXd(n_pars_,n_pars_);
     for(unsigned int i=0; i<n_pars_; i++){
@@ -186,7 +250,8 @@ private:
 
   vector<double> scales2_;
   vector<double> scales2Err_;
-  vector<double> pt_edges_;
+  vector<int> masks_;
+  vector<float> pt_edges_;
   vector<double> k_edges_;
   vector<double> kmean_vals_;
   VectorXd A_vals_;
@@ -194,7 +259,7 @@ private:
   VectorXd M_vals_;
   VectorXd x_vals_;
   double kmean_val_;
-  vector<double> eta_edges_;
+  vector<float> eta_edges_;
   unsigned int n_pt_bins_;
   unsigned int n_eta_bins_;
   unsigned int n_data_;
@@ -219,7 +284,9 @@ void TheoryFcn::generate_data(){
 	for(unsigned int ipt_m = 0; ipt_m<n_pt_bins_; ipt_m++){
 	  double k_m = kmean_vals_[ipt_m];
 
-	  double ierr2_nom = 0.001*(1+double(ieta_p)/n_eta_bins_)*(1+double(ieta_m)/n_eta_bins_);
+	  // was 0.001
+	  double ierr2_nom = 0.0001*(1+double(ieta_p)/n_eta_bins_)*(1+double(ieta_m)/n_eta_bins_);
+
 	  //*(2-0.1*double(ipt_p)/n_pt_bins_)*(2-0.1*double(ipt_m)/n_pt_bins_);
 	  double ierr2 = ran_->Gaus(ierr2_nom,  ierr2_nom*0.1);
 	  while(ierr2<=0.){
@@ -268,7 +335,8 @@ double TheoryFcn::operator()(const vector<double>& par) const {
 	  double m_term = (1.0 + A_m + e_m*(k_m-kmean_val_)/kmean_val_ + M_m/k_m*kmean_val_);
 	  double ival = (scales2_[ibin] - p_term*m_term)/scales2Err_[ibin];
 	  double ival2 = ival*ival;
-	  val += ival2;
+	  if(masks_[ibin])
+	    val += ival2;
 	  ibin++;
 	}
       }
@@ -345,7 +413,8 @@ vector<double> TheoryFcn::Gradient(const vector<double> &par ) const {
 	    double ig = ival*term;
 	    ig /= n_dof_;
 	    //cout << "ibin " << ibin << " += " << ig << endl;
-	    grad_i += ig;
+	    if(masks_[ibin])
+	      grad_i += ig;
 	    ibin++;
 	  }
 	}
@@ -380,6 +449,7 @@ int main(int argc, char* argv[])
 	("tag",         value<std::string>()->default_value("closure"), "run type")
 	("run",         value<std::string>()->default_value("closure"), "run type")
 	("bias",        value<int>()->default_value(0), "bias")
+	("infile",      value<std::string>()->default_value("massscales"), "run type")
 	("seed",        value<int>()->default_value(4357), "seed");
 
       store(parse_command_line(argc, argv, desc), vm);
@@ -400,6 +470,7 @@ int main(int argc, char* argv[])
   long nevents    = vm["nevents"].as<long>();
   long lumi       = vm["lumi"].as<long>();
   std::string tag = vm["tag"].as<std::string>();
+  std::string infile = vm["infile"].as<std::string>();
   std::string run = vm["run"].as<std::string>();
   int bias        = vm["bias"].as<int>();
   int seed        = vm["seed"].as<int>();
@@ -418,7 +489,8 @@ int main(int argc, char* argv[])
   //fFCN->set_seed(seed);
 
   int debug = 0;
-  TheoryFcn* fFCN = new TheoryFcn(debug, seed, bias);  
+  string infname = infile+"_"+tag+"_"+run+".root";
+  TheoryFcn* fFCN = new TheoryFcn(debug, seed, bias, infname);  
   fFCN->SetErrorDef(1.0 / fFCN->get_n_dof());
   unsigned int n_parameters = fFCN->get_n_params();
   MatrixXd U(n_parameters,n_parameters);
@@ -470,8 +542,9 @@ int main(int argc, char* argv[])
   for(unsigned int itoy=0; itoy<nevents; itoy++){
 
     if(itoy%10==0) cout << "Toy " << itoy << " / " << nevents << endl;
-    
-    fFCN->generate_data();
+
+    if(bias>=0)
+      fFCN->generate_data();
     
     MnUserParameters upar;
     double start=0.0, par_error=0.01;
@@ -614,16 +687,26 @@ int main(int argc, char* argv[])
       hpulls->GetXaxis()->SetBinLabel(i+1, Form("M%d", ip));
     }
     //cout << i << "-->" << h->GetMean() << endl;
-    h->Fit("gaus", "Q");
-    TF1* gaus = (TF1*)h->GetFunction("gaus");
-    if(gaus==0){
-      cout << "no func" << endl;
-      continue;
+    float pull_i = h->GetMean();
+    float pull_i_err = 0.;
+    float sigma_i = 0.;
+    float sigma_i_err = 0.;
+    if(h->GetEntries()>10){
+      h->Fit("gaus", "Q");
+      TF1* gaus = (TF1*)h->GetFunction("gaus");
+      if(gaus==0){
+	cout << "no func" << endl;
+	continue;
+      }
+      pull_i = gaus->GetParameter(1);
+      pull_i_err = gaus->GetParError(1);
+      sigma_i = gaus->GetParameter(2);
+      sigma_i_err = gaus->GetParError(2);
     }
-    hpulls->SetBinContent(i+1, gaus->GetParameter(1));
-    hpulls->SetBinError(i+1, gaus->GetParError(1));
-    hsigma->SetBinContent(i+1, gaus->GetParameter(2));
-    hsigma->SetBinError(i+1, gaus->GetParError(2));
+    hpulls->SetBinContent(i+1, pull_i);
+    hpulls->SetBinError(i+1, pull_i_err);
+    hsigma->SetBinContent(i+1, sigma_i);
+    hsigma->SetBinError(i+1, sigma_i_err);
     delete h;
   }
   hpulls->Write();
