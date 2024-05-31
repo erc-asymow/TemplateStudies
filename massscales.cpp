@@ -88,7 +88,7 @@ int main(int argc, char* argv[])
     {
       std::cerr << ex.what() << '\n';
     }
-
+  
   int nevents     = vm["nevents"].as<int>();
   long lumi       = vm["lumi"].as<long>();
   std::string tag = vm["tag"].as<std::string>();
@@ -100,14 +100,51 @@ int main(int argc, char* argv[])
   bool dofits     = vm["dofits"].as<bool>();
   bool savehistos     = vm["savehistos"].as<bool>();
 
+  TRandom3* ran0 = new TRandom3(seed);
+  
   vector<float> pt_edges  = {25, 30, 35, 40, 45, 55}; 
   vector<float> eta_edges = {-2.4, -2.2, -2.0, -1.8, -1.6, -1.4, -1.2, -1.0, -0.8, -0.6, -0.4, -0.2, 0.0,
 			      0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4};
-		  
+
+  TH1F* h_pt_edges  = new TH1F("h_pt_edges", "",  pt_edges.size()-1, pt_edges.data());
+  TH1F* h_eta_edges = new TH1F("h_eta_edges", "", eta_edges.size()-1, eta_edges.data());
+  
   unsigned int n_pt_bins  = pt_edges.size()-1;
   unsigned int n_eta_bins = eta_edges.size()-1;
   int n_bins = n_pt_bins*n_pt_bins*n_eta_bins*n_eta_bins;
 
+  TH1F* h_A_vals = new TH1F("h_A_vals", "", n_eta_bins, 0, n_eta_bins );
+  TH1F* h_e_vals = new TH1F("h_e_vals", "", n_eta_bins, 0, n_eta_bins );
+  TH1F* h_M_vals = new TH1F("h_M_vals", "", n_eta_bins, 0, n_eta_bins );
+  
+  float kmean_val = 0.5*( 1./pt_edges[0] + 1./pt_edges[ pt_edges.size()-1] );
+  VectorXd A_vals( n_eta_bins );
+  VectorXd e_vals( n_eta_bins );
+  VectorXd M_vals( n_eta_bins );
+
+  // bias for A out
+  for(unsigned int i=0; i<n_eta_bins; i++){
+    //double val = ran0->Uniform(-0.001, 0.001);
+    double val = -0.0010;
+    A_vals(i) = val;
+    h_A_vals->SetBinContent(i+1, val);
+  }
+  // bias for e out
+  for(unsigned int i=0; i<n_eta_bins; i++){
+    //double val = ran0->Uniform(-0.0001/kmean_val, 0.0001/kmean_val);
+    double val = 0.0;
+    e_vals(i) = val;
+    h_e_vals->SetBinContent(i+1, val);
+  }
+  // bias for M out
+  for(unsigned int i=0; i<n_eta_bins; i++){
+    //double val = ran0->Uniform(-0.001*kmean_val, 0.001*kmean_val);
+    double val = 0.0;
+    M_vals(i) = val;
+    h_M_vals->SetBinContent(i+1, val);
+  }            
+
+  
   std::vector<string> recos = {"reco", "smear0", "smear1"}; 
 
   std::map<string, TH1D*> h_map;
@@ -145,11 +182,14 @@ int main(int argc, char* argv[])
     }
 
     auto dlast = std::make_unique<RNode>(d);
+
+    /*
     dlast = std::make_unique<RNode>(dlast->DefineSlot("x", [&](unsigned int nslot)->double{
       double out;
       out = rans[nslot]->Uniform(0.0, 1.0);
       return out;
     } ));
+    */
     
     dlast = std::make_unique<RNode>(dlast->Define("weight", [](float weight)->float{
       return std::copysign(1.0, weight);
@@ -164,20 +204,7 @@ int main(int argc, char* argv[])
 	    Muon_pt[i] >= pt_edges[0] && Muon_pt[i] < pt_edges[ n_pt_bins ]  && Muon_eta[i]>=eta_edges[0] && Muon_eta[i]<=eta_edges[ n_eta_bins ]  ){
 	  out.emplace_back(i);
 	}
-	else{
-	  continue;
-	  /*
-	    cout << i << ":  " <<  Muon_looseId[i] << ", "
-	    << TMath::Abs(Muon_dxybs[i]) << ", "
-	    << Muon_isGlobal[i] << ", "
-	    << Muon_highPurity[i] << ", "
-	    << Muon_mediumId[i] << ", "
-	    << Muon_pt[i]<< ", "
-	    << TMath::Abs(Muon_eta[i])<< endl;
-	  */
-	}
       }
-      //cout << ">>>>> " << out.size() << endl;
       return out;
     }, {"nMuon", "Muon_looseId", "Muon_dxybs", "Muon_isGlobal",
 	"Muon_highPurity","Muon_mediumId", "Muon_pfRelIso04_all",
@@ -186,11 +213,10 @@ int main(int argc, char* argv[])
     dlast = std::make_unique<RNode>(dlast->Filter( [](RVecUI idxs, RVecI Muon_charge, bool HLT_IsoMu24 ){
       if( idxs.size()!=2 || !HLT_IsoMu24) return false;
       if( Muon_charge[idxs[0]]*Muon_charge[idxs[1]] > 0 ) return false;
-      //cout << "pass" << endl;
       return true;
     }, {"idxs", "Muon_charge", "HLT_IsoMu24"} ));
 
-    dlast = std::make_unique<RNode>(dlast->DefineSlot("Muon_ptsmear", [&](unsigned int nslot, RVecUI idxs,
+    dlast = std::make_unique<RNode>(dlast->DefineSlot("Muon_ksmear", [&](unsigned int nslot, RVecUI idxs,
 									  RVecF Muon_pt, RVecF Muon_eta, RVecF Muon_phi, RVecF Muon_mass, RVecI Muon_charge,
 									  UInt_t nGenPart, RVecI GenPart_status, RVecI GenPart_statusFlags, RVecI GenPart_pdgId,
 									  RVecF GenPart_pt, RVecF GenPart_eta, RVecF GenPart_phi, RVecF GenPart_mass)->RVecF {
@@ -210,16 +236,37 @@ int main(int argc, char* argv[])
       }
       
       if( gmuP.Pt()>10. && gmuM.Pt()>10.){
+
 	float scale_smear0 = 1.0;
-	out.emplace_back( rans[nslot]->Gaus(gmuP.Pt()*scale_smear0, gmuP.Pt()*0.02) );
-	out.emplace_back( rans[nslot]->Gaus(gmuM.Pt()*scale_smear0, gmuM.Pt()*0.02) );
-	float scale_smear1 = 1.001;
-	out.emplace_back( rans[nslot]->Gaus(gmuP.Pt()*scale_smear1, gmuP.Pt()*0.02) );
-	out.emplace_back( rans[nslot]->Gaus(gmuM.Pt()*scale_smear1, gmuM.Pt()*0.02) );
+	out.emplace_back( rans[nslot]->Gaus(1./gmuP.Pt()*scale_smear0, 1./gmuP.Pt()*0.02) );
+	out.emplace_back( rans[nslot]->Gaus(1./gmuM.Pt()*scale_smear0, 1./gmuM.Pt()*0.02) );
+
+	float scale_smear1P = 1.0;
+	float scale_smear1M = 1.0;
+	unsigned int ietaP = n_eta_bins;
+	for(unsigned int ieta_p = 0; ieta_p<n_eta_bins; ieta_p++){
+	  float eta_p_low = eta_edges[ieta_p];
+	  float eta_p_up  = eta_edges[ieta_p+1];
+	  if( gmuP.Eta()>=eta_p_low && gmuP.Eta()<eta_p_up) ietaP = ieta_p;	  
+	}
+	unsigned int ietaM = n_eta_bins;
+	for(unsigned int ieta_m = 0; ieta_m<n_eta_bins; ieta_m++){
+	  float eta_m_low = eta_edges[ieta_m];
+	  float eta_m_up  = eta_edges[ieta_m+1];
+	  if( gmuM.Eta()>=eta_m_low && gmuM.Eta()<eta_m_up) ietaM = ieta_m;	  
+	}	
+	if(ietaP<n_eta_bins && ietaM<n_eta_bins){
+	  scale_smear1P = (1. + A_vals(ietaP) + e_vals(ietaP)*1./gmuP.Pt() - M_vals(ietaP)*gmuP.Pt());
+	  scale_smear1M = (1. + A_vals(ietaM) + e_vals(ietaM)*1./gmuM.Pt() + M_vals(ietaM)*gmuM.Pt());
+	}
+	out.emplace_back( rans[nslot]->Gaus(1./gmuP.Pt()*scale_smear1P, 1./gmuP.Pt()*0.02) );
+	out.emplace_back( rans[nslot]->Gaus(1./gmuM.Pt()*scale_smear1M, 1./gmuM.Pt()*0.02) );
       }
       else{
+	//smear0
 	out.emplace_back(0.0);
 	out.emplace_back(0.0);
+	//smear1
 	out.emplace_back(0.0);
 	out.emplace_back(0.0);
       }
@@ -229,15 +276,15 @@ int main(int argc, char* argv[])
 	"nGenPart", "GenPart_status", "GenPart_statusFlags", "GenPart_pdgId",
 	"GenPart_pt", "GenPart_eta", "GenPart_phi", "GenPart_mass"} ));
 
-    dlast = std::make_unique<RNode>(dlast->Define("indexes", [&](RVecUI idxs, RVecF Muon_pt, RVecF Muon_eta, RVecI Muon_charge, RVecF Muon_ptsmear)-> RVecUI {
+    dlast = std::make_unique<RNode>(dlast->Define("indexes", [&](RVecUI idxs, RVecF Muon_pt, RVecF Muon_eta, RVecI Muon_charge, RVecF Muon_ksmear)-> RVecUI {
       unsigned int idxP = Muon_charge[idxs[0]]>0 ? idxs[0] : idxs[1];
       unsigned int idxM = Muon_charge[idxs[0]]>0 ? idxs[1] : idxs[0];
       float ptP  = Muon_pt[idxP];
       float ptM  = Muon_pt[idxM];
-      float ptsmear0P = Muon_ptsmear[0];
-      float ptsmear0M = Muon_ptsmear[1];
-      float ptsmear1P = Muon_ptsmear[2];
-      float ptsmear1M = Muon_ptsmear[3];
+      float ksmear0P = Muon_ksmear[0]>0. ? Muon_ksmear[0] : 1./(pt_edges[0]-0.01);
+      float ksmear0M = Muon_ksmear[1]>0. ? Muon_ksmear[1] : 1./(pt_edges[0]-0.01);
+      float ksmear1P = Muon_ksmear[2]>0. ? Muon_ksmear[2] : 1./(pt_edges[0]-0.01);
+      float ksmear1M = Muon_ksmear[3]>0. ? Muon_ksmear[3] : 1./(pt_edges[0]-0.01);
       float etaP = Muon_eta[idxP];
       float etaM = Muon_eta[idxM];
       RVecUI out;
@@ -265,13 +312,13 @@ int main(int argc, char* argv[])
 		  ) out[0] = ibin;
 	      if( etaP>=eta_p_low && etaP<eta_p_up &&
 		  etaM>=eta_m_low && etaM<eta_m_up &&
-		  ptsmear0P>=pt_p_low   && ptsmear0P<pt_p_up &&
-		  ptsmear0M>=pt_m_low   && ptsmear0M<pt_m_up 
+		  1./ksmear0P>=pt_p_low   && 1./ksmear0P<pt_p_up &&
+		  1./ksmear0M>=pt_m_low   && 1./ksmear0M<pt_m_up 
 		  ) out[1] = ibin;
 	      if( etaP>=eta_p_low && etaP<eta_p_up &&
 		  etaM>=eta_m_low && etaM<eta_m_up &&
-		  ptsmear1P>=pt_p_low   && ptsmear1P<pt_p_up &&
-		  ptsmear1M>=pt_m_low   && ptsmear1M<pt_m_up 
+		  1./ksmear1P>=pt_p_low   && 1./ksmear1P<pt_p_up &&
+		  1./ksmear1M>=pt_m_low   && 1./ksmear1M<pt_m_up 
 		  ) out[2] = ibin;	      
 	      ibin++;
 	    }
@@ -279,7 +326,7 @@ int main(int argc, char* argv[])
 	}
       }
       return out;
-    }, {"idxs", "Muon_pt", "Muon_eta", "Muon_charge", "Muon_ptsmear"} ));
+    }, {"idxs", "Muon_pt", "Muon_eta", "Muon_charge", "Muon_ksmear"} ));
 
     for(unsigned int r = 0 ; r<recos.size(); r++){
       dlast = std::make_unique<RNode>(dlast->Define( TString(("index_"+recos[r]).c_str()), [r](RVecUI indexes){
@@ -291,7 +338,7 @@ int main(int argc, char* argv[])
 								RVecF Muon_pt, RVecF Muon_eta, RVecF Muon_phi, RVecF Muon_mass, RVecI Muon_charge,
 								UInt_t nGenPart, RVecI GenPart_status, RVecI GenPart_statusFlags, RVecI GenPart_pdgId,
 								RVecF GenPart_pt, RVecF GenPart_eta, RVecF GenPart_phi, RVecF GenPart_mass,
-								RVecF Muon_ptsmear)->RVecF {
+								RVecF Muon_ksmear)->RVecF {
       RVecF out;
       unsigned int idxP = Muon_charge[idxs[0]]>0 ? idxs[0] : idxs[1];
       unsigned int idxM = Muon_charge[idxs[0]]>0 ? idxs[1] : idxs[0];
@@ -312,15 +359,20 @@ int main(int argc, char* argv[])
 
 	out.emplace_back( (muP + muM).M() );
 
-	float scale_smear0 = 1.0;
-	ROOT::Math::PtEtaPhiMVector muP_smear0( Muon_ptsmear.at(0),
+	float ksmear0P = Muon_ksmear[0]>0. ? Muon_ksmear[0] : 1./(pt_edges[0]-0.01);
+	float ksmear0M = Muon_ksmear[1]>0. ? Muon_ksmear[1] : 1./(pt_edges[0]-0.01);
+	float ksmear1P = Muon_ksmear[2]>0. ? Muon_ksmear[2] : 1./(pt_edges[0]-0.01);
+	float ksmear1M = Muon_ksmear[3]>0. ? Muon_ksmear[3] : 1./(pt_edges[0]-0.01);
+
+	ROOT::Math::PtEtaPhiMVector muP_smear0( 1./ksmear0P,
 					       Muon_eta[ idxP ], Muon_phi[ idxP ], Muon_mass[ idxP ] );
-	ROOT::Math::PtEtaPhiMVector muM_smear0( Muon_ptsmear.at(1),
+	ROOT::Math::PtEtaPhiMVector muM_smear0( 1./ksmear0M,
 					       Muon_eta[ idxM ], Muon_phi[ idxM ], Muon_mass[ idxM ] );      
 	out.emplace_back( (muP_smear0 + muM_smear0).M() );	
-	ROOT::Math::PtEtaPhiMVector muP_smear1( Muon_ptsmear.at(2),
+
+	ROOT::Math::PtEtaPhiMVector muP_smear1( 1./ksmear1P,
 					       Muon_eta[ idxP ], Muon_phi[ idxP ], Muon_mass[ idxP ] );
-	ROOT::Math::PtEtaPhiMVector muM_smear1( Muon_ptsmear.at(3),
+	ROOT::Math::PtEtaPhiMVector muM_smear1( 1./ksmear1M,
 					       Muon_eta[ idxM ], Muon_phi[ idxM ], Muon_mass[ idxM ] );      
 	out.emplace_back( (muP_smear1 + muM_smear1).M() );
       }
@@ -330,7 +382,7 @@ int main(int argc, char* argv[])
 	"Muon_pt", "Muon_eta", "Muon_phi", "Muon_mass", "Muon_charge",
 	"nGenPart", "GenPart_status", "GenPart_statusFlags", "GenPart_pdgId",
 	"GenPart_pt", "GenPart_eta", "GenPart_phi", "GenPart_mass",
-	"Muon_ptsmear"} ));
+	"Muon_ksmear"} ));
 
     // single column
     dlast = std::make_unique<RNode>(dlast->Define("gen_m", [](RVecF masses){
@@ -435,6 +487,14 @@ int main(int argc, char* argv[])
 
     // fill histos
     if(iter==0){
+
+      cout << "Writing aux files" << endl;
+      h_pt_edges->Write();
+      h_eta_edges->Write();
+      h_A_vals->Write();
+      h_e_vals->Write();
+      h_M_vals->Write();
+      
       for(unsigned int r = 0 ; r<recos.size(); r++){
 	TH2D* h_reco_dm = (TH2D*)fout->Get(TString( ("h_"+recos[r]+"_bin_dm").c_str()) );
 	TH2D* h_reco_m  = (TH2D*)fout->Get(TString( ("h_"+recos[r]+"_bin_m").c_str()) );
@@ -446,6 +506,7 @@ int main(int argc, char* argv[])
 	h_map["rms_"+recos[r]]  = new TH1D( TString( ("h_rms_"+recos[r]+"_bin_dm").c_str() ),"", n_bins, 0, double(n_bins));
 	h_map["mask_"+recos[r]] = new TH1D( TString( ("h_mask_"+recos[r]+"_bin_dm").c_str() ),"", n_bins, 0, double(n_bins));
 	for(unsigned int i = 0; i<n_bins; i++ ){
+	  if(i%1000==0) cout << "Doing gaus fit for bin " << i << " / " << n_bins << endl;
 	  TString projname(Form("bin_%d_", i));
 	  projname += TString( recos[r].c_str() );
 	  TH1D* hi   = (TH1D*)h_reco_dm->ProjectionY( projname+"_dm", i+1, i+1 );
@@ -491,8 +552,9 @@ int main(int argc, char* argv[])
 
     if(iter==2){
 
-      if(savehistos)
+      if(savehistos && fout->GetDirectory("postfit")==0){
 	fout->mkdir("postfit");
+      }
       
       TH1D* h_scales  = new TH1D("h_scales", "", n_bins, 0, double(n_bins));
       TH1D* h_widths  = new TH1D("h_widths", "", n_bins, 0, double(n_bins));
@@ -622,7 +684,7 @@ int main(int argc, char* argv[])
 
       cout << h_masks->Integral() << " scales have been computed" << endl;
     }
-
+    for(auto r : rans) delete r;
   }
   
   sw.Stop();
@@ -630,7 +692,8 @@ int main(int argc, char* argv[])
   std::cout << "Real time: " << sw.RealTime() << " seconds " << "(CPU time:  " << sw.CpuTime() << " seconds)" << std::endl;
 
   fout->Close(); 
-  //for(auto r : rans) delete r;
 
+  delete ran0;
+  
   return 1;
 }
