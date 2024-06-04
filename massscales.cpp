@@ -48,6 +48,7 @@ using namespace boost::program_options;
 constexpr double mZ = 91.1;
 constexpr double GZ = 2.5;
 
+constexpr double lumiMC = 3.33369e+08/2001.9e+03;
   
 int main(int argc, char* argv[])
 {
@@ -63,15 +64,15 @@ int main(int argc, char* argv[])
       options_description desc{"Options"};
       desc.add_options()
 	("help,h", "Help screen")
-	("nevents",     value<int>()->default_value(100), "number of events")
-	("lumi",        value<long>()->default_value(1000), "number of events")
+	("minNumEvents",     value<int>()->default_value(100), "number of events")
+	("minNumEventsPerBin",   value<int>()->default_value(10), "bias")
+	("lumi",        value<float>()->default_value(16.1), "number of events")
 	("tag",         value<std::string>()->default_value("closure"), "run type")
 	("run",         value<std::string>()->default_value("closure"), "run type")
-	("dofits",      bool_switch()->default_value(false), "")
 	("savehistos",  bool_switch()->default_value(false), "")
-	("bias",        value<int>()->default_value(0), "bias")
-	("event_cut",   value<int>()->default_value(10), "bias")
-	("rebin",       value<int>()->default_value(1), "rebin")
+	("firstIter",     value<int>()->default_value(-1), "firstIter")
+	("lastIter",     value<int>()->default_value(-1), "lastIter")
+	("rebin",       value<int>()->default_value(2), "rebin")
 	("seed",        value<int>()->default_value(4357), "seed");
 
       store(parse_command_line(argc, argv, desc), vm);
@@ -80,7 +81,7 @@ int main(int argc, char* argv[])
 	std::cout << desc << '\n';
 	return 0;
       }
-      if (vm.count("nevents"))    std::cout << "Number of events: " << vm["nevents"].as<int>() << '\n';
+      if (vm.count("minNumEvents"))    std::cout << "Number of events: " << vm["minNumEvents"].as<int>() << '\n';
       if (vm.count("tag"))        std::cout << "Tag: " << vm["tag"].as<std::string>() << '\n';
       if (vm.count("run"))        std::cout << "Run: " << vm["run"].as<std::string>() << '\n';
     }
@@ -89,15 +90,15 @@ int main(int argc, char* argv[])
       std::cerr << ex.what() << '\n';
     }
   
-  int nevents     = vm["nevents"].as<int>();
-  long lumi       = vm["lumi"].as<long>();
+  int minNumEvents     = vm["minNumEvents"].as<int>();
+  float lumi       = vm["lumi"].as<float>();
   std::string tag = vm["tag"].as<std::string>();
   std::string run = vm["run"].as<std::string>();
-  int bias        = vm["bias"].as<int>();
   int seed        = vm["seed"].as<int>();
-  int event_cut   = vm["event_cut"].as<int>();
+  int minNumEventsPerBin   = vm["minNumEventsPerBin"].as<int>();
   int rebin       = vm["rebin"].as<int>();
-  bool dofits     = vm["dofits"].as<bool>();
+  int firstIter     = vm["firstIter"].as<int>();
+  int lastIter     = vm["lastIter"].as<int>();
   bool savehistos     = vm["savehistos"].as<bool>();
 
   TRandom3* ran0 = new TRandom3(seed);
@@ -125,7 +126,9 @@ int main(int argc, char* argv[])
   // bias for A out
   for(unsigned int i=0; i<n_eta_bins; i++){
     //double val = ran0->Uniform(-0.001, 0.001);
-    double val = -0.0010;
+    float y_max = h_eta_edges->GetXaxis()->GetXmax();
+    float y_i = h_eta_edges->GetXaxis()->GetBinCenter(i+1); 
+    double val = -0.001*( 1 + (y_i/y_max)*(y_i/y_max) );
     A_vals(i) = val;
     h_A_vals->SetBinContent(i+1, val);
   }
@@ -160,11 +163,36 @@ int main(int argc, char* argv[])
   idx_map.insert( std::make_pair<string, unsigned int >("smear0", 2 ) );
   idx_map.insert( std::make_pair<string, unsigned int >("smear1", 3 ) );
 
-  TFile* fout = TFile::Open(("./massscales_"+tag+"_"+run+".root").c_str(), !dofits ? "RECREATE" : "UPDATE");
+  TH1D* histobudget = 0;
+  TH1D* histohitres = 0;
+  TFile* faux = TFile::Open("root/coefficients2016ptfrom20forscaleptfrom20to70forres.root", "READ");
+  if(faux!=0){
+    histobudget = (TH1D*)faux->Get("histobudget");
+    histohitres = (TH1D*)faux->Get("histohitres");
+  }
+  auto resolution = [histobudget,histohitres](float k, float eta)->float{
+    float out = 0.02*k;
+    if(histobudget!=0 && histohitres!=0){
+      int eta_bin = histobudget->FindBin(eta);
+      if(eta_bin<1) eta_bin = 1;
+      else if(eta_bin>histobudget->GetNbinsX()) eta_bin = histobudget->GetNbinsX();
+      float budget = histobudget->GetBinContent( eta_bin );
+      float hitres = histohitres->GetBinContent( eta_bin );
+      float budget2 = budget*budget;
+      float hitres2 = hitres*hitres;
+      out = TMath::Sqrt( budget2 + hitres2/k/k )*k;
+      //cout << budget << " + " << hitres/k << " ==> " << out/k << endl;
+      return out;
+    }
+    return out;
+  };
+    
+  TFile* fout = TFile::Open(("./massscales_"+tag+"_"+run+".root").c_str(), firstIter<2 ? "RECREATE" : "UPDATE");
   
   for(unsigned int iter=0; iter<3; iter++){
 
-    if(dofits && iter!=2) continue;    
+    if( !(iter>=firstIter && iter<=lastIter) ) continue;
+
     cout << "Iter " << iter << endl;
     //TTree* tree = new TTree("tree", "tree");
 
@@ -178,18 +206,10 @@ int main(int argc, char* argv[])
     unsigned int nslots = d.GetNSlots();
     std::vector<TRandom3*> rans = {};
     for(unsigned int i = 0; i < nslots; i++){
-      rans.emplace_back( new TRandom3(seed + i*10) );
+      rans.emplace_back( new TRandom3(seed + i*10 + iter) );
     }
 
     auto dlast = std::make_unique<RNode>(d);
-
-    /*
-    dlast = std::make_unique<RNode>(dlast->DefineSlot("x", [&](unsigned int nslot)->double{
-      double out;
-      out = rans[nslot]->Uniform(0.0, 1.0);
-      return out;
-    } ));
-    */
     
     dlast = std::make_unique<RNode>(dlast->Define("weight", [](float weight)->float{
       return std::copysign(1.0, weight);
@@ -238,8 +258,13 @@ int main(int argc, char* argv[])
       if( gmuP.Pt()>10. && gmuM.Pt()>10.){
 
 	float scale_smear0 = 1.0;
-	out.emplace_back( rans[nslot]->Gaus(1./gmuP.Pt()*scale_smear0, 1./gmuP.Pt()*0.02) );
-	out.emplace_back( rans[nslot]->Gaus(1./gmuM.Pt()*scale_smear0, 1./gmuM.Pt()*0.02) );
+	float kmuP = 1./gmuP.Pt();
+	float kmuM = 1./gmuM.Pt();
+	float resolP = resolution(kmuP, gmuP.Eta());
+	float resolM = resolution(kmuM, gmuM.Eta());
+
+	out.emplace_back( rans[nslot]->Gaus(kmuP*scale_smear0, resolP) );
+	out.emplace_back( rans[nslot]->Gaus(kmuM*scale_smear0, resolM) );
 
 	float scale_smear1P = 1.0;
 	float scale_smear1M = 1.0;
@@ -256,11 +281,11 @@ int main(int argc, char* argv[])
 	  if( gmuM.Eta()>=eta_m_low && gmuM.Eta()<eta_m_up) ietaM = ieta_m;	  
 	}	
 	if(ietaP<n_eta_bins && ietaM<n_eta_bins){
-	  scale_smear1P = (1. + A_vals(ietaP) + e_vals(ietaP)*1./gmuP.Pt() - M_vals(ietaP)*gmuP.Pt());
-	  scale_smear1M = (1. + A_vals(ietaM) + e_vals(ietaM)*1./gmuM.Pt() + M_vals(ietaM)*gmuM.Pt());
+	  scale_smear1P = (1. + A_vals(ietaP) + e_vals(ietaP)*kmuP - M_vals(ietaP)/kmuP);
+	  scale_smear1M = (1. + A_vals(ietaM) + e_vals(ietaM)*kmuM + M_vals(ietaM)/kmuM);
 	}
-	out.emplace_back( rans[nslot]->Gaus(1./gmuP.Pt()*scale_smear1P, 1./gmuP.Pt()*0.02) );
-	out.emplace_back( rans[nslot]->Gaus(1./gmuM.Pt()*scale_smear1M, 1./gmuM.Pt()*0.02) );
+	out.emplace_back( rans[nslot]->Gaus(kmuP*scale_smear1P, resolP) );
+	out.emplace_back( rans[nslot]->Gaus(kmuM*scale_smear1M, resolM) );
       }
       else{
 	//smear0
@@ -464,6 +489,7 @@ int main(int argc, char* argv[])
     }
     else if(iter==1){
       for(unsigned int r = 0 ; r<recos.size(); r++){
+	if(recos[r]!="smear0") continue;
 	histos2D.emplace_back(dlast->Histo2D({"h_"+TString(recos[r].c_str())+"_bin_jac_scale", "nominal", n_bins, 0, double(n_bins), x_nbins, x_low, x_high}, "index_"+TString(recos[r].c_str()), TString(recos[r].c_str())+"_m", TString(recos[r].c_str())+"_jscale_weight"));
 	histos2D.emplace_back(dlast->Histo2D({"h_"+TString(recos[r].c_str())+"_bin_jac_width", "nominal", n_bins, 0, double(n_bins), x_nbins, x_low, x_high}, "index_"+TString(recos[r].c_str()), TString(recos[r].c_str())+"_m", TString(recos[r].c_str())+"_jwidth_weight"));
       }
@@ -471,7 +497,7 @@ int main(int argc, char* argv[])
     
     fout->cd();
     std::cout << "Writing histos..." << std::endl;
-    double sf = 1.0; //double(lumi)/double(nevents);
+    double sf = lumi/lumiMC; //double(lumi)/double(minNumEvents);
     for(auto h : histos1D){
       h->Scale(sf);
       string h_name = std::string(h->GetName());
@@ -496,6 +522,7 @@ int main(int argc, char* argv[])
       h_M_vals->Write();
       
       for(unsigned int r = 0 ; r<recos.size(); r++){
+	
 	TH2D* h_reco_dm = (TH2D*)fout->Get(TString( ("h_"+recos[r]+"_bin_dm").c_str()) );
 	TH2D* h_reco_m  = (TH2D*)fout->Get(TString( ("h_"+recos[r]+"_bin_m").c_str()) );
 	if( h_reco_dm==0 || h_reco_m==0 ){
@@ -516,7 +543,7 @@ int main(int argc, char* argv[])
 	  double rms_i = 0.0;
 	  double rmserr_i = 0.0;
 	  //cout << hi_m->Integral() << ", " << hi->Integral() << ", " << hi_m->GetMean() << endl;
-	  if( hi_m->Integral() > nevents && hi->Integral() > nevents  &&  hi_m->GetMean()>75. && hi_m->GetMean()<105. ){
+	  if( hi_m->Integral() > minNumEvents && hi->Integral() > minNumEvents  &&  hi_m->GetMean()>75. && hi_m->GetMean()<105. ){
 	    h_map.at("mask_"+recos[r])->SetBinContent(i+1, 1);
 	    TF1* gf = new TF1("gf","[0]/TMath::Sqrt(2)/[2]*TMath::Exp( -0.5*(x-[1])*(x-[1])/[2]/[2] )",
 			      hi->GetXaxis()->GetBinLowEdge(1), hi->GetXaxis()->GetBinUpEdge( hi->GetXaxis()->GetNbins() ));      
@@ -555,6 +582,23 @@ int main(int argc, char* argv[])
       if(savehistos && fout->GetDirectory("postfit")==0){
 	fout->mkdir("postfit");
       }
+
+      TTree* treescales = new TTree("treescales","treescales");
+      int inmassbins, indof, ibinIdx  ;
+      float inevents, ibeta, ibetaErr, ialpha, ialphaErr, inu, inuErr, iprob, ichi2old, ichi2new; 
+      treescales->Branch("nevents",&inevents,"nevents/F");
+      treescales->Branch("beta",&ibeta,"beta/F");
+      treescales->Branch("betaErr",&ibetaErr,"betaErr/F");
+      treescales->Branch("alpha",&ialpha,"alpha/F");
+      treescales->Branch("alphaErr",&ialphaErr,"alphaErr/F");
+      treescales->Branch("nu",&inu,"nu/F");
+      treescales->Branch("nuErr",&inuErr,"nuErr/F");
+      treescales->Branch("prob",&iprob,"prob/F");
+      treescales->Branch("chi2old",&ichi2old,"chi2old/F");
+      treescales->Branch("chi2new",&ichi2new,"chi2new/F");
+      treescales->Branch("nmassbins",&inmassbins,"nmassbins/I");
+      treescales->Branch("ndof",&indof,"ndof/I");
+      treescales->Branch("binIdx",&ibinIdx,"binIdx/I");
       
       TH1D* h_scales  = new TH1D("h_scales", "", n_bins, 0, double(n_bins));
       TH1D* h_widths  = new TH1D("h_widths", "", n_bins, 0, double(n_bins));
@@ -570,9 +614,12 @@ int main(int argc, char* argv[])
 
       for(unsigned int ibin=0; ibin<n_bins; ibin++){
 
+	// skip empty bins
 	if( h_nom_mask->GetBinContent(ibin+1)<0.5 ) continue;
 
-	TH1D* h_data_i    = (TH1D*)h_data_2D->ProjectionY( Form("h_data_i_%d",ibin ),   ibin+1, ibin+1 );
+	ibinIdx = ibin;
+	
+	TH1D* h_data_i    = (TH1D*)h_data_2D->ProjectionY( Form("h_data_i_%d",ibin ),     ibin+1, ibin+1 );
 	TH1D* h_nom_i     = (TH1D*)h_nom_2D->ProjectionY( Form("h_nom_i_%d", ibin),       ibin+1, ibin+1 );
 	TH1D* h_jscale_i  = (TH1D*)h_jscale_2D->ProjectionY( Form("h_jscale_i_%d", ibin), ibin+1, ibin+1 );
 	TH1D* h_jwidth_i  = (TH1D*)h_jwidth_2D->ProjectionY( Form("h_jwidth_i_%d", ibin), ibin+1, ibin+1 );	
@@ -584,11 +631,12 @@ int main(int argc, char* argv[])
 	  h_jwidth_i->Rebin(rebin);
 	}
 	
-	//const float event_cut = 10.; 
+	//const float minNumEventsPerBin = 10.; 
 	unsigned int n_mass_bins = 0;
+
 	// skip bins with less than 4 high-stat (>10) mass bins
 	for(int im = 1 ; im<=h_data_i->GetXaxis()->GetNbins(); im++){
-	  if( h_data_i->GetBinContent(im)>event_cut ) n_mass_bins++;
+	  if( h_data_i->GetBinContent(im)>minNumEventsPerBin ) n_mass_bins++;
 	}
 	if( n_mass_bins<4 ){
 	  h_scales->SetBinContent(ibin+1, 0.0);
@@ -599,6 +647,9 @@ int main(int argc, char* argv[])
 	  continue;
 	}
 
+	inevents = h_data_i->Integral();
+	inmassbins = n_mass_bins;
+	
 	// the data
 	MatrixXd inv_sqrtV(n_mass_bins,n_mass_bins);
 	MatrixXd inv_V(n_mass_bins,n_mass_bins);
@@ -614,12 +665,12 @@ int main(int argc, char* argv[])
 	VectorXd jwidth(n_mass_bins);
 	unsigned int bin_counter = 0;
 	for(int im = 0 ; im<h_data_i->GetXaxis()->GetNbins(); im++){
-	  if( h_data_i->GetBinContent(im+1)>event_cut ){
+	  if( h_data_i->GetBinContent(im+1)>minNumEventsPerBin ){
+	    y(bin_counter)  = h_data_i->GetBinContent(im+1);
 	    y0(bin_counter) = h_nom_i->GetBinContent(im+1);	    
-	    y(bin_counter)  = h_data_i->GetBinContent(im+1) - y0(bin_counter);
 	    jscale(bin_counter) = h_jscale_i->GetBinContent(im+1);
 	    jwidth(bin_counter) = h_jwidth_i->GetBinContent(im+1);  
-	    inv_V(bin_counter,bin_counter) = 1./(y(bin_counter) + h_nom_i->GetBinError(im+1)*h_nom_i->GetBinError(im+1) );
+	    inv_V(bin_counter,bin_counter) = 1./(y(bin_counter)  + h_nom_i->GetBinError(im+1)*h_nom_i->GetBinError(im+1) );
 	    inv_sqrtV(bin_counter,bin_counter) = TMath::Sqrt( inv_V(bin_counter,bin_counter) );
 	    bin_counter++;
 	  }
@@ -633,7 +684,7 @@ int main(int argc, char* argv[])
 	}
 
 	MatrixXd A = inv_sqrtV*jac;
-	VectorXd b = inv_sqrtV*y;
+	VectorXd b = inv_sqrtV*(y-y0);
 	VectorXd x = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
 	MatrixXd C = (jac.transpose()*inv_V*jac).inverse();
 	MatrixXd rho( C.rows(), C.rows() ) ;
@@ -645,9 +696,23 @@ int main(int argc, char* argv[])
 	MatrixXd chi2old = b.transpose()*b;
 	MatrixXd chi2new = ((b - A*x).transpose())*(b-A*x);
 	int ndof = n_mass_bins-3;
-	double chi2norm_old = chi2old(0,0)/ndof;
+	double chi2norm_old = chi2old(0,0)/(ndof+3);
 	double chi2norm_new = chi2new(0,0)/ndof;
-	cout << "Bin: " << ibin << ": mass fits with " << n_mass_bins << " mass bins: " << chi2norm_old << " ---> " << chi2norm_new << " (prob = " << TMath::Prob(chi2norm_new*ndof, ndof ) << endl;      	
+	cout << "Bin: " << ibin << ": mass fits with " << n_mass_bins << " mass bins: " << chi2norm_old << " ---> " << chi2norm_new << " (prob = " << TMath::Prob(chi2norm_new*ndof, ndof ) << ")" << endl;
+
+	indof = ndof;
+	inu = x(0);
+	inuErr = TMath::Sqrt(C(0,0));
+	ibeta = x(1);
+	ibetaErr = TMath::Sqrt(C(1,1));
+	ialpha = x(2);
+	ialphaErr = TMath::Sqrt(C(2,2));
+	ichi2old = chi2norm_old;
+	ichi2new = chi2norm_new;
+	iprob =  TMath::Prob(chi2norm_new*ndof, ndof );	
+	treescales->Fill();
+	//cout << "Filling tree" << endl;
+	
 	h_scales->SetBinContent(ibin+1, x(1)+1.0);
 	h_scales->SetBinError(ibin+1, TMath::Sqrt(C(1,1)));
 	h_norms->SetBinContent(ibin+1, x(0)+1.0);
@@ -663,7 +728,7 @@ int main(int argc, char* argv[])
 	  TH1D* h_post_i  = (TH1D*)h_nom_i->Clone(Form("h_postfit_%d", ibin));
 	  unsigned int bin_counter = 0;
 	  for(int im = 0 ; im<h_post_i->GetXaxis()->GetNbins(); im++){	  
-	    if( h_data_i->GetBinContent(im+1)>event_cut ){
+	    if( h_data_i->GetBinContent(im+1)>minNumEventsPerBin ){
 	      h_post_i->SetBinContent( im+1, y0(bin_counter)+(jac*x)(bin_counter) );
 	      bin_counter++;
 	    }
@@ -681,7 +746,8 @@ int main(int argc, char* argv[])
       h_widths->Write(0,TObject::kOverwrite);
       h_probs->Write(0,TObject::kOverwrite);
       h_masks->Write(0,TObject::kOverwrite);
-
+      treescales->Write(0,TObject::kOverwrite);
+	
       cout << h_masks->Integral() << " scales have been computed" << endl;
     }
     for(auto r : rans) delete r;

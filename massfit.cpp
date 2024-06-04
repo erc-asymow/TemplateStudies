@@ -165,7 +165,8 @@ public:
       }
 
       n_dof_ = n_unmasked_bins - n_pars_;
-
+      n_data_ = n_unmasked_bins;
+	
       TH1D* h_A_vals = (TH1D*)fin->Get("h_A_vals");
       TH1D* h_e_vals = (TH1D*)fin->Get("h_e_vals");
       TH1D* h_M_vals = (TH1D*)fin->Get("h_M_vals");
@@ -175,15 +176,15 @@ public:
       assert( h_M_vals->GetXaxis()->GetNbins() == n_eta_bins_ );
 	
       for(unsigned int i=0; i<n_eta_bins_; i++){
-	A_vals_(i) = h_A_vals->GetBinContent(i+1);
+	A_vals_(i) = -h_A_vals->GetBinContent(i+1);
 	x_vals_(i) = A_vals_(i);
       }
       for(unsigned int i=0; i<n_eta_bins_; i++){
-	e_vals_(i) = h_e_vals->GetBinContent(i+1);
+	e_vals_(i) = -h_e_vals->GetBinContent(i+1);
 	x_vals_(i+n_eta_bins_) = e_vals_(i);
       }
       for(unsigned int i=0; i<n_eta_bins_; i++){
-	M_vals_(i) = h_M_vals->GetBinContent(i+1);
+	M_vals_(i) = -h_M_vals->GetBinContent(i+1);
 	x_vals_(i+2*n_eta_bins_) = M_vals_(i);
       }
       fin->Close();
@@ -192,7 +193,6 @@ public:
     // generate initial set of data points;
     //generate_data();
 
-    n_data_ = scales2_.size();
     if(bias>=0)
       n_dof_ = n_data_ - n_pars_;
 
@@ -309,7 +309,7 @@ void TheoryFcn::generate_data(){
       }
     }
   }
-  cout << "Inistial chi2/ndata = " << chi2_start/(n_data_-1) << " has prob " << TMath::Prob(chi2_start, n_data_-1 ) <<  endl;
+  cout << "Inistial chi2 = " << chi2_start << " / " << n_data_ << " ndof has prob " << TMath::Prob(chi2_start, n_data_ ) <<  endl;
   return;
 }
 
