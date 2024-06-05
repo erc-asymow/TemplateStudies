@@ -50,7 +50,7 @@ procs = {
          'fit_deg_x' : [1],         
          'opts'   : {
              'opt_wp' : {
-                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA0 --cA0x=0',
+                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=12 --doA0 --cA0x=0',
                  'tag' : 'wp_A0',
                  'nom_deg_x' : 8,
                  'nom_deg_y' : 10,
@@ -59,7 +59,7 @@ procs = {
                  'cmd_syst': '--doA0 --cA0x=0 --shift_A0=2.0'
              },
              'opt_wm' : {
-                 'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA0 --cA0x=0',
+                 'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=12 --doA0 --cA0x=0',
                  'tag' : 'wm_A0',
                  'nom_deg_x' : 8,
                  'nom_deg_y' : 8,
@@ -68,7 +68,7 @@ procs = {
                  'cmd_syst': '--doA0 --cA0x=0 --shift_A0=2.0'
              },
              'opt_z' : {
-                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA0 --cA0x=0',
+                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=12 --doA0 --cA0x=0',
                  'tag' : 'z_A0',
                  'nom_deg_x' : 8,
                  'nom_deg_y' : 6,
@@ -87,7 +87,7 @@ procs = {
         'fit_deg_x' : [1,2],
         'opts'   : {
              'opt_wp' : {
-                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA1 --cA1x=1',
+                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=12 --doA1 --cA1x=1',
                  'tag' : 'wp_A1',
                  'nom_deg_x' : 8,
                  'nom_deg_y' : 9,
@@ -96,7 +96,7 @@ procs = {
                  'cmd_syst': '--doA1 --cA1x=1 --shift_A1=2.0'
              },
             'opt_wm' : {
-                'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA1 --cA1x=1',
+                'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=12 --doA1 --cA1x=1',
                 'tag' : 'wm_A1',
                 'nom_deg_x' : 8,
                 'nom_deg_y' : 7,
@@ -105,7 +105,7 @@ procs = {
                 'cmd_syst': '--doA1 --cA1x=1 --shift_A1=2.0'
              },
              'opt_z' : {
-                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA1 --cA1x=1',
+                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=12 --doA1 --cA1x=1',
                  'tag' : 'z_A1',
                  'nom_deg_x' : 8,
                  'nom_deg_y' : 7,
@@ -124,7 +124,7 @@ procs = {
          'fit_deg_x' : [1,2],
          'opts'   : {
              'opt_wp' : {
-                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA2 --cA2x=1',
+                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=12 --doA2 --cA2x=1',
                  'tag' : 'wp_A2',
                  'nom_deg_x' : 7,
                  'nom_deg_y' : 6,
@@ -133,7 +133,7 @@ procs = {
                  'cmd_syst': '--doA2 --cA2x=1 --shift_A2=2.0'
              },
              'opt_wm' : {
-                 'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA2 --cA2x=1',
+                 'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=12 --doA2 --cA2x=1',
                  'tag' : 'wm_A2',
                  'nom_deg_x' : 7,
                  'nom_deg_y' : 6,
@@ -142,7 +142,7 @@ procs = {
                  'cmd_syst': '--doA2 --cA2x=1 --shift_A2=2.0'
              },
              'opt_z' : {
-                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA2 --cA2x=1',
+                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=12 --doA2 --cA2x=1',
                  'tag' : 'z_A2',
                  'nom_deg_x' : 7,
                  'nom_deg_y' : 6,
@@ -161,7 +161,7 @@ procs = {
         'fit_deg_x' : [1,2],
         'opts'   : {
              'opt_wp' : {
-                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1 --cA3y=0 --syst_as_additive_A3',
+                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=12 --doA3 --cA3x=1 --cA3y=0 --syst_as_additive_A3',
                  'tag' : 'wp_A3',
                  'nom_deg_x' : 7,
                  'nom_deg_y' : 10,
@@ -170,7 +170,7 @@ procs = {
                  'cmd_syst': '--doA3 --cA3x=1 --cA3y=0  --syst_as_additive_A3 --shift_A3=0.2'
              },
              'opt_wm' : {
-                 'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1 --cA3y=0 --syst_as_additive_A3',
+                 'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=12 --doA3 --cA3x=1 --cA3y=0 --syst_as_additive_A3',
                  'tag' : 'wm_A3',
                  'nom_deg_x' : 7,
                  'nom_deg_y' : 8,
@@ -179,7 +179,7 @@ procs = {
                  'cmd_syst': '--doA3 --cA3x=1 --cA3y=0  --syst_as_additive_A3 --shift_A3=0.2'
              },
              'opt_z' : {
-                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA3 --cA3x=1 --cA3y=0 --syst_as_additive_A3',
+                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=12 --doA3 --cA3x=1 --cA3y=0 --syst_as_additive_A3',
                  'tag' : 'z_A3',
                  'nom_deg_x' : 6,
                  'nom_deg_y' : 6,
@@ -198,7 +198,7 @@ procs = {
         'fit_deg_x' : [1,2,3],
         'opts'   : {
              'opt_wp' : {
-                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA4 --cA4x=0',
+                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=12 --doA4 --cA4x=0',
                  'tag' : 'wp_A4',
                  'nom_deg_x' : 7,
                  'nom_deg_y' : 13,
@@ -207,7 +207,7 @@ procs = {
                  'cmd_syst': '--doA4 --cA4x=0 --shift_A4=0.5',
              },
              'opt_wm' : {
-                 'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA4 --cA4x=0',
+                 'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=12 --doA4 --cA4x=0',
                  'tag' : 'wm_A4',
                  'nom_deg_x' : 8,
                  'nom_deg_y' : 11,
@@ -216,7 +216,7 @@ procs = {
                  'cmd_syst': '--doA4 --cA4x=0 --shift_A4=0.5',
              },
              'opt_z' : {
-                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA4 --cA4x=0',
+                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=12 --doA4 --cA4x=0',
                  'tag' : 'z_A4',
                  'nom_deg_x' : 7,
                  'nom_deg_y' : 11,
@@ -233,7 +233,7 @@ procs = {
          'fit_deg_x' : [1,2],
          'opts'   : {
              'opt_wp' : {
-                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA5 --cA5x=1',
+                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=12 --doA5 --cA5x=1',
                  'tag' : 'wp_A5',
                  'nom_deg_x' : 4,
                  'nom_deg_y' : 5,
@@ -242,7 +242,7 @@ procs = {
                  'cmd_syst': '--doA5 --cA5x=1 --shift_A5=2.0'
              },
              'opt_wm' : {
-                 'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA5 --cA5x=1',
+                 'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=12 --doA5 --cA5x=1',
                  'tag' : 'wm_A5',
                  'nom_deg_x' : 4,
                  'nom_deg_y' : 5,
@@ -251,7 +251,7 @@ procs = {
                  'cmd_syst': '--doA5 --cA5x=1 --shift_A5=2.0'
              },
              'opt_z' : {
-                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA5 --cA5x=1',
+                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=12 --doA5 --cA5x=1',
                  'tag' : 'z_A5',
                  'nom_deg_x' : 3,
                  'nom_deg_y' : 5,
@@ -268,7 +268,7 @@ procs = {
         'fit_deg_x' : [1,2],
         'opts'   : {
              'opt_wp' : {
-                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA6 --cA6x=1 --cA6y=1',
+                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=12 --doA6 --cA6x=1 --cA6y=1',
                  'tag' : 'wp_A6',
                  'nom_deg_x' : 4,
                  'nom_deg_y' : 6,
@@ -277,7 +277,7 @@ procs = {
                  'cmd_syst': '--doA6 --cA6x=1 --cA6y=1 --shift_A6=2.0'
              },
             'opt_wm' : {
-                'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA6 --cA6x=1 --cA6y=1',
+                'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=12 --doA6 --cA6x=1 --cA6y=1',
                 'tag' : 'wm_A6',
                 'nom_deg_x' : 4,
                 'nom_deg_y' : 6,
@@ -286,7 +286,7 @@ procs = {
                 'cmd_syst': '--doA6 --cA6x=1 --cA6y=1 --shift_A6=2.0'
              },
              'opt_z' : {
-                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA6 --cA6x=1 --cA6y=1',
+                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=12 --doA6 --cA6x=1 --cA6y=1',
                  'tag' : 'z_A6',
                  'nom_deg_x' : 4,
                  'nom_deg_y' : 6,
@@ -303,7 +303,7 @@ procs = {
         'fit_deg_x' : [1,2],
         'opts'   : {
              'opt_wp' : {
-                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA7 --cA7x=1',
+                 'cmd' : '--run=wp --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=12 --doA7 --cA7x=1',
                  'tag' : 'wp_A7',
                  'nom_deg_x' : 3,
                  'nom_deg_y' : 5,
@@ -312,7 +312,7 @@ procs = {
                  'cmd_syst': '--doA7 --cA7x=1 --shift_A7=2.0'
              },
              'opt_wm' : {
-                 'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA7 --cA7x=1',
+                 'cmd' : '--run=wm --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=12 --doA7 --cA7x=1',
                  'tag' : 'wm_A7',
                  'nom_deg_x' : 3,
                  'nom_deg_y' : 5,
@@ -321,7 +321,7 @@ procs = {
                  'cmd_syst': '--doA7 --cA7x=1 --shift_A7=2.0'
              },
              'opt_z' : {
-                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=10 --doA7 --cA7x=1',
+                 'cmd' : '--run=z --extrabinsX=10 --extrabinsY=10 --cULx=1 --dULx=20 --dULy=12 --doA7 --cA7x=1',
                  'tag' : 'z_A7',
                  'nom_deg_x' : 2,
                  'nom_deg_y' : 3,
@@ -373,10 +373,11 @@ procs = {
 
 if args.doTraditionalFit:
     print("Adapting to args.doTraditionalFit")
-    for ip in ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7']:
+    for ip in ['UL', 'A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7']:
         procs[ip]['fit_deg_x'] = [1] 
         procs[ip]['fit_deg_y'] = [2]
         for ic in ['wp', 'wm', 'z']:
+            procs[ip]['opts']['opt_'+ic]['cmd'] = procs[ip]['opts']['opt_'+ic]['cmd']
             procs[ip]['opts']['opt_'+ic]['syst_deg_x'] = 5
             procs[ip]['opts']['opt_'+ic]['syst_deg_y'] = 1
             if ip=='A3':
@@ -384,7 +385,8 @@ if args.doTraditionalFit:
                 procs[ip]['opts']['opt_'+ic]['cmd_syst'] = procs[ip]['opts']['opt_'+ic]['cmd_syst'].replace('--syst_as_additive_A3', '')        
             old_cmd = procs[ip]['opts']['opt_'+ic]['cmd_syst']
             procs[ip]['opts']['opt_'+ic]['cmd_syst'] = old_cmd.replace( old_cmd[-3:len(old_cmd)], '0.1' )
-            print( procs[ip]['opts']['opt_'+ic]['cmd_syst'] )
+            procs[ip]['opts']['opt_'+ic]['cmd_syst'] = procs[ip]['opts']['opt_'+ic]['cmd_syst']
+            #print( procs[ip]['opts']['opt_'+ic]['cmd_syst'] )
 
 if args.doZFit:
     print("Adapting to args.doZFit")
@@ -674,6 +676,7 @@ def run_one_opt(procs,iproc,opt):
                 if args.dryrun:
                     print(command)
                 else:
+                    print(command)
                     os.system(command)
 
                     
@@ -690,6 +693,7 @@ def run_one_opt_jac(procs,iproc,opt):
                 if args.dryrun:
                     print(command)
                 else:
+                    print(command)
                     os.system(command)
 
 def run_one_opt_syst(procs, iopt):
@@ -697,7 +701,7 @@ def run_one_opt_syst(procs, iopt):
     command = './getparam --outtag=syst_'+iopt+'_x'+xf_max_str+'_y'+yf_max_str+fname+\
         ' --xf_max='+str(args.xf_max)+' --yf_max='+str(args.yf_max)+\
         ' --saveSyst --savePdf --saveSystNodes '
-    if not (args.doTraditionalFit):
+    if not (args.doTraditionalFit or args.doZFit):
         command += ' --clip '
     for iproc in allowed_procs:
         command += procs[iproc]['opts']['opt_'+iopt]['cmd_syst'] +\
@@ -706,6 +710,7 @@ def run_one_opt_syst(procs, iopt):
     if args.dryrun:
         print(command)
     else:
+        print(command)
         os.system(command)     
 
 def run_one_opt_fit(procs,iproc,opt):

@@ -120,7 +120,7 @@ int main(int argc, char* argv[])
 	("fA6y",   value<int>()->default_value(-1), "max degree of modifier in y for A6")
 	("fA7x",   value<int>()->default_value(-1), "max degree of modifier in x for A7")
 	("fA7y",   value<int>()->default_value(-1), "max degree of modifier in y for A7")
-	("x_max",   value<double>()->default_value(-1.0), "max x value for fit")
+	("x_max",   value<double>()->default_value(0.499), "max x value for fit")
 	("y_max",  value<double>()->default_value(-1.0), "max y value for fit")
 	("xf_max",  value<double>()->default_value(-1.0), "max x value for syst")
 	("yf_max",  value<double>()->default_value(-1.0), "max y value for syst")
@@ -339,7 +339,8 @@ int main(int argc, char* argv[])
 						    
     //TFile* fin_nom  = TFile::Open("root/file_qtbyQ_and_qt_vs_absy_v3.root", "READ");
     //TFile* fin_nom  = TFile::Open(("/scratchnvme/tanmay/OutPut_2016/Final_Uses/V3/Plot_root_Files_ang_coeff_"+xvar+"_2d/root_files_ang_coeff_"+xvar+"_2d.root").c_str(), "READ");
-    TFile* fin_nom  = TFile::Open(("/scratch/tanmay/Output2016/Final_Uses/V4/root_files_ang_coeff_"+xvar+"_2d.root").c_str(), "READ");
+    //TFile* fin_nom  = TFile::Open(("/scratch/tanmay/Output2016/Final_Uses/V4/root_files_ang_coeff_"+xvar+"_2d.root").c_str(), "READ");
+    TFile* fin_nom  = TFile::Open(("/scratch/tanmay/Output2016/Final_Uses/V5_extraBinadded/root_files_ang_coeff_"+xvar+"_2d.root").c_str(), "READ");
     if(fin_nom==0){
       cout << "Cannot find nominal file" << endl;
       return 0;
@@ -804,7 +805,7 @@ int main(int argc, char* argv[])
       }
 
       //TFile* fin_syst = TFile::Open(("/scratchnvme/tanmay/OutPut_2016/Final_Uses/V3/Plot_root_Files_ang_coeff_"+xvar+"_qcd_vars_2d/root_files_ang_coeff_"+xvar+"_qcd_vars_2d.root").c_str(), "READ");
-      TFile* fin_syst = TFile::Open(("/scratch/tanmay/Output2016/Final_Uses/V4/root_files_ang_coeff_"+xvar+"_qcd_vars_2d.root").c_str(), "READ");	    
+      TFile* fin_syst = TFile::Open(("/scratch/tanmay/Output2016/Final_Uses/V5_extraBinadded/root_files_ang_coeff_"+xvar+"_qcd_vars_2d.root").c_str(), "READ");	    
       if(fin_syst==0){
 	cout << "Cannot find syst file" << endl;
 	return 0;
@@ -976,7 +977,7 @@ int main(int argc, char* argv[])
       }
 
       //TFile* fin_syst = TFile::Open(("/scratchnvme/tanmay/OutPut_2016/Final_Uses/V3/Plot_root_Files_ang_coeff_"+xvar+"_qcd_vars_31_points_2d/root_files_ang_coeff_"+xvar+"_qcd_vars_31_points_2d.root").c_str(), "READ");
-      TFile* fin_syst = TFile::Open(("/scratch/tanmay/Output2016/Final_Uses/V4/root_files_ang_coeff_"+xvar+"_qcd_vars_31_points_2d.root").c_str(), "READ");	    
+      TFile* fin_syst = TFile::Open(("/scratch/tanmay/Output2016/Final_Uses/V5_extraBinadded/root_files_ang_coeff_"+xvar+"_qcd_vars_31_points_2d.root").c_str(), "READ");	    
 
       if(fin_syst==0){
 	cout << "Cannot find syst file" << endl;
@@ -1317,7 +1318,8 @@ int main(int argc, char* argv[])
   //TFile* fin = TFile::Open(TString("root/file_qtbyQ_and_qt_vs_absy_v3")+(debug ? "_debug.root" : ".root"), "READ");
   //TFile* fin  = TFile::Open(("/scratchnvme/tanmay/OutPut_2016/Final_Uses/V3/Plot_root_Files_ang_coeff_"+xvar+"_2d/root_files_ang_coeff_"+xvar+"_2d.root").c_str(), "READ");
   //TFile* fin  = TFile::Open(("root/root_files_ang_coeff_"+xvar+"_2d.root").c_str(), "READ");
-  TFile* fin  = TFile::Open(("/scratch/tanmay/Output2016/Final_Uses/V4/root_files_ang_coeff_"+xvar+"_2d.root").c_str(), "READ");
+
+  TFile* fin  = TFile::Open(("/scratch/tanmay/Output2016/Final_Uses/V5_extraBinadded/root_files_ang_coeff_"+xvar+"_2d.root").c_str(), "READ");
   
   if(fin==0 || fin==nullptr || fin->IsZombie()){
     cout << "File NOT found" << endl;
@@ -1674,7 +1676,7 @@ int main(int argc, char* argv[])
     MatrixXd chi2 = pull.transpose()*pull;
     double chi2val = chi2(0,0);
     int ndof = y.size() - np;
-    cout << "Chi2/ndof = " << chi2val << " / " << ndof << " = " << chi2val/ndof  << endl;
+    cout << iproc << ": Chi2/ndof = " << chi2val << " / " << ndof << " = " << chi2val/ndof  << endl;
     MatrixXd W = (A.transpose()*A).inverse();
     
     TH1D* hinfo = new TH1D("h_info_"+iproc, "", 12, 0, 12);

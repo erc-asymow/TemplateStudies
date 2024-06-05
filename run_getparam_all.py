@@ -3,29 +3,29 @@ import os
 do_syst = True
 do_fits = not do_syst
 
-phase_spaces = ["--xf_max=0.4 --yf_max=3.0",
+phase_spaces = [#"--xf_max=0.4 --yf_max=3.0",
                 #"--xf_max=0.3 --yf_max=3.0"
-                #"--xf_max=0.5 --yf_max=4.0",
+                "--xf_max=0.5 --yf_max=4.0",
 ]
 
 systs = [
     #"scet",
-    "scale",
+    #"scale",
     #"pdf",
     #"altpdf",
-    #"scale_31point"
+    "scale_31point"
 ]
 
 procs = [
-    #"UL",
+    "UL",
     "A0",
     "A1",
     "A2",
     "A3",
     "A4",
-    #"A5",
-    #"A6",
-    #"A7"
+    "A5",
+    "A6",
+    "A7"
 ]
 
 
@@ -38,7 +38,7 @@ if __name__ == '__main__':
                 #posttag = ' --posttag=add '
                 posttag = ''
                 cmd_jac  = 'python run_getparam.py --algo=run --mt --jac ' + posttag + ips + do_str #+' --dryrun'
-                #cmd_jac += ' --doTraditionalFit '
+                cmd_jac += ' --doTraditionalFit '
                 print(cmd_jac)
                 os.system(cmd_jac)
                 for isys in systs:                
@@ -47,18 +47,18 @@ if __name__ == '__main__':
                     if isys=="scale_31point" and iproc=="UL":
                         continue
                     cmd_fit  = 'python run_getparam.py --algo=run --mt --fit ' + posttag + ips + do_str + ' --systname='+isys
-                    #cmd_fit += ' --doTraditionalFit '
+                    cmd_fit += ' --doTraditionalFit '
                     cmd_plot = 'python run_getparam.py --algo=plot_fitres '    + posttag + ips + do_str + ' --systname='+isys + ' --batch'
                     print(cmd_fit)
-                    print(cmd_plot)
+                    #print(cmd_plot)
                     os.system(cmd_fit)
                     #os.system(cmd_plot)
     elif do_syst:
-        posttag = ' --posttag=ZFitClip '
+        posttag = ' --posttag=DEBUG '
         for ips in phase_spaces:
             cmd_syst = 'python run_getparam.py --algo=run --mt --syst ' + ips + ' ' + posttag #+' --dryrun'
-            #cmd_syst += ' --doTraditionalFit '
-            cmd_syst += ' --doZFit '
+            cmd_syst += ' --doTraditionalFit '
+            #cmd_syst += ' --doZFit '
             print(cmd_syst)
             os.system(cmd_syst)
 
