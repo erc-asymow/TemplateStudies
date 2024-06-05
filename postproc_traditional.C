@@ -3,18 +3,21 @@
 
   TString phase_space = "x0p50_y4p00";
   TString input_tag = "DEBUG";
-  TString opt = "z";
+  TString opt = "wp";
 
   bool doPlots = true;
 
+  bool extendX = true;
+  
   TCanvas* c = 0;
   if(doPlots){
     c = new TCanvas("c", "canvas", 1200, 600);
-    c->Divide(1,2);
+    c->Divide(1,3);
   }
   
   vector<std::pair<TString,int>> scales;
   vector<TString> scales_names;
+  /*
   scales.emplace_back( std::make_pair<TString,int>("twotwo", 1) );
   scales_names.emplace_back("muRmuFUp");
   scales.emplace_back( std::make_pair<TString,int>("point5point5", 2) );
@@ -27,13 +30,28 @@
   scales_names.emplace_back("muRDown");
   scales.emplace_back( std::make_pair<TString,int>("twoone", 5) );
   scales_names.emplace_back("muRUp");
-
+  */
+  scales.emplace_back( std::make_pair<TString,int>("twotwo_oneone", 7) );
+  scales_names.emplace_back("muRmuFUp");
+  scales.emplace_back( std::make_pair<TString,int>("point5point5_oneone", 11) );
+  scales_names.emplace_back("muRmuFDown");
+  scales.emplace_back( std::make_pair<TString,int>("onepoint5_oneone", 15) );
+  scales_names.emplace_back("muFDown");
+  scales.emplace_back( std::make_pair<TString,int>("onetwo_oneone", 27) );
+  scales_names.emplace_back("muFUp");
+  scales.emplace_back( std::make_pair<TString,int>("point5one_oneone", 19) );
+  scales_names.emplace_back("muRDown");
+  scales.emplace_back( std::make_pair<TString,int>("twoone_oneone", 23) );
+  scales_names.emplace_back("muRUp");
   
   vector<TString> procs = {"A0",
 			   "A1",
 			   "A2",
 			   "A3",
-			   "A4"
+			   "A4",
+			   "A5",
+			   "A6",
+			   "A7"
   };
 
   TFile* fout = TFile::Open("fout_systTrad_"+opt+"_"+phase_space+"_"+input_tag+".root", "RECREATE");
@@ -64,8 +82,32 @@
     
     TH2D* h_pdf  = (TH2D*)fin->Get(proc+"/h_pdf_"+proc);
     fout->cd(proc);
-    h_pdf->Write();
-    h_info->Write();
+    h_info->Write("h_info_"+proc);
+    if(!extendX) h_pdf->Write();
+    else{
+      TFile* f_ext = TFile::Open("/scratch/tanmay/Output2016/Final_Uses/V5_extraBinadded/root_files_ang_coeff_qtbyQ_2d.root", "READ");
+      TH2D* h_data_ext = (TH2D*)f_ext->Get("ang_coeff_"+opt+"_2d_qtbyQ_vs_absy_A_"+TString(Form("%d", iproc)));
+      const Double_t* binsX = h_pdf->GetXaxis()->GetXbins()->GetArray();
+      int nbinsX_ext = h_pdf->GetXaxis()->GetNbins()+1;
+      vector<double> vbinsX_ext;
+      vbinsX_ext.reserve(nbinsX_ext+1);
+      for(unsigned int ib = 0; ib<=h_pdf->GetXaxis()->GetNbins(); ib++ ) vbinsX_ext.push_back( binsX[ib] );
+      vbinsX_ext.push_back( 5.0 );
+      TH2D* h_pdf_ext = new TH2D("h_pdf_ext_"+proc, "", nbinsX_ext, vbinsX_ext.data(), h_pdf->GetYaxis()->GetNbins(), h_pdf->GetYaxis()->GetXbins()->GetArray());
+      for(unsigned int ibx=1; ibx<=h_pdf_ext->GetXaxis()->GetNbins();ibx++){
+	for(unsigned int iby=1; iby<=h_pdf_ext->GetXaxis()->GetNbins();iby++){
+	  if(ibx<h_pdf_ext->GetXaxis()->GetNbins())
+	    h_pdf_ext->SetBinContent(ibx,iby, h_pdf->GetBinContent(ibx,iby));
+	  else{ 
+	    int bin_data = h_data_ext->FindBin( h_pdf_ext->GetXaxis()->GetBinCenter(ibx), h_pdf_ext->GetYaxis()->GetBinCenter(iby)  );
+	    h_pdf_ext->SetBinContent(ibx,iby, h_data_ext->GetBinContent(bin_data) );
+	  }
+	}
+      }
+      fout->cd(proc);
+      h_pdf_ext->Write("h_pdf_"+proc);
+      f_ext->Close();
+    }
 
     for(int isyst=0; isyst<nfp; isyst++ ){
       cout << "\tSyst " << isyst << endl;
@@ -89,7 +131,8 @@
 	cout << "\t\tScale " << iscale << endl;
 	TString scale_name = scales[iscale].first;
 	int scale_idx  = scales[iscale].second;
-	TFile* fin_iscale = TFile::Open("root/fout_fit_scale_"+proc+"_"+phase_space+"_"+opt+"_"+proc+"_x1_y2.root", "READ");
+	//TFile* fin_iscale = TFile::Open("root/fout_fit_scale_"+proc+"_"+phase_space+"_"+opt+"_"+proc+"_x1_y2.root", "READ");
+	TFile* fin_iscale = TFile::Open("root/fout_fit_scale_31point_"+proc+"_"+phase_space+"_"+opt+"_"+proc+"_x1_y2.root", "READ");
 	TH2D* h_data_nom    = (TH2D*)fin_iscale->Get("h_data_0");
 	TH2D* h_data_iscale = (TH2D*)fin_iscale->Get("h_data_"+TString(Form("%d", scale_idx)));
 	int ibin_x = h_data_nom->GetXaxis()->FindBin(node_x);	
@@ -164,7 +207,34 @@
 	  }
 	}
 	fout->cd(proc);
-	h_new_syst_i->Write();
+
+	if(!extendX)
+	  h_new_syst_i->Write();
+
+	/*
+	else{
+	  const Double_t* binsX = h_new_syst_i->GetXaxis()->GetXbins()->GetArray();
+	  int nbinsX_ext = h_new_syst_i->GetXaxis()->GetNbins()+1;
+	  vector<double> vbinsX_ext;
+	  vbinsX_ext.reserve(nbinsX_ext+1);
+	  for(unsigned int ib = 0; ib<=h_new_syst_i->GetXaxis()->GetNbins(); ib++ ){
+	    vbinsX_ext.push_back( binsX[ib] );
+	  }
+	  vbinsX_ext.push_back( 5.0 );
+	  TH2D* h_new_syst_i_ext = new TH2D( TString(h_new_syst_i->GetName())+"_ext", "", nbinsX_ext,
+					     vbinsX_ext.data(),
+					     h_new_syst_i->GetYaxis()->GetNbins(), h_new_syst_i->GetYaxis()->GetXbins()->GetArray());
+	  for(unsigned int ibx=1; ibx<=h_new_syst_i_ext->GetXaxis()->GetNbins();ibx++){
+	    for(unsigned int iby=1; iby<=h_new_syst_i_ext->GetXaxis()->GetNbins();iby++){
+	      if(ibx<h_new_syst_i_ext->GetXaxis()->GetNbins())
+		h_new_syst_i_ext->SetBinContent(ibx,iby, h_new_syst_i->GetBinContent(ibx,iby));
+	      else 
+		h_new_syst_i_ext->SetBinContent(ibx,iby, h_new_syst_i->GetBinContent(ibx-1,iby));
+	    }
+	  }
+	  h_new_syst_i_ext->Write(proc+"/"+TString(h_new_syst_i->GetName()));
+	}
+	*/
 	
 	fin_iscale->Close();
       }
@@ -172,18 +242,81 @@
       fout->cd(proc);
       int node_bin = h_pdf->FindBin(node_x, node_y);
       bool flip = false;
+
+      TString name_up;
+      TString name_down;
       if( h_systenvUp_i->GetBinContent( node_bin)/h_pdf->GetBinContent( node_bin) > h_systenvDown_i->GetBinContent( node_bin)/h_pdf->GetBinContent( node_bin) ){
-	h_systenvUp_i->Write("h_pdf_"+proc+"_syst"+TString(Form("%d",isyst))+"Up");
-	h_systenvDown_i->Write("h_pdf_"+proc+"_syst"+TString(Form("%d",isyst))+"Down");
+	name_up   =  "h_pdf_"+proc+"_syst"+TString(Form("%d",isyst))+"Up";
+	name_down =  "h_pdf_"+proc+"_syst"+TString(Form("%d",isyst))+"Down";
       }
       else{
-	h_systenvUp_i->Write("h_pdf_"+proc+"_syst"+TString(Form("%d",isyst))+"Down");
-	h_systenvDown_i->Write("h_pdf_"+proc+"_syst"+TString(Form("%d",isyst))+"Up");
+	name_up   =  "h_pdf_"+proc+"_syst"+TString(Form("%d",isyst))+"Down";
+	name_down =  "h_pdf_"+proc+"_syst"+TString(Form("%d",isyst))+"Up";
 	flip = true;
       }
 
+      if(!extendX){
+	h_systenvUp_i->Write( name_up );
+	h_systenvDown_i->Write( name_down );
+      }
+      else{
+
+	TH2D* h_pdf_ext = (TH2D*)fout->Get(proc+"/h_pdf_"+proc);
+	
+	const Double_t* binsXUp = h_systenvUp_i->GetXaxis()->GetXbins()->GetArray();
+	int nbinsXUp_ext = h_systenvUp_i->GetXaxis()->GetNbins()+1;
+	vector<double> vbinsXUp_ext;
+	vbinsXUp_ext.reserve(nbinsXUp_ext+1);
+	for(unsigned int ib = 0; ib<=h_systenvUp_i->GetXaxis()->GetNbins(); ib++ ){
+	  vbinsXUp_ext.push_back( binsXUp[ib] );
+	  //cout << vbinsXUp_ext[ib] << endl; 
+	}
+	vbinsXUp_ext.push_back( 5.0 );
+	//cout << vbinsXUp_ext[nbinsXUp_ext-1] << endl;
+	TH2D* h_systenvUp_i_ext = new TH2D( TString(h_systenvUp_i->GetName())+"_ext", "", nbinsXUp_ext,
+					    vbinsXUp_ext.data(),
+					    h_systenvUp_i->GetYaxis()->GetNbins(), h_systenvUp_i->GetYaxis()->GetXbins()->GetArray());
+	for(unsigned int ibx=1; ibx<=h_systenvUp_i_ext->GetXaxis()->GetNbins();ibx++){
+	  for(unsigned int iby=1; iby<=h_systenvUp_i_ext->GetXaxis()->GetNbins();iby++){
+	    if(ibx<h_systenvUp_i_ext->GetXaxis()->GetNbins())
+	      h_systenvUp_i_ext->SetBinContent(ibx,iby, h_systenvUp_i->GetBinContent(ibx,iby));
+	    else{ 
+	      //TH2D* h_pdf_ext = (TH2D*)fout->Get(proc+"/h_pdf_"+proc);
+	      h_systenvUp_i_ext->SetBinContent(ibx,iby, h_systenvUp_i->GetBinContent(ibx-1,iby)/h_pdf_ext->GetBinContent(ibx-1,iby)*h_pdf_ext->GetBinContent(ibx,iby) );
+	    }
+	  }
+	}
+	h_systenvUp_i_ext->Write(name_up);
+
+	const Double_t* binsXDown = h_systenvDown_i->GetXaxis()->GetXbins()->GetArray();
+	int nbinsXDown_ext = h_systenvDown_i->GetXaxis()->GetNbins()+1;
+	vector<double> vbinsXDown_ext;
+	vbinsXDown_ext.reserve(nbinsXDown_ext+1);
+	for(unsigned int ib = 0; ib<=h_systenvDown_i->GetXaxis()->GetNbins(); ib++ ){
+	  vbinsXDown_ext.push_back( binsXDown[ib] );
+	  //cout << vbinsXDown_ext[ib] << endl; 
+	}
+	vbinsXDown_ext.push_back( 5.0 );
+	//cout << vbinsXDown_ext[nbinsXDown_ext-1] << endl;
+	TH2D* h_systenvDown_i_ext = new TH2D( TString(h_systenvDown_i->GetName())+"_ext", "", nbinsXDown_ext,
+					    vbinsXDown_ext.data(),
+					    h_systenvDown_i->GetYaxis()->GetNbins(), h_systenvDown_i->GetYaxis()->GetXbins()->GetArray());
+	for(unsigned int ibx=1; ibx<=h_systenvDown_i_ext->GetXaxis()->GetNbins();ibx++){
+	  for(unsigned int iby=1; iby<=h_systenvDown_i_ext->GetXaxis()->GetNbins();iby++){
+	    if(ibx<h_systenvDown_i_ext->GetXaxis()->GetNbins())
+	      h_systenvDown_i_ext->SetBinContent(ibx,iby, h_systenvDown_i->GetBinContent(ibx,iby));
+	    else {
+	      //TH2D* h_pdf_ext = (TH2D*)fout->Get(proc+"/h_pdf_"+proc);
+	      h_systenvDown_i_ext->SetBinContent(ibx,iby, h_systenvDown_i->GetBinContent(ibx-1,iby)/h_pdf_ext->GetBinContent(ibx-1,iby)*h_pdf_ext->GetBinContent(ibx,iby) );
+	    }
+	  }
+	}
+	h_systenvDown_i_ext->Write(name_down);
+
+      }
+
       if(doPlots){
-	c->cd( flip ? 2 : 1);
+	c->cd( flip ? 2 : 1);	
 	h_systenvUp_i->SetTitle(opt+", "+phase_space+", "+proc+", syst"+TString(Form("%d at node (x=%.2f, y=%.2f)",isyst,node_x, node_y)));
 	h_systenvUp_i->Divide(h_pdf);
 	h_systenvUp_i->SetStats(0);
@@ -193,6 +326,10 @@
 	h_systenvDown_i->Divide(h_pdf);
 	h_systenvDown_i->SetStats(0);
 	h_systenvDown_i->Draw("COLZ");
+	c->cd(3);
+	TH2D* h_pdf_ext = (TH2D*)fout->Get(proc+"/h_pdf_"+proc);
+	h_pdf_ext->SetStats(0);
+	h_pdf_ext->Draw("COLZ");
 	c->SaveAs( "plots/ratio_scale_"+opt+"_"+phase_space+"_"+proc+"_syst"+TString(Form("%d",isyst))+".png" );
       }
       
