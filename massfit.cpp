@@ -532,7 +532,13 @@ int main(int argc, char* argv[])
     tree->Branch(Form("M%d_intrue",i), &tparIn0[i+2*n_parameters/3],    Form("M%d_in/D",i));
     tree->Branch(Form("M%d_inerr",i),  &tparInErr[i+2*n_parameters/3],  Form("M%d_inerr/D",i));
   }
-      
+
+  TH1D* h_A_vals_in  = new TH1D("h_A_vals_in", "", n_parameters/3, 0, n_parameters/3);
+  TH1D* h_e_vals_in  = new TH1D("h_e_vals_in", "", n_parameters/3, 0, n_parameters/3);
+  TH1D* h_M_vals_in  = new TH1D("h_M_vals_in", "", n_parameters/3, 0, n_parameters/3);
+  TH1D* h_A_vals_fit  = new TH1D("h_A_vals_fit", "", n_parameters/3, 0, n_parameters/3);
+  TH1D* h_e_vals_fit  = new TH1D("h_e_vals_fit", "", n_parameters/3, 0, n_parameters/3);
+  TH1D* h_M_vals_fit  = new TH1D("h_M_vals_fit", "", n_parameters/3, 0, n_parameters/3);
 
   unsigned int maxfcn(numeric_limits<unsigned int>::max());
   double tolerance(0.001);
@@ -606,6 +612,22 @@ int main(int argc, char* argv[])
       tparOut[i]    = x(i);
       tparOut0[i]   = fFCN->get_true_params(i, true) ;
       tparOutErr[i] = xErr(i);
+      int ip = i%(n_parameters/3);
+      if(i<n_parameters/3){
+	h_A_vals_fit->SetBinContent(ip+1, x(i));
+	h_A_vals_fit->SetBinError(ip+1, xErr(i));
+	h_A_vals_in->SetBinContent(ip+1, fFCN->get_true_params(i, true));
+      }
+      else if(i>=n_parameters/3 && i<2*n_parameters/3){
+	h_e_vals_fit->SetBinContent(ip+1, x(i));
+	h_e_vals_fit->SetBinError(ip+1, xErr(i));
+	h_e_vals_in->SetBinContent(ip+1, fFCN->get_true_params(i, true));
+      }
+      else{
+	h_M_vals_fit->SetBinContent(ip+1, x(i));
+	h_M_vals_fit->SetBinError(ip+1, xErr(i));
+	h_M_vals_in->SetBinContent(ip+1, fFCN->get_true_params(i, true));
+      }
       //cout << "Param " << i << ": " << x(i) << " +/- " << xErr(i) << ". True value is " << fFCN->get_true_params(i, true) << endl;
     }
 
@@ -677,14 +699,20 @@ int main(int argc, char* argv[])
     if(i<n_parameters/3){
       tree->Draw(Form("(A%d - A%d_true)/A%d_err>>h%d", ip, ip, ip, i), "", "");
       hpulls->GetXaxis()->SetBinLabel(i+1, Form("A%d", ip));
+      h_A_vals_fit->GetXaxis()->SetBinLabel(ip+1, Form("A%d", ip));
+      h_A_vals_in->GetXaxis()->SetBinLabel(ip+1, Form("A%d", ip));
     }
     else if(i>=n_parameters/3 && i<2*n_parameters/3){
       tree->Draw(Form("(e%d - e%d_true)/e%d_err>>h%d", ip, ip, ip, i), "", "");
       hpulls->GetXaxis()->SetBinLabel(i+1, Form("e%d", ip));
+      h_e_vals_fit->GetXaxis()->SetBinLabel(ip+1, Form("e%d", ip));
+      h_e_vals_in->GetXaxis()->SetBinLabel(ip+1, Form("e%d", ip));
     }
     else{
       tree->Draw(Form("(M%d - M%d_true)/M%d_err>>h%d", ip, ip, ip, i), "", "");
       hpulls->GetXaxis()->SetBinLabel(i+1, Form("M%d", ip));
+      h_M_vals_fit->GetXaxis()->SetBinLabel(ip+1, Form("M%d", ip));
+      h_M_vals_in->GetXaxis()->SetBinLabel(ip+1, Form("M%d", ip));
     }
     //cout << i << "-->" << h->GetMean() << endl;
     float pull_i = h->GetMean();
@@ -712,6 +740,12 @@ int main(int argc, char* argv[])
   hpulls->Write();
   hsigma->Write();
 
+  h_A_vals_fit->Write();
+  h_e_vals_fit->Write();
+  h_M_vals_fit->Write();
+  h_A_vals_in->Write();
+  h_e_vals_in->Write();
+  h_M_vals_in->Write();
   
   sw.Stop();
 

@@ -73,6 +73,8 @@ int main(int argc, char* argv[])
 	("firstIter",     value<int>()->default_value(-1), "firstIter")
 	("lastIter",     value<int>()->default_value(-1), "lastIter")
 	("rebin",       value<int>()->default_value(2), "rebin")
+	("fitWidth",    bool_switch()->default_value(false), "")
+	("fitNorm",     bool_switch()->default_value(false), "")
 	("seed",        value<int>()->default_value(4357), "seed");
 
       store(parse_command_line(argc, argv, desc), vm);
@@ -100,6 +102,8 @@ int main(int argc, char* argv[])
   int firstIter     = vm["firstIter"].as<int>();
   int lastIter     = vm["lastIter"].as<int>();
   bool savehistos     = vm["savehistos"].as<bool>();
+  bool fitWidth       = vm["fitWidth"].as<bool>();
+  bool fitNorm        = vm["fitNorm"].as<bool>();
 
   TRandom3* ran0 = new TRandom3(seed);
   
@@ -134,15 +138,15 @@ int main(int argc, char* argv[])
   }
   // bias for e out
   for(unsigned int i=0; i<n_eta_bins; i++){
-    //double val = ran0->Uniform(-0.0001/kmean_val, 0.0001/kmean_val);
-    double val = 0.0;
+    double val = ran0->Uniform(-0.0001/kmean_val, 0.0001/kmean_val);
+    //double val = 0.0;
     e_vals(i) = val;
     h_e_vals->SetBinContent(i+1, val);
   }
   // bias for M out
   for(unsigned int i=0; i<n_eta_bins; i++){
-    //double val = ran0->Uniform(-0.001*kmean_val, 0.001*kmean_val);
-    double val = 0.0;
+    double val = ran0->Uniform(-0.001*kmean_val, 0.001*kmean_val);
+    //double val = 0.0;
     M_vals(i) = val;
     h_M_vals->SetBinContent(i+1, val);
   }            
@@ -211,9 +215,15 @@ int main(int argc, char* argv[])
 
     auto dlast = std::make_unique<RNode>(d);
     
-    dlast = std::make_unique<RNode>(dlast->Define("weight", [](float weight)->float{
+    dlast = std::make_unique<RNode>(dlast->Define("weight_reco", [](float weight)->float{
       return std::copysign(1.0, weight);
     }, {"Generator_weight"} ));
+    dlast = std::make_unique<RNode>(dlast->Define("weight_smear0", [](ULong64_t rdfentry, float weight)->float{
+      return std::copysign(1.0, weight)*(rdfentry%2==0);
+    }, {"rdfentry_", "Generator_weight"} ));
+    dlast = std::make_unique<RNode>(dlast->Define("weight_smear1", [](ULong64_t rdfentry, float weight)->float{
+      return std::copysign(1.0, weight)*(rdfentry%2==1);
+    }, {"rdfentry_", "Generator_weight"} ));
     
     dlast = std::make_unique<RNode>(dlast->Define("idxs", [&](UInt_t nMuon, RVecB Muon_looseId, RVecF Muon_dxybs, RVecB Muon_isGlobal,
 							      RVecB Muon_highPurity, RVecB Muon_mediumId, RVecF Muon_pfRelIso04_all,
@@ -459,11 +469,11 @@ int main(int argc, char* argv[])
       dlast = std::make_unique<RNode>(dlast->Define( TString((recos[r]+"_jscale_weight").c_str()), [jpos](RVecF weights_jac, float weight)->float{
 	//unisgned int jpos = (idx_map[recos[r]]-1)*2;
 	return weights_jac.at( jpos )*weight;
-      }, {"weights_jac", "weight"} ));
+      }, {"weights_jac", "weight_"+recos[r] } ));
       dlast = std::make_unique<RNode>(dlast->Define( TString((recos[r]+"_jwidth_weight").c_str()), [jpos](RVecF weights_jac, float weight)->float{
 	//unisgned int jpos = (idx_map[recos[r]]-1)*2 + 1;
 	return weights_jac.at( jpos+1 )*weight;
-      }, {"weights_jac", "weight"} ));
+      }, {"weights_jac", "weight_"+recos[r] } ));
     }
     
     std::vector<ROOT::RDF::RResultPtr<TH1D> > histos1D;
@@ -478,10 +488,10 @@ int main(int argc, char* argv[])
     //histos1D.emplace_back(dlast->Histo1D({"h_smear_m", "nominal", x_nbins, x_low, x_high}, "smear_m", "weight"));
 
     if(iter==0){
-      histos2D.emplace_back(dlast->Histo2D({"h_gen_bin_m",    "nominal", n_bins, 0, double(n_bins), x_nbins, x_low, x_high}, "index_reco", "gen_m", "weight"));
+      histos2D.emplace_back(dlast->Histo2D({"h_gen_bin_m",    "nominal", n_bins, 0, double(n_bins), x_nbins, x_low, x_high}, "index_reco", "gen_m", "weight_reco"));
       for(unsigned int r = 0 ; r<recos.size(); r++){
-	histos2D.emplace_back(dlast->Histo2D({ "h_"+TString(recos[r].c_str())+"_bin_m",    "nominal", n_bins, 0, double(n_bins), x_nbins, x_low, x_high}, "index_"+TString(recos[r].c_str()), TString(recos[r].c_str())+"_m", "weight"));
-	histos2D.emplace_back(dlast->Histo2D({ "h_"+TString(recos[r].c_str())+"_bin_dm",   "nominal", n_bins, 0, double(n_bins), 24, -6.0, 6.0},          "index_"+TString(recos[r].c_str()), TString(recos[r].c_str())+"_dm", "weight"));
+	histos2D.emplace_back(dlast->Histo2D({ "h_"+TString(recos[r].c_str())+"_bin_m",    "nominal", n_bins, 0, double(n_bins), x_nbins, x_low, x_high}, "index_"+TString(recos[r].c_str()), TString(recos[r].c_str())+"_m", "weight_"+recos[r] ));
+	histos2D.emplace_back(dlast->Histo2D({ "h_"+TString(recos[r].c_str())+"_bin_dm",   "nominal", n_bins, 0, double(n_bins), 24, -6.0, 6.0},          "index_"+TString(recos[r].c_str()), TString(recos[r].c_str())+"_dm", "weight_"+recos[r]));
       }
       auto colNames = dlast->GetColumnNames();
       double total = *(dlast->Count());  
@@ -497,7 +507,7 @@ int main(int argc, char* argv[])
     
     fout->cd();
     std::cout << "Writing histos..." << std::endl;
-    double sf = lumi/lumiMC; //double(lumi)/double(minNumEvents);
+    double sf = lumi>0. ? lumi/lumiMC : 1.0; //double(lumi)/double(minNumEvents);
     for(auto h : histos1D){
       h->Scale(sf);
       string h_name = std::string(h->GetName());
@@ -607,8 +617,8 @@ int main(int argc, char* argv[])
       TH1D* h_masks   = new TH1D("h_masks", "", n_bins, 0, double(n_bins));
 
       TH2D* h_data_2D   = (TH2D*)fout->Get("h_smear1_bin_m");
-      TH1D* h_nom_mask  = (TH1D*)fout->Get("h_mask_smear0_bin_dm");
       TH2D* h_nom_2D    = (TH2D*)fout->Get("h_smear0_bin_m");
+      TH1D* h_nom_mask  = (TH1D*)fout->Get("h_mask_smear0_bin_dm");
       TH2D* h_jscale_2D = (TH2D*)fout->Get("h_smear0_bin_jac_scale");
       TH2D* h_jwidth_2D = (TH2D*)fout->Get("h_smear0_bin_jac_width");
 
@@ -670,17 +680,26 @@ int main(int argc, char* argv[])
 	    y0(bin_counter) = h_nom_i->GetBinContent(im+1);	    
 	    jscale(bin_counter) = h_jscale_i->GetBinContent(im+1);
 	    jwidth(bin_counter) = h_jwidth_i->GetBinContent(im+1);  
-	    inv_V(bin_counter,bin_counter) = 1./(y(bin_counter)  + h_nom_i->GetBinError(im+1)*h_nom_i->GetBinError(im+1) );
+	    double mcErr_im = h_nom_i->GetBinError(im+1);
+	    inv_V(bin_counter,bin_counter) = lumi>0. ?
+	      1./(y(bin_counter)  + mcErr_im*mcErr_im ) :
+	      1/(2*mcErr_im*mcErr_im);
+	    //cout << TMath::Sqrt(y(bin_counter)) << " (+) " << h_nom_i->GetBinError(im+1) << endl;
 	    inv_sqrtV(bin_counter,bin_counter) = TMath::Sqrt( inv_V(bin_counter,bin_counter) );
 	    bin_counter++;
 	  }
 	}
-	
-	MatrixXd jac(n_mass_bins, 3);
+
+	unsigned int n_fit_params = 3;
+	if(!fitWidth) n_fit_params--;
+	if(!fitNorm)  n_fit_params--;
+	MatrixXd jac(n_mass_bins, n_fit_params);
 	for(unsigned int ib=0; ib<n_mass_bins;ib++){
-	  jac(ib, 0) = y0(ib);
-	  jac(ib, 1) = jscale(ib);
-	  jac(ib, 2) = jwidth(ib);
+	  jac(ib, 0) = jscale(ib);
+	  if(fitWidth)
+	    jac(ib, 1) = jwidth(ib);
+	  if(fitNorm)
+	    jac(ib, 2) = y0(ib);
 	}
 
 	MatrixXd A = inv_sqrtV*jac;
@@ -695,30 +714,30 @@ int main(int argc, char* argv[])
 	}
 	MatrixXd chi2old = b.transpose()*b;
 	MatrixXd chi2new = ((b - A*x).transpose())*(b-A*x);
-	int ndof = n_mass_bins-3;
-	double chi2norm_old = chi2old(0,0)/(ndof+3);
+	int ndof = n_mass_bins-n_fit_params;
+	double chi2norm_old = chi2old(0,0)/(n_mass_bins);
 	double chi2norm_new = chi2new(0,0)/ndof;
 	cout << "Bin: " << ibin << ": mass fits with " << n_mass_bins << " mass bins: " << chi2norm_old << " ---> " << chi2norm_new << " (prob = " << TMath::Prob(chi2norm_new*ndof, ndof ) << ")" << endl;
 
 	indof = ndof;
-	inu = x(0);
-	inuErr = TMath::Sqrt(C(0,0));
-	ibeta = x(1);
-	ibetaErr = TMath::Sqrt(C(1,1));
-	ialpha = x(2);
-	ialphaErr = TMath::Sqrt(C(2,2));
-	ichi2old = chi2norm_old;
+	ibeta = x(0);
+	ibetaErr = TMath::Sqrt(C(0,0));
+	ialpha = fitWidth ? x(1) : 0.;
+	ialphaErr = fitWidth ? TMath::Sqrt(C(1,1)) : 0.;
+	inu = fitNorm ? x(2) : 0.;
+	inuErr = fitNorm ? TMath::Sqrt(C(2,2)) : 0.;
+ 	ichi2old = chi2norm_old;
 	ichi2new = chi2norm_new;
 	iprob =  TMath::Prob(chi2norm_new*ndof, ndof );	
 	treescales->Fill();
 	//cout << "Filling tree" << endl;
 	
-	h_scales->SetBinContent(ibin+1, x(1)+1.0);
-	h_scales->SetBinError(ibin+1, TMath::Sqrt(C(1,1)));
-	h_norms->SetBinContent(ibin+1, x(0)+1.0);
-	h_norms->SetBinError(ibin+1, TMath::Sqrt(C(0,0)));
-	h_widths->SetBinContent(ibin+1, x(2)+1.0);
-	h_widths->SetBinError(ibin+1, TMath::Sqrt(C(2,2)));
+	h_scales->SetBinContent(ibin+1, ibeta+1.0);
+	h_scales->SetBinError(ibin+1, ibetaErr);
+	h_norms->SetBinContent(ibin+1, inu+1.0);
+	h_norms->SetBinError(ibin+1, inuErr);
+	h_widths->SetBinContent(ibin+1, ialpha+1.0);
+	h_widths->SetBinError(ibin+1, ialphaErr);
 	h_probs->SetBinContent(ibin+1, TMath::Prob(chi2norm_new*ndof, ndof ));
 	h_probs->SetBinError(ibin+1, 0.);
 	h_masks->SetBinContent(ibin+1, 1.0);
