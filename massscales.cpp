@@ -69,12 +69,17 @@ int main(int argc, char* argv[])
 	("lumi",        value<float>()->default_value(16.1), "number of events")
 	("tag",         value<std::string>()->default_value("closure"), "run type")
 	("run",         value<std::string>()->default_value("closure"), "run type")
-	("savehistos",  bool_switch()->default_value(false), "")
+	("skipReco",     bool_switch()->default_value(false), "")
+	("saveHistos",  bool_switch()->default_value(false), "")
 	("firstIter",     value<int>()->default_value(-1), "firstIter")
 	("lastIter",     value<int>()->default_value(-1), "lastIter")
+	("nRMSforGausFit",     value<float>()->default_value(-1.), "number of events")
 	("rebin",       value<int>()->default_value(2), "rebin")
 	("fitWidth",    bool_switch()->default_value(false), "")
 	("fitNorm",     bool_switch()->default_value(false), "")
+	("usePrevFit",  bool_switch()->default_value(false), "")
+	("tagPrevFit",         value<std::string>()->default_value("closure"), "run type")
+	("runPrevFit",         value<std::string>()->default_value("closure"), "run type")
 	("seed",        value<int>()->default_value(4357), "seed");
 
       store(parse_command_line(argc, argv, desc), vm);
@@ -83,7 +88,6 @@ int main(int argc, char* argv[])
 	std::cout << desc << '\n';
 	return 0;
       }
-      if (vm.count("minNumEvents"))    std::cout << "Number of events: " << vm["minNumEvents"].as<int>() << '\n';
       if (vm.count("tag"))        std::cout << "Tag: " << vm["tag"].as<std::string>() << '\n';
       if (vm.count("run"))        std::cout << "Run: " << vm["run"].as<std::string>() << '\n';
     }
@@ -94,16 +98,21 @@ int main(int argc, char* argv[])
   
   int minNumEvents     = vm["minNumEvents"].as<int>();
   float lumi       = vm["lumi"].as<float>();
+  float nRMSforGausFit = vm["nRMSforGausFit"].as<float>();
   std::string tag = vm["tag"].as<std::string>();
   std::string run = vm["run"].as<std::string>();
   int seed        = vm["seed"].as<int>();
   int minNumEventsPerBin   = vm["minNumEventsPerBin"].as<int>();
   int rebin       = vm["rebin"].as<int>();
-  int firstIter     = vm["firstIter"].as<int>();
-  int lastIter     = vm["lastIter"].as<int>();
-  bool savehistos     = vm["savehistos"].as<bool>();
+  int firstIter   = vm["firstIter"].as<int>();
+  int lastIter    = vm["lastIter"].as<int>();
+  bool skipReco     = vm["skipReco"].as<bool>();
+  bool saveHistos     = vm["saveHistos"].as<bool>();
   bool fitWidth       = vm["fitWidth"].as<bool>();
   bool fitNorm        = vm["fitNorm"].as<bool>();
+  bool usePrevFit        = vm["usePrevFit"].as<bool>();
+  std::string tagPrevFit = vm["tagPrevFit"].as<std::string>();
+  std::string runPrevFit = vm["runPrevFit"].as<std::string>();
 
   TRandom3* ran0 = new TRandom3(seed);
   
@@ -118,14 +127,17 @@ int main(int argc, char* argv[])
   unsigned int n_eta_bins = eta_edges.size()-1;
   int n_bins = n_pt_bins*n_pt_bins*n_eta_bins*n_eta_bins;
 
-  TH1F* h_A_vals = new TH1F("h_A_vals", "", n_eta_bins, 0, n_eta_bins );
-  TH1F* h_e_vals = new TH1F("h_e_vals", "", n_eta_bins, 0, n_eta_bins );
-  TH1F* h_M_vals = new TH1F("h_M_vals", "", n_eta_bins, 0, n_eta_bins );
+  TH1F* h_A_vals_nom = new TH1F("h_A_vals_nom", "", n_eta_bins, 0, n_eta_bins );
+  TH1F* h_e_vals_nom = new TH1F("h_e_vals_nom", "", n_eta_bins, 0, n_eta_bins );
+  TH1F* h_M_vals_nom = new TH1F("h_M_vals_nom", "", n_eta_bins, 0, n_eta_bins );
   
   float kmean_val = 0.5*( 1./pt_edges[0] + 1./pt_edges[ pt_edges.size()-1] );
-  VectorXd A_vals( n_eta_bins );
-  VectorXd e_vals( n_eta_bins );
-  VectorXd M_vals( n_eta_bins );
+  VectorXd A_vals_nom( n_eta_bins );
+  VectorXd e_vals_nom( n_eta_bins );
+  VectorXd M_vals_nom( n_eta_bins );
+  VectorXd A_vals_fit( n_eta_bins );
+  VectorXd e_vals_fit( n_eta_bins );
+  VectorXd M_vals_fit( n_eta_bins );
 
   // bias for A out
   for(unsigned int i=0; i<n_eta_bins; i++){
@@ -133,22 +145,25 @@ int main(int argc, char* argv[])
     float y_max = h_eta_edges->GetXaxis()->GetXmax();
     float y_i = h_eta_edges->GetXaxis()->GetBinCenter(i+1); 
     double val = -0.001*( 1 + (y_i/y_max)*(y_i/y_max) );
-    A_vals(i) = val;
-    h_A_vals->SetBinContent(i+1, val);
+    A_vals_nom(i) = val;
+    h_A_vals_nom->SetBinContent(i+1, val);
+    A_vals_fit(i) = 0.0;
   }
   // bias for e out
   for(unsigned int i=0; i<n_eta_bins; i++){
     double val = ran0->Uniform(-0.0001/kmean_val, 0.0001/kmean_val);
     //double val = 0.0;
-    e_vals(i) = val;
-    h_e_vals->SetBinContent(i+1, val);
+    e_vals_nom(i) = val;
+    h_e_vals_nom->SetBinContent(i+1, val);
+    e_vals_fit(i) = 0.0;
   }
   // bias for M out
   for(unsigned int i=0; i<n_eta_bins; i++){
     double val = ran0->Uniform(-0.001*kmean_val, 0.001*kmean_val);
     //double val = 0.0;
-    M_vals(i) = val;
-    h_M_vals->SetBinContent(i+1, val);
+    M_vals_nom(i) = val;
+    h_M_vals_nom->SetBinContent(i+1, val);
+    M_vals_fit(i) = 0.0;
   }            
 
   
@@ -190,6 +205,29 @@ int main(int argc, char* argv[])
     }
     return out;
   };
+
+  if(usePrevFit){
+    TFile* ffit = TFile::Open(("./massfit_"+tagPrevFit+"_"+runPrevFit+".root").c_str(), "READ");
+    if(ffit!=0){    
+      cout << "Using fit results from " <<  std::string(ffit->GetName()) << " as new nominal for smear0" << endl;
+      TH1D* h_A_vals_fit = (TH1D*)ffit->Get("h_A_vals_fit");
+      TH1D* h_e_vals_fit = (TH1D*)ffit->Get("h_e_vals_fit");
+      TH1D* h_M_vals_fit = (TH1D*)ffit->Get("h_M_vals_fit");
+      for(unsigned int i=0; i<n_eta_bins; i++){
+	A_vals_fit(i) = -h_A_vals_fit->GetBinContent(i+1);
+	e_vals_fit(i) = -h_e_vals_fit->GetBinContent(i+1);
+	M_vals_fit(i) = -h_M_vals_fit->GetBinContent(i+1);
+	// update the nom histogram
+	h_A_vals_nom->SetBinContent(i+1, h_A_vals_nom->GetBinContent(i+1)-A_vals_fit(i) );
+	h_e_vals_nom->SetBinContent(i+1, h_e_vals_nom->GetBinContent(i+1)-e_vals_fit(i) );
+	h_M_vals_nom->SetBinContent(i+1, h_M_vals_nom->GetBinContent(i+1)-M_vals_fit(i) );
+      }
+      ffit->Close();
+    }
+    else{
+      cout << "No mass fit file!" << endl;
+    }
+  }
     
   TFile* fout = TFile::Open(("./massscales_"+tag+"_"+run+".root").c_str(), firstIter<2 ? "RECREATE" : "UPDATE");
   
@@ -197,7 +235,7 @@ int main(int argc, char* argv[])
 
     if( !(iter>=firstIter && iter<=lastIter) ) continue;
 
-    cout << "Iter " << iter << endl;
+    cout << "Doing iter " << iter << endl;
     //TTree* tree = new TTree("tree", "tree");
 
     ROOT::RDataFrame d( "Events",
@@ -267,14 +305,12 @@ int main(int argc, char* argv[])
       
       if( gmuP.Pt()>10. && gmuM.Pt()>10.){
 
-	float scale_smear0 = 1.0;
+	float scale_smear0P = 1.0;
+	float scale_smear0M = 1.0;
 	float kmuP = 1./gmuP.Pt();
 	float kmuM = 1./gmuM.Pt();
 	float resolP = resolution(kmuP, gmuP.Eta());
 	float resolM = resolution(kmuM, gmuM.Eta());
-
-	out.emplace_back( rans[nslot]->Gaus(kmuP*scale_smear0, resolP) );
-	out.emplace_back( rans[nslot]->Gaus(kmuM*scale_smear0, resolM) );
 
 	float scale_smear1P = 1.0;
 	float scale_smear1M = 1.0;
@@ -291,9 +327,16 @@ int main(int argc, char* argv[])
 	  if( gmuM.Eta()>=eta_m_low && gmuM.Eta()<eta_m_up) ietaM = ieta_m;	  
 	}	
 	if(ietaP<n_eta_bins && ietaM<n_eta_bins){
-	  scale_smear1P = (1. + A_vals(ietaP) + e_vals(ietaP)*kmuP - M_vals(ietaP)/kmuP);
-	  scale_smear1M = (1. + A_vals(ietaM) + e_vals(ietaM)*kmuM + M_vals(ietaM)/kmuM);
+	  scale_smear0P = (1. + A_vals_fit(ietaP) + e_vals_fit(ietaP)*kmuP - M_vals_fit(ietaP)/kmuP);
+	  scale_smear0M = (1. + A_vals_fit(ietaM) + e_vals_fit(ietaM)*kmuM + M_vals_fit(ietaM)/kmuM);
+	  scale_smear1P = (1. + A_vals_nom(ietaP) + e_vals_nom(ietaP)*kmuP - M_vals_nom(ietaP)/kmuP);
+	  scale_smear1M = (1. + A_vals_nom(ietaM) + e_vals_nom(ietaM)*kmuM + M_vals_nom(ietaM)/kmuM);
+	  //cout << "smear0:" << scale_smear0P << ": " << 1 << " + " << A_vals_fit(ietaP) << " + " << e_vals_fit(ietaP)*kmuP << " - " << M_vals_fit(ietaP)/kmuP << endl;
+	  //cout << "smear1:" << scale_smear1P << ": " << 1 << " + " << A_vals_nom(ietaP) << " + " << e_vals_nom(ietaP)*kmuP << " - " << M_vals_nom(ietaP)/kmuP << endl;
 	}
+
+	out.emplace_back( rans[nslot]->Gaus(kmuP*scale_smear0P, resolP) );
+	out.emplace_back( rans[nslot]->Gaus(kmuM*scale_smear0M, resolM) );
 	out.emplace_back( rans[nslot]->Gaus(kmuP*scale_smear1P, resolP) );
 	out.emplace_back( rans[nslot]->Gaus(kmuM*scale_smear1M, resolM) );
       }
@@ -488,8 +531,10 @@ int main(int argc, char* argv[])
     //histos1D.emplace_back(dlast->Histo1D({"h_smear_m", "nominal", x_nbins, x_low, x_high}, "smear_m", "weight"));
 
     if(iter==0){
-      histos2D.emplace_back(dlast->Histo2D({"h_gen_bin_m",    "nominal", n_bins, 0, double(n_bins), x_nbins, x_low, x_high}, "index_reco", "gen_m", "weight_reco"));
+      if(!skipReco)
+	histos2D.emplace_back(dlast->Histo2D({"h_gen_bin_m",    "nominal", n_bins, 0, double(n_bins), x_nbins, x_low, x_high}, "index_reco", "gen_m", "weight_reco"));
       for(unsigned int r = 0 ; r<recos.size(); r++){
+	if(skipReco && recos[r]=="reco") continue;
 	histos2D.emplace_back(dlast->Histo2D({ "h_"+TString(recos[r].c_str())+"_bin_m",    "nominal", n_bins, 0, double(n_bins), x_nbins, x_low, x_high}, "index_"+TString(recos[r].c_str()), TString(recos[r].c_str())+"_m", "weight_"+recos[r] ));
 	histos2D.emplace_back(dlast->Histo2D({ "h_"+TString(recos[r].c_str())+"_bin_dm",   "nominal", n_bins, 0, double(n_bins), 24, -6.0, 6.0},          "index_"+TString(recos[r].c_str()), TString(recos[r].c_str())+"_dm", "weight_"+recos[r]));
       }
@@ -527,11 +572,18 @@ int main(int argc, char* argv[])
       cout << "Writing aux files" << endl;
       h_pt_edges->Write();
       h_eta_edges->Write();
-      h_A_vals->Write();
-      h_e_vals->Write();
-      h_M_vals->Write();
+      h_A_vals_nom->Write();
+      h_e_vals_nom->Write();
+      h_M_vals_nom->Write();
       
       for(unsigned int r = 0 ; r<recos.size(); r++){
+
+	if(skipReco && recos[r]=="reco"){
+	  h_map["mean_"+recos[r]] = new TH1D( TString( ("h_mean_"+recos[r]+"_bin_dm").c_str() ),"", n_bins, 0, double(n_bins));
+	  h_map["rms_"+recos[r]]  = new TH1D( TString( ("h_rms_"+recos[r]+"_bin_dm").c_str() ),"", n_bins, 0, double(n_bins));
+	  h_map["mask_"+recos[r]] = new TH1D( TString( ("h_mask_"+recos[r]+"_bin_dm").c_str() ),"", n_bins, 0, double(n_bins));
+	  continue;
+	}
 	
 	TH2D* h_reco_dm = (TH2D*)fout->Get(TString( ("h_"+recos[r]+"_bin_dm").c_str()) );
 	TH2D* h_reco_m  = (TH2D*)fout->Get(TString( ("h_"+recos[r]+"_bin_m").c_str()) );
@@ -560,7 +612,9 @@ int main(int argc, char* argv[])
 	    gf->SetParameter(0, hi->Integral());
 	    gf->SetParameter(1, hi->GetMean());
 	    gf->SetParameter(2, hi->GetRMS() );
-	    hi->Fit("gf", "QR", "", -6.0, 6.0);
+	    float m_min = nRMSforGausFit>0. ? TMath::Max(-nRMSforGausFit*hi->GetRMS(), -6.0) : -6.0;
+	    float m_max = nRMSforGausFit>0. ? TMath::Min(+nRMSforGausFit*hi->GetRMS(), +6.0) : +6.0;
+	    hi->Fit("gf", "QR", "", m_min, m_max );
 	    mean_i    = gf->GetParameter(1);
 	    meanerr_i = gf->GetParError(1);
 	    rms_i     = TMath::Abs(gf->GetParameter(2));
@@ -589,7 +643,7 @@ int main(int argc, char* argv[])
 
     if(iter==2){
 
-      if(savehistos && fout->GetDirectory("postfit")==0){
+      if(saveHistos && fout->GetDirectory("postfit")==0){
 	fout->mkdir("postfit");
       }
 
@@ -742,7 +796,7 @@ int main(int argc, char* argv[])
 	h_probs->SetBinError(ibin+1, 0.);
 	h_masks->SetBinContent(ibin+1, 1.0);
 
-	if(savehistos){
+	if(saveHistos){
 	  TH1D* h_pre_i   = (TH1D*)h_nom_i->Clone(Form("h_prefit_%d", ibin));
 	  TH1D* h_post_i  = (TH1D*)h_nom_i->Clone(Form("h_postfit_%d", ibin));
 	  unsigned int bin_counter = 0;

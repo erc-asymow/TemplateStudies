@@ -167,9 +167,9 @@ public:
       n_dof_ = n_unmasked_bins - n_pars_;
       n_data_ = n_unmasked_bins;
 	
-      TH1D* h_A_vals = (TH1D*)fin->Get("h_A_vals");
-      TH1D* h_e_vals = (TH1D*)fin->Get("h_e_vals");
-      TH1D* h_M_vals = (TH1D*)fin->Get("h_M_vals");
+      TH1D* h_A_vals = (TH1D*)fin->Get("h_A_vals_nom");
+      TH1D* h_e_vals = (TH1D*)fin->Get("h_e_vals_nom");
+      TH1D* h_M_vals = (TH1D*)fin->Get("h_M_vals_nom");
 
       assert( h_A_vals->GetXaxis()->GetNbins() == n_eta_bins_ );
       assert( h_e_vals->GetXaxis()->GetNbins() == n_eta_bins_ );
@@ -533,12 +533,19 @@ int main(int argc, char* argv[])
     tree->Branch(Form("M%d_inerr",i),  &tparInErr[i+2*n_parameters/3],  Form("M%d_inerr/D",i));
   }
 
-  TH1D* h_A_vals_in  = new TH1D("h_A_vals_in", "", n_parameters/3, 0, n_parameters/3);
-  TH1D* h_e_vals_in  = new TH1D("h_e_vals_in", "", n_parameters/3, 0, n_parameters/3);
-  TH1D* h_M_vals_in  = new TH1D("h_M_vals_in", "", n_parameters/3, 0, n_parameters/3);
-  TH1D* h_A_vals_fit  = new TH1D("h_A_vals_fit", "", n_parameters/3, 0, n_parameters/3);
-  TH1D* h_e_vals_fit  = new TH1D("h_e_vals_fit", "", n_parameters/3, 0, n_parameters/3);
-  TH1D* h_M_vals_fit  = new TH1D("h_M_vals_fit", "", n_parameters/3, 0, n_parameters/3);
+  TH1D* h_A_vals_nom  = new TH1D("h_A_vals_nom", "A nominal", n_parameters/3, 0, n_parameters/3);
+  TH1D* h_e_vals_nom  = new TH1D("h_e_vals_nom", "e nominal", n_parameters/3, 0, n_parameters/3);
+  TH1D* h_M_vals_nom  = new TH1D("h_M_vals_nom", "M nominal", n_parameters/3, 0, n_parameters/3);
+  TH1D* h_Ain_vals_nom  = new TH1D("h_Ain_vals_nom", "(A-e#bar{k})", n_parameters/3, 0, n_parameters/3);
+  TH1D* h_ein_vals_nom  = new TH1D("h_ein_vals_nom", "e/#bar{k} nominal", n_parameters/3, 0, n_parameters/3);
+  TH1D* h_Min_vals_nom  = new TH1D("h_Min_vals_nom", "M#bar{k} nominal", n_parameters/3, 0, n_parameters/3);
+
+  TH1D* h_A_vals_fit  = new TH1D("h_A_vals_fit", "#hat{A}", n_parameters/3, 0, n_parameters/3);
+  TH1D* h_e_vals_fit  = new TH1D("h_e_vals_fit", "#hat{e}", n_parameters/3, 0, n_parameters/3);
+  TH1D* h_M_vals_fit  = new TH1D("h_M_vals_fit", "#hat{M}", n_parameters/3, 0, n_parameters/3);
+  TH1D* h_Ain_vals_fit  = new TH1D("h_Ain_vals_fit", "(#hat{A}-#hat{e}#bar{k})", n_parameters/3, 0, n_parameters/3);
+  TH1D* h_ein_vals_fit  = new TH1D("h_ein_vals_fit", "#hat{e}/#bar{k}", n_parameters/3, 0, n_parameters/3);
+  TH1D* h_Min_vals_fit  = new TH1D("h_Min_vals_fit", "#hat{M}#bar{k}", n_parameters/3, 0, n_parameters/3);
 
   unsigned int maxfcn(numeric_limits<unsigned int>::max());
   double tolerance(0.001);
@@ -616,17 +623,26 @@ int main(int argc, char* argv[])
       if(i<n_parameters/3){
 	h_A_vals_fit->SetBinContent(ip+1, x(i));
 	h_A_vals_fit->SetBinError(ip+1, xErr(i));
-	h_A_vals_in->SetBinContent(ip+1, fFCN->get_true_params(i, true));
+	h_A_vals_nom->SetBinContent(ip+1, fFCN->get_true_params(i, true));
+	h_Ain_vals_fit->SetBinContent(ip+1, xin(i));
+	h_Ain_vals_fit->SetBinError(ip+1, xinErr(i));
+	h_Ain_vals_nom->SetBinContent(ip+1, fFCN->get_true_params(i, false));
       }
       else if(i>=n_parameters/3 && i<2*n_parameters/3){
 	h_e_vals_fit->SetBinContent(ip+1, x(i));
 	h_e_vals_fit->SetBinError(ip+1, xErr(i));
-	h_e_vals_in->SetBinContent(ip+1, fFCN->get_true_params(i, true));
+	h_e_vals_nom->SetBinContent(ip+1, fFCN->get_true_params(i, true));
+	h_ein_vals_fit->SetBinContent(ip+1, xin(i));
+	h_ein_vals_fit->SetBinError(ip+1, xinErr(i));
+	h_ein_vals_nom->SetBinContent(ip+1, fFCN->get_true_params(i, false));
       }
       else{
 	h_M_vals_fit->SetBinContent(ip+1, x(i));
 	h_M_vals_fit->SetBinError(ip+1, xErr(i));
-	h_M_vals_in->SetBinContent(ip+1, fFCN->get_true_params(i, true));
+	h_M_vals_nom->SetBinContent(ip+1, fFCN->get_true_params(i, true));
+	h_Min_vals_fit->SetBinContent(ip+1, xin(i));
+	h_Min_vals_fit->SetBinError(ip+1, xinErr(i));
+	h_Min_vals_nom->SetBinContent(ip+1, fFCN->get_true_params(i, false));
       }
       //cout << "Param " << i << ": " << x(i) << " +/- " << xErr(i) << ". True value is " << fFCN->get_true_params(i, true) << endl;
     }
@@ -700,19 +716,25 @@ int main(int argc, char* argv[])
       tree->Draw(Form("(A%d - A%d_true)/A%d_err>>h%d", ip, ip, ip, i), "", "");
       hpulls->GetXaxis()->SetBinLabel(i+1, Form("A%d", ip));
       h_A_vals_fit->GetXaxis()->SetBinLabel(ip+1, Form("A%d", ip));
-      h_A_vals_in->GetXaxis()->SetBinLabel(ip+1, Form("A%d", ip));
+      h_Ain_vals_fit->GetXaxis()->SetBinLabel(ip+1, Form("Ain%d", ip));
+      h_A_vals_nom->GetXaxis()->SetBinLabel(ip+1, Form("A%d", ip));
+      h_Ain_vals_nom->GetXaxis()->SetBinLabel(ip+1, Form("Ain%d", ip));
     }
     else if(i>=n_parameters/3 && i<2*n_parameters/3){
       tree->Draw(Form("(e%d - e%d_true)/e%d_err>>h%d", ip, ip, ip, i), "", "");
       hpulls->GetXaxis()->SetBinLabel(i+1, Form("e%d", ip));
       h_e_vals_fit->GetXaxis()->SetBinLabel(ip+1, Form("e%d", ip));
-      h_e_vals_in->GetXaxis()->SetBinLabel(ip+1, Form("e%d", ip));
+      h_ein_vals_fit->GetXaxis()->SetBinLabel(ip+1, Form("ein%d", ip));
+      h_e_vals_nom->GetXaxis()->SetBinLabel(ip+1, Form("e%d", ip));
+      h_ein_vals_nom->GetXaxis()->SetBinLabel(ip+1, Form("ein%d", ip));
     }
     else{
       tree->Draw(Form("(M%d - M%d_true)/M%d_err>>h%d", ip, ip, ip, i), "", "");
       hpulls->GetXaxis()->SetBinLabel(i+1, Form("M%d", ip));
       h_M_vals_fit->GetXaxis()->SetBinLabel(ip+1, Form("M%d", ip));
-      h_M_vals_in->GetXaxis()->SetBinLabel(ip+1, Form("M%d", ip));
+      h_Min_vals_fit->GetXaxis()->SetBinLabel(ip+1, Form("Min%d", ip));
+      h_M_vals_nom->GetXaxis()->SetBinLabel(ip+1, Form("M%d", ip));
+      h_Min_vals_nom->GetXaxis()->SetBinLabel(ip+1, Form("Min%d", ip));
     }
     //cout << i << "-->" << h->GetMean() << endl;
     float pull_i = h->GetMean();
@@ -743,9 +765,15 @@ int main(int argc, char* argv[])
   h_A_vals_fit->Write();
   h_e_vals_fit->Write();
   h_M_vals_fit->Write();
-  h_A_vals_in->Write();
-  h_e_vals_in->Write();
-  h_M_vals_in->Write();
+  h_Ain_vals_fit->Write();
+  h_ein_vals_fit->Write();
+  h_Min_vals_fit->Write();
+  h_A_vals_nom->Write();
+  h_e_vals_nom->Write();
+  h_M_vals_nom->Write();
+  h_Ain_vals_nom->Write();
+  h_ein_vals_nom->Write();
+  h_Min_vals_nom->Write();
   
   sw.Stop();
 
