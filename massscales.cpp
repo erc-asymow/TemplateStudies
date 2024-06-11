@@ -73,6 +73,7 @@ int main(int argc, char* argv[])
 	("saveHistos",  bool_switch()->default_value(false), "")
 	("firstIter",     value<int>()->default_value(-1), "firstIter")
 	("lastIter",     value<int>()->default_value(-1), "lastIter")
+	("biasResolution",     value<float>()->default_value(-1.), "number of events")
 	("nRMSforGausFit",     value<float>()->default_value(-1.), "number of events")
 	("rebin",       value<int>()->default_value(2), "rebin")
 	("fitWidth",    bool_switch()->default_value(false), "")
@@ -99,6 +100,8 @@ int main(int argc, char* argv[])
   int minNumEvents     = vm["minNumEvents"].as<int>();
   float lumi       = vm["lumi"].as<float>();
   float nRMSforGausFit = vm["nRMSforGausFit"].as<float>();
+  float biasResolution = vm["biasResolution"].as<float>();
+  if(biasResolution<0.) biasResolution = 0.0;
   std::string tag = vm["tag"].as<std::string>();
   std::string run = vm["run"].as<std::string>();
   int seed        = vm["seed"].as<int>();
@@ -130,6 +133,9 @@ int main(int argc, char* argv[])
   TH1F* h_A_vals_nom = new TH1F("h_A_vals_nom", "", n_eta_bins, 0, n_eta_bins );
   TH1F* h_e_vals_nom = new TH1F("h_e_vals_nom", "", n_eta_bins, 0, n_eta_bins );
   TH1F* h_M_vals_nom = new TH1F("h_M_vals_nom", "", n_eta_bins, 0, n_eta_bins );
+  TH1F* h_A_vals_prevfit = new TH1F("h_A_vals_prevfit", "", n_eta_bins, 0, n_eta_bins );
+  TH1F* h_e_vals_prevfit = new TH1F("h_e_vals_prevfit", "", n_eta_bins, 0, n_eta_bins );
+  TH1F* h_M_vals_prevfit = new TH1F("h_M_vals_prevfit", "", n_eta_bins, 0, n_eta_bins );
   
   float kmean_val = 0.5*( 1./pt_edges[0] + 1./pt_edges[ pt_edges.size()-1] );
   VectorXd A_vals_nom( n_eta_bins );
@@ -147,6 +153,7 @@ int main(int argc, char* argv[])
     double val = -0.001*( 1 + (y_i/y_max)*(y_i/y_max) );
     A_vals_nom(i) = val;
     h_A_vals_nom->SetBinContent(i+1, val);
+    h_A_vals_prevfit->SetBinContent(i+1, 0.0);
     A_vals_fit(i) = 0.0;
   }
   // bias for e out
@@ -155,6 +162,7 @@ int main(int argc, char* argv[])
     //double val = 0.0;
     e_vals_nom(i) = val;
     h_e_vals_nom->SetBinContent(i+1, val);
+    h_e_vals_prevfit->SetBinContent(i+1, 0.0);
     e_vals_fit(i) = 0.0;
   }
   // bias for M out
@@ -163,6 +171,7 @@ int main(int argc, char* argv[])
     //double val = 0.0;
     M_vals_nom(i) = val;
     h_M_vals_nom->SetBinContent(i+1, val);
+    h_M_vals_prevfit->SetBinContent(i+1, 0.0);
     M_vals_fit(i) = 0.0;
   }            
 
@@ -189,8 +198,8 @@ int main(int argc, char* argv[])
     histobudget = (TH1D*)faux->Get("histobudget");
     histohitres = (TH1D*)faux->Get("histohitres");
   }
-  auto resolution = [histobudget,histohitres](float k, float eta)->float{
-    float out = 0.02*k;
+  auto resolution = [histobudget,histohitres](float k, float eta, float bias)->float{
+    float out = 0.02*k*(1.0 + bias);
     if(histobudget!=0 && histohitres!=0){
       int eta_bin = histobudget->FindBin(eta);
       if(eta_bin<1) eta_bin = 1;
@@ -200,6 +209,7 @@ int main(int argc, char* argv[])
       float budget2 = budget*budget;
       float hitres2 = hitres*hitres;
       out = TMath::Sqrt( budget2 + hitres2/k/k )*k;
+      out *= (1.0 + bias);
       //cout << budget << " + " << hitres/k << " ==> " << out/k << endl;
       return out;
     }
@@ -210,18 +220,27 @@ int main(int argc, char* argv[])
     TFile* ffit = TFile::Open(("./massfit_"+tagPrevFit+"_"+runPrevFit+".root").c_str(), "READ");
     if(ffit!=0){    
       cout << "Using fit results from " <<  std::string(ffit->GetName()) << " as new nominal for smear0" << endl;
-      TH1D* h_A_vals_fit = (TH1D*)ffit->Get("h_A_vals_fit");
-      TH1D* h_e_vals_fit = (TH1D*)ffit->Get("h_e_vals_fit");
-      TH1D* h_M_vals_fit = (TH1D*)ffit->Get("h_M_vals_fit");
+      //TH1D* h_A_vals_fit = (TH1D*)ffit->Get("h_A_vals_fit");
+      //TH1D* h_e_vals_fit = (TH1D*)ffit->Get("h_e_vals_fit");
+      //TH1D* h_M_vals_fit = (TH1D*)ffit->Get("h_M_vals_fit");
+      TH1D* h_A_vals_prevfit_in = (TH1D*)ffit->Get("h_A_vals_prevfit");
+      TH1D* h_e_vals_prevfit_in = (TH1D*)ffit->Get("h_e_vals_prevfit");
+      TH1D* h_M_vals_prevfit_in = (TH1D*)ffit->Get("h_M_vals_prevfit");
       for(unsigned int i=0; i<n_eta_bins; i++){
-	A_vals_fit(i) = -h_A_vals_fit->GetBinContent(i+1);
-	e_vals_fit(i) = -h_e_vals_fit->GetBinContent(i+1);
-	M_vals_fit(i) = -h_M_vals_fit->GetBinContent(i+1);
+	//A_vals_fit(i) = -(h_A_vals_prevfit->GetBinContent(i+1) + h_A_vals_fit->GetBinContent(i+1));
+	//e_vals_fit(i) = -(h_e_vals_prevfit->GetBinContent(i+1) + h_e_vals_fit->GetBinContent(i+1));
+	//M_vals_fit(i) = -(h_M_vals_prevfit->GetBinContent(i+1) + h_M_vals_fit->GetBinContent(i+1));
+	A_vals_fit(i) = -h_A_vals_prevfit_in->GetBinContent(i+1);
+	e_vals_fit(i) = -h_e_vals_prevfit_in->GetBinContent(i+1);
+	M_vals_fit(i) = -h_M_vals_prevfit_in->GetBinContent(i+1);
 	// update the nom histogram
 	h_A_vals_nom->SetBinContent(i+1, h_A_vals_nom->GetBinContent(i+1)-A_vals_fit(i) );
 	h_e_vals_nom->SetBinContent(i+1, h_e_vals_nom->GetBinContent(i+1)-e_vals_fit(i) );
 	h_M_vals_nom->SetBinContent(i+1, h_M_vals_nom->GetBinContent(i+1)-M_vals_fit(i) );
       }
+      h_A_vals_prevfit->Add(h_A_vals_prevfit_in, -1.0);
+      h_e_vals_prevfit->Add(h_e_vals_prevfit_in, -1.0);
+      h_M_vals_prevfit->Add(h_M_vals_prevfit_in, -1.0);
       ffit->Close();
     }
     else{
@@ -309,8 +328,10 @@ int main(int argc, char* argv[])
 	float scale_smear0M = 1.0;
 	float kmuP = 1./gmuP.Pt();
 	float kmuM = 1./gmuM.Pt();
-	float resolP = resolution(kmuP, gmuP.Eta());
-	float resolM = resolution(kmuM, gmuM.Eta());
+	float resol0P = resolution(kmuP, gmuP.Eta(), 0.0);
+	float resol0M = resolution(kmuM, gmuM.Eta(), 0.0);
+	float resol1P = resolution(kmuP, gmuP.Eta(), biasResolution);
+	float resol1M = resolution(kmuM, gmuM.Eta(), biasResolution);
 
 	float scale_smear1P = 1.0;
 	float scale_smear1M = 1.0;
@@ -335,10 +356,10 @@ int main(int argc, char* argv[])
 	  //cout << "smear1:" << scale_smear1P << ": " << 1 << " + " << A_vals_nom(ietaP) << " + " << e_vals_nom(ietaP)*kmuP << " - " << M_vals_nom(ietaP)/kmuP << endl;
 	}
 
-	out.emplace_back( rans[nslot]->Gaus(kmuP*scale_smear0P, resolP) );
-	out.emplace_back( rans[nslot]->Gaus(kmuM*scale_smear0M, resolM) );
-	out.emplace_back( rans[nslot]->Gaus(kmuP*scale_smear1P, resolP) );
-	out.emplace_back( rans[nslot]->Gaus(kmuM*scale_smear1M, resolM) );
+	out.emplace_back( rans[nslot]->Gaus(kmuP*scale_smear0P, resol0P) );
+	out.emplace_back( rans[nslot]->Gaus(kmuM*scale_smear0M, resol0M) );
+	out.emplace_back( rans[nslot]->Gaus(kmuP*scale_smear1P, resol1P) );
+	out.emplace_back( rans[nslot]->Gaus(kmuM*scale_smear1M, resol1M) );
       }
       else{
 	//smear0
@@ -575,6 +596,9 @@ int main(int argc, char* argv[])
       h_A_vals_nom->Write();
       h_e_vals_nom->Write();
       h_M_vals_nom->Write();
+      h_A_vals_prevfit->Write();
+      h_e_vals_prevfit->Write();
+      h_M_vals_prevfit->Write();
       
       for(unsigned int r = 0 ; r<recos.size(); r++){
 

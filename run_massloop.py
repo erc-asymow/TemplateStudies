@@ -20,20 +20,22 @@ if __name__ == '__main__':
         ' --tag='+args.tag+' '+\
         ' --run=Iter0 '+\
         ' --nRMSforGausFit=-1.0 '+\
+        ' --biasResolution=-1.0 ' +\
         ' --minNumEvents=100 --minNumEventsPerBin=30 '+\
         ' --rebin=2 '+\
-        ' --fitNorm --fitWidth '
+        ' --fitNorm --fitWidth '    
     print(cmd_histo_iter0)
     if not args.dryrun:
         os.system(cmd_histo_iter0)
+        #print()
     cmd_fit_iter0 = './massfit --nevents=1 --bias=-1 '+\
         '--tag='+args.tag+' '+\
         '--run=Iter0 '
     print(cmd_fit_iter0)
     if not args.dryrun:
         os.system(cmd_fit_iter0)
-
-    cmd_histo_iter1 = ''
+        #print()
+    
     cmd_histo_iter1 = cmd_histo_iter0.replace('--run=Iter0', '--run=Iter1')
     cmd_histo_iter1 += ' --usePrevFit '+\
         ' --tagPrevFit='+args.tag+' '+\
@@ -41,10 +43,23 @@ if __name__ == '__main__':
     print(cmd_histo_iter1)
     if not args.dryrun:
         os.system(cmd_histo_iter1)
-
+        #print()
     cmd_fit_iter1 = cmd_fit_iter0.replace('--run=Iter0', '--run=Iter1')
     print(cmd_fit_iter1)
     if not args.dryrun:
         os.system(cmd_fit_iter1)
-    
+        #print()
+
+    cmd_histo_iter2 = cmd_histo_iter0.replace('--run=Iter0', '--run=Iter2')
+    cmd_histo_iter2 += ' --usePrevFit '+\
+        ' --tagPrevFit='+args.tag+' '+\
+        ' --runPrevFit=Iter1 '
+    print(cmd_histo_iter2)
+    if not args.dryrun:
+        os.system(cmd_histo_iter2)
+    cmd_fit_iter2 = cmd_fit_iter0.replace('--run=Iter0', '--run=Iter2')
+    print(cmd_fit_iter2)
+    if not args.dryrun:
+        os.system(cmd_fit_iter2)
+
     

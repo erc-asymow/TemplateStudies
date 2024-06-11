@@ -108,10 +108,16 @@ public:
     A_vals_ = VectorXd(n_eta_bins_);
     e_vals_ = VectorXd(n_eta_bins_);
     M_vals_ = VectorXd(n_eta_bins_);
+    A_vals_prevfit_ = VectorXd(n_eta_bins_);
+    e_vals_prevfit_ = VectorXd(n_eta_bins_);
+    M_vals_prevfit_ = VectorXd(n_eta_bins_);
     for(unsigned int i=0; i<n_eta_bins_; i++){
       A_vals_(i) = 0.0;
       e_vals_(i) = 0.0;
       M_vals_(i) = 0.0;
+      A_vals_prevfit_(i) = 0.0;
+      e_vals_prevfit_(i) = 0.0;
+      M_vals_prevfit_(i) = 0.0;
     }
     for(unsigned int i=0; i<n_pars_; i++){
       x_vals_(i) = 0.0;
@@ -171,20 +177,27 @@ public:
       TH1D* h_e_vals = (TH1D*)fin->Get("h_e_vals_nom");
       TH1D* h_M_vals = (TH1D*)fin->Get("h_M_vals_nom");
 
+      TH1D* h_A_vals_prevfit = (TH1D*)fin->Get("h_A_vals_prevfit");
+      TH1D* h_e_vals_prevfit = (TH1D*)fin->Get("h_e_vals_prevfit");
+      TH1D* h_M_vals_prevfit = (TH1D*)fin->Get("h_M_vals_prevfit");
+      
       assert( h_A_vals->GetXaxis()->GetNbins() == n_eta_bins_ );
       assert( h_e_vals->GetXaxis()->GetNbins() == n_eta_bins_ );
       assert( h_M_vals->GetXaxis()->GetNbins() == n_eta_bins_ );
 	
       for(unsigned int i=0; i<n_eta_bins_; i++){
 	A_vals_(i) = -h_A_vals->GetBinContent(i+1);
+	A_vals_prevfit_(i) = -h_A_vals_prevfit->GetBinContent(i+1);
 	x_vals_(i) = A_vals_(i);
       }
       for(unsigned int i=0; i<n_eta_bins_; i++){
 	e_vals_(i) = -h_e_vals->GetBinContent(i+1);
+	e_vals_prevfit_(i) = -h_e_vals_prevfit->GetBinContent(i+1);
 	x_vals_(i+n_eta_bins_) = e_vals_(i);
       }
       for(unsigned int i=0; i<n_eta_bins_; i++){
 	M_vals_(i) = -h_M_vals->GetBinContent(i+1);
+	M_vals_prevfit_(i) = -h_M_vals_prevfit->GetBinContent(i+1);
 	x_vals_(i+2*n_eta_bins_) = M_vals_(i);
       }
       fin->Close();
@@ -230,7 +243,18 @@ public:
     else
       return (U_*x_vals_)(i);
   }
-  
+
+  double get_A_prevfit(const unsigned int& i){
+    return A_vals_prevfit_(i);
+  }
+  double get_e_prevfit(const unsigned int& i){
+    return e_vals_prevfit_(i);
+  }
+  double get_M_prevfit(const unsigned int& i){
+    return M_vals_prevfit_(i);
+  }
+
+
   unsigned int get_n_params(){ return n_pars_;}
   unsigned int get_n_data(){ return n_data_;}
   unsigned int get_n_dof(){ return n_dof_;} 
@@ -258,6 +282,9 @@ private:
   VectorXd e_vals_;
   VectorXd M_vals_;
   VectorXd x_vals_;
+  VectorXd A_vals_prevfit_;
+  VectorXd e_vals_prevfit_;
+  VectorXd M_vals_prevfit_;
   double kmean_val_;
   vector<float> eta_edges_;
   unsigned int n_pt_bins_;
@@ -546,6 +573,10 @@ int main(int argc, char* argv[])
   TH1D* h_Ain_vals_fit  = new TH1D("h_Ain_vals_fit", "(#hat{A}-#hat{e}#bar{k})", n_parameters/3, 0, n_parameters/3);
   TH1D* h_ein_vals_fit  = new TH1D("h_ein_vals_fit", "#hat{e}/#bar{k}", n_parameters/3, 0, n_parameters/3);
   TH1D* h_Min_vals_fit  = new TH1D("h_Min_vals_fit", "#hat{M}#bar{k}", n_parameters/3, 0, n_parameters/3);
+  
+  TH1D* h_A_vals_prevfit  = new TH1D("h_A_vals_prevfit", "#hat{A}", n_parameters/3, 0, n_parameters/3);
+  TH1D* h_e_vals_prevfit  = new TH1D("h_e_vals_prevfit", "#hat{e}", n_parameters/3, 0, n_parameters/3);
+  TH1D* h_M_vals_prevfit  = new TH1D("h_M_vals_prevfit", "#hat{M}", n_parameters/3, 0, n_parameters/3);
 
   unsigned int maxfcn(numeric_limits<unsigned int>::max());
   double tolerance(0.001);
@@ -627,6 +658,7 @@ int main(int argc, char* argv[])
 	h_Ain_vals_fit->SetBinContent(ip+1, xin(i));
 	h_Ain_vals_fit->SetBinError(ip+1, xinErr(i));
 	h_Ain_vals_nom->SetBinContent(ip+1, fFCN->get_true_params(i, false));
+	h_A_vals_prevfit->SetBinContent(ip+1, fFCN->get_A_prevfit(ip) + x(i));
       }
       else if(i>=n_parameters/3 && i<2*n_parameters/3){
 	h_e_vals_fit->SetBinContent(ip+1, x(i));
@@ -635,6 +667,7 @@ int main(int argc, char* argv[])
 	h_ein_vals_fit->SetBinContent(ip+1, xin(i));
 	h_ein_vals_fit->SetBinError(ip+1, xinErr(i));
 	h_ein_vals_nom->SetBinContent(ip+1, fFCN->get_true_params(i, false));
+	h_e_vals_prevfit->SetBinContent(ip+1, fFCN->get_e_prevfit(ip) + x(i));
       }
       else{
 	h_M_vals_fit->SetBinContent(ip+1, x(i));
@@ -643,6 +676,7 @@ int main(int argc, char* argv[])
 	h_Min_vals_fit->SetBinContent(ip+1, xin(i));
 	h_Min_vals_fit->SetBinError(ip+1, xinErr(i));
 	h_Min_vals_nom->SetBinContent(ip+1, fFCN->get_true_params(i, false));
+	h_M_vals_prevfit->SetBinContent(ip+1, fFCN->get_M_prevfit(ip) + x(i));
       }
       //cout << "Param " << i << ": " << x(i) << " +/- " << xErr(i) << ". True value is " << fFCN->get_true_params(i, true) << endl;
     }
@@ -765,6 +799,9 @@ int main(int argc, char* argv[])
   h_A_vals_fit->Write();
   h_e_vals_fit->Write();
   h_M_vals_fit->Write();
+  h_A_vals_prevfit->Write();
+  h_e_vals_prevfit->Write();
+  h_M_vals_prevfit->Write();
   h_Ain_vals_fit->Write();
   h_ein_vals_fit->Write();
   h_Min_vals_fit->Write();
