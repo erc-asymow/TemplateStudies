@@ -58,5 +58,8 @@ toy: toy.cpp
 massfit: massfit.cpp
 	$(GCC) $(CXXFLAGS) -o $(BINDIR)/massfit massfit.cpp  
 
+resolfit: resolfit.cpp
+	$(GCC) $(CXXFLAGS) -o $(BINDIR)/resolfit resolfit.cpp  
+
 massscales: massscales.cpp
 	$(GCC) $(CXXFLAGS) -o $(BINDIR)/massscales massscales.cpp  

@@ -38,22 +38,25 @@ using ROOT::RDF::RNode;
 
 using namespace boost::program_options;
 
-constexpr double MZ = 91.;
-constexpr double GW = 2.5;
-
-
 class TheoryFcn : public FCNGradientBase {
 //class TheoryFcn : public FCNBase {
 
 public:
-  TheoryFcn(const int& debug, const int& seed, const int& bias, string fname)
-    : errorDef_(1.0), debug_(debug), seed_(seed), bias_(bias)
+  TheoryFcn(const int& debug, const int& seed, const int& bias, string fname, double maxSigmaErr)
+    : errorDef_(1.0), debug_(debug), seed_(seed), bias_(bias), maxSigmaErr_(maxSigmaErr)
   {
 
     ran_ = new TRandom3(seed);
 
     if( bias==-1 ){
       TFile* fin = TFile::Open(fname.c_str(), "READ");
+      if(fin==0){
+	cout << "No file!" << endl;
+ 	return;
+      }
+      else{
+	cout << string(fin->GetName()) << " found!" << endl;
+      }
       TH1F* h_pt_edges = (TH1F*)fin->Get("h_pt_edges");
       TH1F* h_eta_edges = (TH1F*)fin->Get("h_eta_edges");
       unsigned int pt_edges_size  = h_pt_edges->GetXaxis()->GetNbins()+1;
@@ -68,6 +71,7 @@ public:
       for(unsigned int i=0; i<h_eta_edges->GetXaxis()->GetNbins(); i++)
 	eta_edges_.push_back( h_eta_edges->GetXaxis()->GetBinLowEdge(i+1) );
       eta_edges_.push_back( h_eta_edges->GetXaxis()->GetBinUpEdge( h_eta_edges->GetXaxis()->GetNbins() ));
+      fin->Close();
     }
     else{
       pt_edges_  = {25, 30, 35, 40, 45, 55}; 
@@ -82,7 +86,7 @@ public:
     n_pt_bins_  = pt_edges_.size()-1;
     n_eta_bins_ = eta_edges_.size()-1;
 
-    n_pars_ = 3*n_eta_bins_;
+    n_pars_ = 2*n_eta_bins_;
     
     for(unsigned int i = 0; i < pt_edges_.size(); i++){
       k_edges_.emplace_back(1./pt_edges_[i]);
@@ -95,112 +99,97 @@ public:
     n_data_ = n_eta_bins_*n_eta_bins_*n_pt_bins_*n_pt_bins_;
     n_dof_ = 0;
     
-    scales2_.reserve(n_data_);
-    scales2Err_.reserve(n_data_);
+    sigmas2_.reserve(n_data_);
+    sigmas2Err_.reserve(n_data_);
+    resols2_.reserve(n_data_/2);
     masks_.reserve(n_data_);
     for(unsigned int idata = 0; idata<n_data_; idata++){
-      scales2_.push_back( 0.0 );
-      scales2Err_.push_back( 0.0 );
+      sigmas2_.push_back( 0.0 );
+      sigmas2Err_.push_back( 0.0 );
       masks_.push_back(1);
+    }
+    for(unsigned int idata = 0; idata<n_data_/2; idata++){
+      resols2_.push_back(1.0e-04);
     }
 
     x_vals_ = VectorXd(n_pars_);
-    A_vals_ = VectorXd(n_eta_bins_);
-    e_vals_ = VectorXd(n_eta_bins_);
-    M_vals_ = VectorXd(n_eta_bins_);
-    A_vals_prevfit_ = VectorXd(n_eta_bins_);
-    e_vals_prevfit_ = VectorXd(n_eta_bins_);
-    M_vals_prevfit_ = VectorXd(n_eta_bins_);
+    c_vals_ = VectorXd(n_eta_bins_);
+    d_vals_ = VectorXd(n_eta_bins_);
+   
     for(unsigned int i=0; i<n_eta_bins_; i++){
-      A_vals_(i) = 0.0;
-      e_vals_(i) = 0.0;
-      M_vals_(i) = 0.0;
-      A_vals_prevfit_(i) = 0.0;
-      e_vals_prevfit_(i) = 0.0;
-      M_vals_prevfit_(i) = 0.0;
+      c_vals_(i) = 0.0;
+      d_vals_(i) = 0.0;
     }
     for(unsigned int i=0; i<n_pars_; i++){
       x_vals_(i) = 0.0;
     }
 
     if(bias_>0){
-      // bias for A out
+      // bias for c out
       for(unsigned int i=0; i<n_eta_bins_; i++){
-	double val = ran_->Uniform(-0.001, 0.001);
+	double val = ran_->Uniform(-0.01, 0.01);
 	if(bias_==2){
 	  double mid_point = double(n_eta_bins_)*0.5;
-	  val = (i-mid_point)*(i-mid_point)/mid_point/mid_point*0.001;
+	  val = (i-mid_point)*(i-mid_point)/mid_point/mid_point*0.01;
 	}
-	A_vals_(i) = val;
+	c_vals_(i) = val;
 	x_vals_(i) = val;
       }
-      // bias for e out
+      // bias for d out
       for(unsigned int i=0; i<n_eta_bins_; i++){
-	double val = ran_->Uniform(-0.0001/kmean_val_, 0.0001/kmean_val_);
+	double val = ran_->Uniform(-0.01/kmean_val_, 0.01/kmean_val_);
 	if(bias_==2){
 	  double mid_point = double(n_eta_bins_)*0.5;
-	  val = -(i-mid_point)*(i-mid_point)/mid_point/mid_point*0.0001;
+	  val = -(i-mid_point)*(i-mid_point)/mid_point/mid_point*0.01;
 	}
-	e_vals_(i) = val;
+	d_vals_(i) = val;
 	x_vals_(i+n_eta_bins_) = val;
       }
-      // bias for M out
-      for(unsigned int i=0; i<n_eta_bins_; i++){
-	double val = ran_->Uniform(-0.001*kmean_val_, 0.001*kmean_val_);
-	if(bias_==2){
-	  double mid_point = double(n_eta_bins_)*0.5;
-	  val = (i-mid_point)/mid_point*0.001;
-	}
-	M_vals_(i) = val;
-	x_vals_(i+2*n_eta_bins_) = val;
-      }            
     }
 
     else if(bias==-1){
       TFile* fin = TFile::Open(fname.c_str(), "READ");
-      TH1D* h_scales = (TH1D*)fin->Get("h_scales");
+      TH1D* h_widths = (TH1D*)fin->Get("h_widths");
       TH1D* h_masks = (TH1D*)fin->Get("h_masks");
-      assert( h_scales->GetXaxis()->GetNbins() == n_data_);
+      assert( h_widths->GetXaxis()->GetNbins() == n_data_);
 
       unsigned int n_unmasked_bins = 0;  
-      for(unsigned int ibin=0;ibin<h_scales->GetXaxis()->GetNbins(); ibin++){
-	scales2_[ibin]    = h_scales->GetBinContent(ibin+1)*h_scales->GetBinContent(ibin+1);
-	scales2Err_[ibin] = 2*TMath::Abs(h_scales->GetBinContent(ibin+1))*h_scales->GetBinError(ibin+1);
-	masks_[ibin] = h_masks->GetBinContent(ibin+1);
+      for(unsigned int ibin=0;ibin<h_widths->GetXaxis()->GetNbins(); ibin++){
+	sigmas2_[ibin]    = h_widths->GetBinContent(ibin+1)*h_widths->GetBinContent(ibin+1);
+	sigmas2Err_[ibin] = 2*TMath::Abs(h_widths->GetBinContent(ibin+1))*h_widths->GetBinError(ibin+1);
+	masks_[ibin]      = h_masks->GetBinContent(ibin+1);
+	if( h_widths->GetBinError(ibin+1)>maxSigmaErr_ ) masks_[ibin] = 0;
 	if( masks_[ibin]>0.5 ) n_unmasked_bins++;
       }
 
       n_dof_ = n_unmasked_bins - n_pars_;
       n_data_ = n_unmasked_bins;
 	
-      TH1D* h_A_vals = (TH1D*)fin->Get("h_A_vals_nom");
-      TH1D* h_e_vals = (TH1D*)fin->Get("h_e_vals_nom");
-      TH1D* h_M_vals = (TH1D*)fin->Get("h_M_vals_nom");
-
-      TH1D* h_A_vals_prevfit = (TH1D*)fin->Get("h_A_vals_prevfit");
-      TH1D* h_e_vals_prevfit = (TH1D*)fin->Get("h_e_vals_prevfit");
-      TH1D* h_M_vals_prevfit = (TH1D*)fin->Get("h_M_vals_prevfit");
-      
-      assert( h_A_vals->GetXaxis()->GetNbins() == n_eta_bins_ );
-      assert( h_e_vals->GetXaxis()->GetNbins() == n_eta_bins_ );
-      assert( h_M_vals->GetXaxis()->GetNbins() == n_eta_bins_ );
-	
-      for(unsigned int i=0; i<n_eta_bins_; i++){
-	A_vals_(i) = -h_A_vals->GetBinContent(i+1);
-	A_vals_prevfit_(i) = -h_A_vals_prevfit->GetBinContent(i+1);
-	x_vals_(i) = A_vals_(i);
-      }
-      for(unsigned int i=0; i<n_eta_bins_; i++){
-	e_vals_(i) = -h_e_vals->GetBinContent(i+1);
-	e_vals_prevfit_(i) = -h_e_vals_prevfit->GetBinContent(i+1);
-	x_vals_(i+n_eta_bins_) = e_vals_(i);
-      }
-      for(unsigned int i=0; i<n_eta_bins_; i++){
-	M_vals_(i) = -h_M_vals->GetBinContent(i+1);
-	M_vals_prevfit_(i) = -h_M_vals_prevfit->GetBinContent(i+1);
-	x_vals_(i+2*n_eta_bins_) = M_vals_(i);
-      }
       fin->Close();
+
+      TFile* faux = TFile::Open("./root/coefficients2016ptfrom20forscaleptfrom20to70forres.root", "READ");
+      if(faux!=0){
+	TH1D* histobudget = (TH1D*)faux->Get("histobudget");
+	TH1D* histohitres = (TH1D*)faux->Get("histohitres");
+	for(unsigned int ieta=0; ieta<n_eta_bins_; ieta++){
+	  double eta = 0.5*(eta_edges_[ieta]+eta_edges_[ieta+1]);
+ 	  int eta_bin = histobudget->FindBin(eta);
+	  if(eta_bin<1)
+	    eta_bin = 1;
+	  else if(eta_bin>histobudget->GetNbinsX())
+	    eta_bin = histobudget->GetNbinsX();
+	  for(unsigned int ipt=0; ipt<n_pt_bins_; ipt++){	    
+	    double k = kmean_vals_[ipt];
+	    double budget = histobudget->GetBinContent( eta_bin );
+	    double hitres = histohitres->GetBinContent( eta_bin );
+	    double budget2 = budget*budget;
+	    double hitres2 = hitres*hitres;
+	    double out =  budget2 + hitres2/k/k ;
+	    resols2_[ieta*n_pt_bins_ + ipt] = out;
+	  }
+	}
+	faux->Close();
+      }      
     }
     
     // generate initial set of data points;
@@ -212,18 +201,15 @@ public:
     U_ = MatrixXd(n_pars_,n_pars_);
     for(unsigned int i=0; i<n_pars_; i++){
       for(unsigned int j=0; j<n_pars_; j++){
-	// block(A,A)
+	// block(c,c)
 	if(i<n_eta_bins_ && j<n_eta_bins_)
 	  U_(i,j) = i==j ? 1.0 : 0.0;
-	// block(A,e)
-	else if(i<n_eta_bins_ && (j>=n_eta_bins_ && j<2*n_eta_bins_) )
+	// block(c,d)
+	else if(i<n_eta_bins_ && j>=n_eta_bins_ )
 	  U_(i,j) = i==(j-n_eta_bins_) ? kmean_val_ : 0.0;
-	// block(e,e)
-	else if(i>=n_eta_bins_ && i<2*n_eta_bins_ && j>=n_eta_bins_ && j<2*n_eta_bins_)
+	// block(d,d)
+	else if(i>=n_eta_bins_  && j>=n_eta_bins_ )
 	  U_(i,j) = i==j ? kmean_val_ : 0.0;
-	// block(M,M)
-	else if(i>=2*n_eta_bins_  && j>=2*n_eta_bins_)
-	  U_(i,j) = i==j ? 1.0/kmean_val_ : 0.0;
 	else U_(i,j) = 0.0;
       }
     }
@@ -244,17 +230,6 @@ public:
       return (U_*x_vals_)(i);
   }
 
-  double get_A_prevfit(const unsigned int& i){
-    return A_vals_prevfit_(i);
-  }
-  double get_e_prevfit(const unsigned int& i){
-    return e_vals_prevfit_(i);
-  }
-  double get_M_prevfit(const unsigned int& i){
-    return M_vals_prevfit_(i);
-  }
-
-
   unsigned int get_n_params(){ return n_pars_;}
   unsigned int get_n_data(){ return n_data_;}
   unsigned int get_n_dof(){ return n_dof_;} 
@@ -272,19 +247,16 @@ public:
 
 private:
 
-  vector<double> scales2_;
-  vector<double> scales2Err_;
+  vector<double> sigmas2_;
+  vector<double> sigmas2Err_;
+  vector<double> resols2_;
   vector<int> masks_;
   vector<float> pt_edges_;
   vector<double> k_edges_;
   vector<double> kmean_vals_;
-  VectorXd A_vals_;
-  VectorXd e_vals_;
-  VectorXd M_vals_;
+  VectorXd c_vals_;
+  VectorXd d_vals_;
   VectorXd x_vals_;
-  VectorXd A_vals_prevfit_;
-  VectorXd e_vals_prevfit_;
-  VectorXd M_vals_prevfit_;
   double kmean_val_;
   vector<float> eta_edges_;
   unsigned int n_pt_bins_;
@@ -296,6 +268,7 @@ private:
   int seed_;
   int bias_;
   double errorDef_;
+  double maxSigmaErr_;
   MatrixXd U_;
   TRandom3* ran_;
 };
@@ -310,25 +283,18 @@ void TheoryFcn::generate_data(){
       for(unsigned int ieta_m = 0; ieta_m<n_eta_bins_; ieta_m++){
 	for(unsigned int ipt_m = 0; ipt_m<n_pt_bins_; ipt_m++){
 	  double k_m = kmean_vals_[ipt_m];
-
-	  // was 0.001
-	  double ierr2_nom = 0.0001*(1+double(ieta_p)/n_eta_bins_)*(1+double(ieta_m)/n_eta_bins_);
-
-	  //*(2-0.1*double(ipt_p)/n_pt_bins_)*(2-0.1*double(ipt_m)/n_pt_bins_);
-	  double ierr2 = ran_->Gaus(ierr2_nom,  ierr2_nom*0.1);
+	  double ierr2_nom = 0.02;
+	  double ierr2 = ran_->Gaus(ierr2_nom,  ierr2_nom*0.05);
 	  while(ierr2<=0.){
-	    ierr2 = ran_->Gaus(ierr2_nom,  ierr2_nom*0.1);
-	  }
-	  
-	  double iscale2_bias =
-	    (1.0 + A_vals_(ieta_p) + e_vals_(ieta_p)*k_p - M_vals_(ieta_p)/k_p)*
-	    (1.0 + A_vals_(ieta_m) + e_vals_(ieta_m)*k_m + M_vals_(ieta_m)/k_m);
-	  double iscale2 = ran_->Gaus(iscale2_bias, ierr2);
-
-	  //if(ibin<3) cout << iscale2 << endl;
-	  scales2_[ibin]    = iscale2 ;
-	  scales2Err_[ibin] =  ierr2 ;
-	  double dchi2 = (scales2_[ibin]-1.0)/scales2Err_[ibin];
+	    ierr2 = ran_->Gaus(ierr2_nom,  ierr2_nom*0.05);
+	  }	  
+	  double fp = resols2_[ieta_p*n_pt_bins_ + ipt_p]/(resols2_[ieta_p*n_pt_bins_ + ipt_p]+resols2_[ieta_m*n_pt_bins_ + ipt_m]);
+	  double fm = 1.0 - fp;
+	  double isigma2_bias = 1.0 +  fp*( c_vals_(ieta_p) + d_vals_(ieta_p)*k_p ) + fm*( c_vals_(ieta_m) + d_vals_(ieta_m)*k_m );
+	  double isigma2 = ran_->Gaus(isigma2_bias, ierr2);
+	  sigmas2_[ibin] = isigma2 ;
+	  sigmas2Err_[ibin] = ierr2 ;
+	  double dchi2 = (sigmas2_[ibin]-1.0)/sigmas2Err_[ibin];
 	  //cout << dchi2*dchi2 << endl;
 	  chi2_start += dchi2*dchi2 ;
 	  ibin++;
@@ -336,7 +302,7 @@ void TheoryFcn::generate_data(){
       }
     }
   }
-  cout << "Inistial chi2 = " << chi2_start << " / " << n_data_ << " ndof has prob " << TMath::Prob(chi2_start, n_data_ ) <<  endl;
+  cout << "Initial chi2 = " << chi2_start << " / " << n_data_ << " ndof has prob " << TMath::Prob(chi2_start, n_data_ ) <<  endl;
   return;
 }
 
@@ -347,20 +313,19 @@ double TheoryFcn::operator()(const vector<double>& par) const {
 
   unsigned int ibin = 0;
   for(unsigned int ieta_p = 0; ieta_p < n_eta_bins_; ieta_p++){
-    double A_p = par[ieta_p];
-    double e_p = par[ieta_p+n_eta_bins_];
-    double M_p = par[ieta_p+2*n_eta_bins_]; 
+    double c_p = par[ieta_p];
+    double d_p = par[ieta_p+n_eta_bins_];
     for(unsigned int ipt_p = 0; ipt_p < n_pt_bins_; ipt_p++){   
       double k_p = kmean_vals_[ipt_p];
-      double p_term = (1.0 + A_p + e_p*(k_p-kmean_val_)/kmean_val_ - M_p/k_p*kmean_val_ );
       for(unsigned int ieta_m = 0; ieta_m < n_eta_bins_; ieta_m++){
-	double A_m = par[ieta_m];
-	double e_m = par[ieta_m+n_eta_bins_];
-	double M_m = par[ieta_m+2*n_eta_bins_];
+	double c_m = par[ieta_m];
+	double d_m = par[ieta_m+n_eta_bins_];
 	for(unsigned int ipt_m = 0; ipt_m < n_pt_bins_; ipt_m++){	  
 	  double k_m = kmean_vals_[ipt_m];
-	  double m_term = (1.0 + A_m + e_m*(k_m-kmean_val_)/kmean_val_ + M_m/k_m*kmean_val_);
-	  double ival = (scales2_[ibin] - p_term*m_term)/scales2Err_[ibin];
+	  double fp = resols2_[ieta_p*n_pt_bins_ + ipt_p]/(resols2_[ieta_p*n_pt_bins_ + ipt_p]+resols2_[ieta_m*n_pt_bins_ + ipt_m]);
+	  double fm = 1.0 - fp;
+	  double term = 1.0 +  fp*( c_p + d_p*(k_p-kmean_val_)/kmean_val_ ) + fm*( c_m + d_m*(k_m-kmean_val_)/kmean_val_ );
+	  double ival = (sigmas2_[ibin] - term)/sigmas2Err_[ibin];
 	  double ival2 = ival*ival;
 	  if(masks_[ibin])
 	    val += ival2;
@@ -392,52 +357,35 @@ vector<double> TheoryFcn::Gradient(const vector<double> &par ) const {
     double grad_i = 0.0;    
     unsigned int ibin = 0;
     for(unsigned int ieta_p = 0; ieta_p < n_eta_bins_; ieta_p++){
-      double A_p = par[ieta_p];
-      double e_p = par[ieta_p+n_eta_bins_];
-      double M_p = par[ieta_p+2*n_eta_bins_]; 
+      double c_p = par[ieta_p];
+      double d_p = par[ieta_p+n_eta_bins_];
       for(unsigned int ipt_p = 0; ipt_p < n_pt_bins_; ipt_p++){   
-	double k_p = kmean_vals_[ipt_p];
-	double p_term = 0.;
-	if(ieta_p != ieta) p_term = (1.0 + A_p + e_p*(k_p-kmean_val_)/kmean_val_ - M_p/k_p*kmean_val_);
-	else{
-	  if(par_type==0)       p_term = 1.0;
-	  else if( par_type==1) p_term = (k_p-kmean_val_)/kmean_val_;
-	  else                  p_term = -1./k_p*kmean_val_;
-	}
+	double k_p = kmean_vals_[ipt_p];       	
 	for(unsigned int ieta_m = 0; ieta_m < n_eta_bins_; ieta_m++){
-	  double A_m = par[ieta_m];
-	  double e_m = par[ieta_m+n_eta_bins_];
-	  double M_m = par[ieta_m+2*n_eta_bins_];
+	  double c_m = par[ieta_m];
+	  double d_m = par[ieta_m+n_eta_bins_];
 	  for(unsigned int ipt_m = 0; ipt_m < n_pt_bins_; ipt_m++){	  
 	    double k_m = kmean_vals_[ipt_m];
-	    double m_term = 0.;
-	    if(ieta_m != ieta) m_term = (1.0 + A_m + e_m*(k_m-kmean_val_)/kmean_val_ + M_m/k_m*kmean_val_);
-	    else{
-	      if(par_type==0)       m_term = 1.0;
-	      else if( par_type==1) m_term = (k_m-kmean_val_)/kmean_val_;
-	      else                  m_term = +1./k_m*kmean_val_;
-	    }
-	    double ival = -2*(scales2_[ibin] - (1.0 + A_p + e_p*(k_p-kmean_val_)/kmean_val_ - M_p/k_p*kmean_val_)*
-			      (1.0 + A_m + e_m*(k_m-kmean_val_)/kmean_val_ + M_m/k_m*kmean_val_))
-	      /scales2Err_[ibin]/scales2Err_[ibin];
 
-	    double term = 0.0;
-	    if(ieta_p==ieta || ieta_m==ieta){
-	      if(ieta_p!=ieta_m) term = p_term*m_term;
-	      else{
-		if(par_type==0)
-		  term = 1.0*(1.0 + A_m + e_m*(k_m-kmean_val_)/kmean_val_ + M_m/k_m*kmean_val_) +
-		    (1.0 + A_p + e_p*(k_p-kmean_val_)/kmean_val_ - M_p/k_p*kmean_val_)*1.0;
-		else if(par_type==1)
-		  term = (k_p-kmean_val_)/kmean_val_ * (1.0 + A_m + e_m*(k_m-kmean_val_)/kmean_val_ + M_m/k_m*kmean_val_) +
-		    (1.0 + A_p + e_p*(k_p-kmean_val_)/kmean_val_ - M_p/k_p*kmean_val_) * (k_m-kmean_val_)/kmean_val_;
-		else
-		  term = -1.0/k_p*kmean_val_ * (1.0 + A_m + e_m*(k_m-kmean_val_)/kmean_val_ + M_m/k_m*kmean_val_) +
-		    (1.0 + A_p + e_p*(k_p-kmean_val_)/kmean_val_ - M_p/k_p*kmean_val_) * 1.0/k_m*kmean_val_;
+	    double fp = resols2_[ieta_p*n_pt_bins_ + ipt_p]/(resols2_[ieta_p*n_pt_bins_ + ipt_p] + resols2_[ieta_m*n_pt_bins_ + ipt_m]);
+	    double fm = 1.0 - fp;
+
+	    double ig = 0.0;
+	    if( ieta == ieta_p || ieta == ieta_m ){
+	      double term = 1.0 +  fp*( c_p + d_p*(k_p-kmean_val_)/kmean_val_ ) + fm*( c_m + d_m*(k_m-kmean_val_)/kmean_val_ );
+	      ig = -2*(sigmas2_[ibin] - term)/sigmas2Err_[ibin]/sigmas2Err_[ibin];
+	      double p_term = 0.;
+	      double m_term = 0.;
+	      if(par_type==0){
+		p_term = fp;
+		m_term = fm;
 	      }
+	      else{
+		p_term = fp*(k_p-kmean_val_)/kmean_val_;
+		m_term = fm*(k_m-kmean_val_)/kmean_val_;
+	      }
+	      ig *= (p_term*( ieta == ieta_p ) + m_term*( ieta == ieta_m ) );
 	    }
-	    //cout << "ival " << ival << "," << term << endl; 
-	    double ig = ival*term;
 	    ig /= n_dof_;
 	    //cout << "ibin " << ibin << " += " << ig << endl;
 	    if(masks_[ibin])
@@ -476,6 +424,7 @@ int main(int argc, char* argv[])
 	("tag",         value<std::string>()->default_value("closure"), "run type")
 	("run",         value<std::string>()->default_value("closure"), "run type")
 	("bias",        value<int>()->default_value(0), "bias")
+	("maxSigmaErr", value<double>()->default_value(0.2), "maxSigmaErr")
 	("infile",      value<std::string>()->default_value("massscales"), "run type")
 	("seed",        value<int>()->default_value(4357), "seed");
 
@@ -501,8 +450,9 @@ int main(int argc, char* argv[])
   std::string run = vm["run"].as<std::string>();
   int bias        = vm["bias"].as<int>();
   int seed        = vm["seed"].as<int>();
-
-  TFile* fout = TFile::Open(("./massfit_"+tag+"_"+run+".root").c_str(), "RECREATE");
+  double maxSigmaErr = vm["maxSigmaErr"].as<double>();
+  
+  TFile* fout = TFile::Open(("./resolfit_"+tag+"_"+run+".root").c_str(), "RECREATE");
   TTree* tree = new TTree("tree", "tree");
 
   double edm, fmin, prob;
@@ -517,7 +467,7 @@ int main(int argc, char* argv[])
 
   int debug = 0;
   string infname = infile+"_"+tag+"_"+run+".root";
-  TheoryFcn* fFCN = new TheoryFcn(debug, seed, bias, infname);  
+  TheoryFcn* fFCN = new TheoryFcn(debug, seed, bias, infname, maxSigmaErr);  
   fFCN->SetErrorDef(1.0 / fFCN->get_n_dof());
   unsigned int n_parameters = fFCN->get_n_params();
   MatrixXd U(n_parameters,n_parameters);
@@ -535,49 +485,33 @@ int main(int argc, char* argv[])
   vector<double> tparOut(n_parameters);
   vector<double> tparOutErr(n_parameters);
 
-  for (int i=0; i<n_parameters/3; i++){
-    tree->Branch(Form("A%d",i),       &tparOut[i],    Form("A%d/D",i));
-    tree->Branch(Form("A%d_true",i),  &tparOut0[i],   Form("A%d_true/D",i));
-    tree->Branch(Form("A%d_err",i),   &tparOutErr[i], Form("A%d_err/D",i));
-    tree->Branch(Form("A%d_in",i),    &tparIn[i],    Form("A%d_in/D",i));
-    tree->Branch(Form("A%d_intrue",i),&tparIn0[i],    Form("A%d_intrue/D",i));
-    tree->Branch(Form("A%d_inerr",i), &tparInErr[i], Form("A%d_inerr/D",i));
+  for (int i=0; i<n_parameters/2; i++){
+    tree->Branch(Form("c%d",i),       &tparOut[i],    Form("c%d/D",i));
+    tree->Branch(Form("c%d_true",i),  &tparOut0[i],   Form("c%d_true/D",i));
+    tree->Branch(Form("c%d_err",i),   &tparOutErr[i], Form("c%d_err/D",i));
+    tree->Branch(Form("c%d_in",i),    &tparIn[i],    Form("c%d_in/D",i));
+    tree->Branch(Form("c%d_intrue",i),&tparIn0[i],    Form("c%d_intrue/D",i));
+    tree->Branch(Form("c%d_inerr",i), &tparInErr[i], Form("c%d_inerr/D",i));
   }
-  for (int i=0; i<n_parameters/3; i++){
-    tree->Branch(Form("e%d",i),        &tparOut[i+n_parameters/3],    Form("e%d/D",i));
-    tree->Branch(Form("e%d_true",i),   &tparOut0[i+n_parameters/3],   Form("e%d_true/D",i));
-    tree->Branch(Form("e%d_err",i),    &tparOutErr[i+n_parameters/3], Form("e%d_err/D",i));
-    tree->Branch(Form("e%d_in",i),     &tparIn[i+n_parameters/3],     Form("e%d_in/D",i));
-    tree->Branch(Form("e%d_intrue",i), &tparIn0[i+n_parameters/3],    Form("e%d_intrue/D",i));
-    tree->Branch(Form("e%d_inerr",i),  &tparInErr[i+n_parameters/3],  Form("e%d_inerr/D",i));
-  }
-  for (int i=0; i<n_parameters/3; i++){
-    tree->Branch(Form("M%d",i),        &tparOut[i+2*n_parameters/3],    Form("M%d/D",i));
-    tree->Branch(Form("M%d_true",i),   &tparOut0[i+2*n_parameters/3],   Form("M%d_true/D",i));
-    tree->Branch(Form("M%d_err",i),    &tparOutErr[i+2*n_parameters/3], Form("M%d_err/D",i));
-    tree->Branch(Form("M%d_in",i),     &tparIn[i+2*n_parameters/3],     Form("M%d_in/D",i));
-    tree->Branch(Form("M%d_intrue",i), &tparIn0[i+2*n_parameters/3],    Form("M%d_in/D",i));
-    tree->Branch(Form("M%d_inerr",i),  &tparInErr[i+2*n_parameters/3],  Form("M%d_inerr/D",i));
+  for (int i=0; i<n_parameters/2; i++){
+    tree->Branch(Form("d%d",i),        &tparOut[i+n_parameters/2],    Form("d%d/D",i));
+    tree->Branch(Form("d%d_true",i),   &tparOut0[i+n_parameters/2],   Form("d%d_true/D",i));
+    tree->Branch(Form("d%d_err",i),    &tparOutErr[i+n_parameters/2], Form("d%d_err/D",i));
+    tree->Branch(Form("d%d_in",i),     &tparIn[i+n_parameters/2],     Form("d%d_in/D",i));
+    tree->Branch(Form("d%d_intrue",i), &tparIn0[i+n_parameters/2],    Form("d%d_intrue/D",i));
+    tree->Branch(Form("d%d_inerr",i),  &tparInErr[i+n_parameters/2],  Form("d%d_inerr/D",i));
   }
 
-  TH1D* h_A_vals_nom  = new TH1D("h_A_vals_nom", "A nominal", n_parameters/3, 0, n_parameters/3);
-  TH1D* h_e_vals_nom  = new TH1D("h_e_vals_nom", "e nominal", n_parameters/3, 0, n_parameters/3);
-  TH1D* h_M_vals_nom  = new TH1D("h_M_vals_nom", "M nominal", n_parameters/3, 0, n_parameters/3);
-  TH1D* h_Ain_vals_nom  = new TH1D("h_Ain_vals_nom", "(A+e#bar{k})", n_parameters/3, 0, n_parameters/3);
-  TH1D* h_ein_vals_nom  = new TH1D("h_ein_vals_nom", "e/#bar{k} nominal", n_parameters/3, 0, n_parameters/3);
-  TH1D* h_Min_vals_nom  = new TH1D("h_Min_vals_nom", "M#bar{k} nominal", n_parameters/3, 0, n_parameters/3);
+  TH1D* h_c_vals_nom  = new TH1D("h_c_vals_nom", "c nominal", n_parameters/2, 0, n_parameters/2);
+  TH1D* h_d_vals_nom  = new TH1D("h_d_vals_nom", "d nominal", n_parameters/2, 0, n_parameters/2);
+  TH1D* h_cin_vals_nom  = new TH1D("h_cin_vals_nom", "(c+d#bar{k})", n_parameters/2, 0, n_parameters/2);
+  TH1D* h_din_vals_nom  = new TH1D("h_din_vals_nom", "d/#bar{k} nominal", n_parameters/2, 0, n_parameters/2);
 
-  TH1D* h_A_vals_fit  = new TH1D("h_A_vals_fit", "#hat{A}", n_parameters/3, 0, n_parameters/3);
-  TH1D* h_e_vals_fit  = new TH1D("h_e_vals_fit", "#hat{e}", n_parameters/3, 0, n_parameters/3);
-  TH1D* h_M_vals_fit  = new TH1D("h_M_vals_fit", "#hat{M}", n_parameters/3, 0, n_parameters/3);
-  TH1D* h_Ain_vals_fit  = new TH1D("h_Ain_vals_fit", "(#hat{A}+#hat{e}#bar{k})", n_parameters/3, 0, n_parameters/3);
-  TH1D* h_ein_vals_fit  = new TH1D("h_ein_vals_fit", "#hat{e}/#bar{k}", n_parameters/3, 0, n_parameters/3);
-  TH1D* h_Min_vals_fit  = new TH1D("h_Min_vals_fit", "#hat{M}#bar{k}", n_parameters/3, 0, n_parameters/3);
+  TH1D* h_c_vals_fit  = new TH1D("h_c_vals_fit", "#hat{c}", n_parameters/2, 0, n_parameters/2);
+  TH1D* h_d_vals_fit  = new TH1D("h_d_vals_fit", "#hat{d}", n_parameters/2, 0, n_parameters/2);
+  TH1D* h_cin_vals_fit  = new TH1D("h_cin_vals_fit", "(#hat{c}+#hat{d}#bar{k})", n_parameters/2, 0, n_parameters/2);
+  TH1D* h_din_vals_fit  = new TH1D("h_din_vals_fit", "#hat{d}/#bar{k}", n_parameters/2, 0, n_parameters/2);
   
-  TH1D* h_A_vals_prevfit  = new TH1D("h_A_vals_prevfit", "#hat{A}", n_parameters/3, 0, n_parameters/3);
-  TH1D* h_e_vals_prevfit  = new TH1D("h_e_vals_prevfit", "#hat{e}", n_parameters/3, 0, n_parameters/3);
-  TH1D* h_M_vals_prevfit  = new TH1D("h_M_vals_prevfit", "#hat{M}", n_parameters/3, 0, n_parameters/3);
-
   unsigned int maxfcn(numeric_limits<unsigned int>::max());
   double tolerance(0.001);
   int verbosity = int(nevents<2); 
@@ -592,14 +526,11 @@ int main(int argc, char* argv[])
     
     MnUserParameters upar;
     double start=0.0, par_error=0.01;
-    for (int i=0; i<n_parameters/3; i++){
-      upar.Add(Form("A%d",i), start, par_error);
+    for (int i=0; i<n_parameters/2; i++){
+      upar.Add(Form("c%d",i), start, par_error);
     }
-    for (int i=0; i<n_parameters/3; i++){
-      upar.Add(Form("e%d",i), start, par_error);
-    }
-    for (int i=0; i<n_parameters/3; i++){
-      upar.Add(Form("M%d",i), start, par_error);      
+    for (int i=0; i<n_parameters/2; i++){
+      upar.Add(Form("d%d",i), start, par_error);
     }
 
     MnMigrad migrad(*fFCN, upar, 1);    
@@ -650,33 +581,22 @@ int main(int argc, char* argv[])
       tparOut[i]    = x(i);
       tparOut0[i]   = fFCN->get_true_params(i, true) ;
       tparOutErr[i] = xErr(i);
-      int ip = i%(n_parameters/3);
-      if(i<n_parameters/3){
-	h_A_vals_fit->SetBinContent(ip+1, x(i));
-	h_A_vals_fit->SetBinError(ip+1, xErr(i));
-	h_A_vals_nom->SetBinContent(ip+1, fFCN->get_true_params(i, true));
-	h_Ain_vals_fit->SetBinContent(ip+1, xin(i));
-	h_Ain_vals_fit->SetBinError(ip+1, xinErr(i));
-	h_Ain_vals_nom->SetBinContent(ip+1, fFCN->get_true_params(i, false));
-	h_A_vals_prevfit->SetBinContent(ip+1, fFCN->get_A_prevfit(ip) + x(i));
-      }
-      else if(i>=n_parameters/3 && i<2*n_parameters/3){
-	h_e_vals_fit->SetBinContent(ip+1, x(i));
-	h_e_vals_fit->SetBinError(ip+1, xErr(i));
-	h_e_vals_nom->SetBinContent(ip+1, fFCN->get_true_params(i, true));
-	h_ein_vals_fit->SetBinContent(ip+1, xin(i));
-	h_ein_vals_fit->SetBinError(ip+1, xinErr(i));
-	h_ein_vals_nom->SetBinContent(ip+1, fFCN->get_true_params(i, false));
-	h_e_vals_prevfit->SetBinContent(ip+1, fFCN->get_e_prevfit(ip) + x(i));
+      int ip = i%(n_parameters/2);
+      if(i<n_parameters/2){
+	h_c_vals_fit->SetBinContent(ip+1, x(i));
+	h_c_vals_fit->SetBinError(ip+1, xErr(i));
+	h_c_vals_nom->SetBinContent(ip+1, fFCN->get_true_params(i, true));
+	h_cin_vals_fit->SetBinContent(ip+1, xin(i));
+	h_cin_vals_fit->SetBinError(ip+1, xinErr(i));
+	h_cin_vals_nom->SetBinContent(ip+1, fFCN->get_true_params(i, false));
       }
       else{
-	h_M_vals_fit->SetBinContent(ip+1, x(i));
-	h_M_vals_fit->SetBinError(ip+1, xErr(i));
-	h_M_vals_nom->SetBinContent(ip+1, fFCN->get_true_params(i, true));
-	h_Min_vals_fit->SetBinContent(ip+1, xin(i));
-	h_Min_vals_fit->SetBinError(ip+1, xinErr(i));
-	h_Min_vals_nom->SetBinContent(ip+1, fFCN->get_true_params(i, false));
-	h_M_vals_prevfit->SetBinContent(ip+1, fFCN->get_M_prevfit(ip) + x(i));
+	h_d_vals_fit->SetBinContent(ip+1, x(i));
+	h_d_vals_fit->SetBinError(ip+1, xErr(i));
+	h_d_vals_nom->SetBinContent(ip+1, fFCN->get_true_params(i, true));
+	h_din_vals_fit->SetBinContent(ip+1, xin(i));
+	h_din_vals_fit->SetBinError(ip+1, xinErr(i));
+	h_din_vals_nom->SetBinContent(ip+1, fFCN->get_true_params(i, false));
       }
       //cout << "Param " << i << ": " << x(i) << " +/- " << xErr(i) << ". True value is " << fFCN->get_true_params(i, true) << endl;
     }
@@ -745,32 +665,23 @@ int main(int argc, char* argv[])
   TH1D* hsigma = new TH1D("hsigma", "", n_parameters, 0, n_parameters);
   for (int i=0; i<n_parameters; i++){
     TH1D* h = new TH1D(Form("h%d", i), "", 100,-3,3);
-    int ip = i%(n_parameters/3);
-    if(i<n_parameters/3){
-      tree->Draw(Form("(A%d - A%d_true)/A%d_err>>h%d", ip, ip, ip, i), "", "");
-      hpulls->GetXaxis()->SetBinLabel(i+1, Form("A%d", ip));
-      h_A_vals_fit->GetXaxis()->SetBinLabel(ip+1, Form("A%d", ip));
-      h_Ain_vals_fit->GetXaxis()->SetBinLabel(ip+1, Form("Ain%d", ip));
-      h_A_vals_nom->GetXaxis()->SetBinLabel(ip+1, Form("A%d", ip));
-      h_Ain_vals_nom->GetXaxis()->SetBinLabel(ip+1, Form("Ain%d", ip));
-    }
-    else if(i>=n_parameters/3 && i<2*n_parameters/3){
-      tree->Draw(Form("(e%d - e%d_true)/e%d_err>>h%d", ip, ip, ip, i), "", "");
-      hpulls->GetXaxis()->SetBinLabel(i+1, Form("e%d", ip));
-      h_e_vals_fit->GetXaxis()->SetBinLabel(ip+1, Form("e%d", ip));
-      h_ein_vals_fit->GetXaxis()->SetBinLabel(ip+1, Form("ein%d", ip));
-      h_e_vals_nom->GetXaxis()->SetBinLabel(ip+1, Form("e%d", ip));
-      h_ein_vals_nom->GetXaxis()->SetBinLabel(ip+1, Form("ein%d", ip));
+    int ip = i%(n_parameters/2);
+    if(i<n_parameters/2){
+      tree->Draw(Form("(c%d - c%d_true)/c%d_err>>h%d", ip, ip, ip, i), "", "");
+      hpulls->GetXaxis()->SetBinLabel(i+1, Form("c%d", ip));
+      h_c_vals_fit->GetXaxis()->SetBinLabel(ip+1, Form("c%d", ip));
+      h_cin_vals_fit->GetXaxis()->SetBinLabel(ip+1, Form("cin%d", ip));
+      h_c_vals_nom->GetXaxis()->SetBinLabel(ip+1, Form("c%d", ip));
+      h_cin_vals_nom->GetXaxis()->SetBinLabel(ip+1, Form("cin%d", ip));
     }
     else{
-      tree->Draw(Form("(M%d - M%d_true)/M%d_err>>h%d", ip, ip, ip, i), "", "");
-      hpulls->GetXaxis()->SetBinLabel(i+1, Form("M%d", ip));
-      h_M_vals_fit->GetXaxis()->SetBinLabel(ip+1, Form("M%d", ip));
-      h_Min_vals_fit->GetXaxis()->SetBinLabel(ip+1, Form("Min%d", ip));
-      h_M_vals_nom->GetXaxis()->SetBinLabel(ip+1, Form("M%d", ip));
-      h_Min_vals_nom->GetXaxis()->SetBinLabel(ip+1, Form("Min%d", ip));
+      tree->Draw(Form("(d%d - d%d_true)/d%d_err>>h%d", ip, ip, ip, i), "", "");
+      hpulls->GetXaxis()->SetBinLabel(i+1, Form("d%d", ip));
+      h_d_vals_fit->GetXaxis()->SetBinLabel(ip+1, Form("d%d", ip));
+      h_din_vals_fit->GetXaxis()->SetBinLabel(ip+1, Form("din%d", ip));
+      h_d_vals_nom->GetXaxis()->SetBinLabel(ip+1, Form("d%d", ip));
+      h_din_vals_nom->GetXaxis()->SetBinLabel(ip+1, Form("din%d", ip));
     }
-    //cout << i << "-->" << h->GetMean() << endl;
     float pull_i = h->GetMean();
     float pull_i_err = 0.;
     float sigma_i = 0.;
@@ -796,21 +707,14 @@ int main(int argc, char* argv[])
   hpulls->Write();
   hsigma->Write();
 
-  h_A_vals_fit->Write();
-  h_e_vals_fit->Write();
-  h_M_vals_fit->Write();
-  h_A_vals_prevfit->Write();
-  h_e_vals_prevfit->Write();
-  h_M_vals_prevfit->Write();
-  h_Ain_vals_fit->Write();
-  h_ein_vals_fit->Write();
-  h_Min_vals_fit->Write();
-  h_A_vals_nom->Write();
-  h_e_vals_nom->Write();
-  h_M_vals_nom->Write();
-  h_Ain_vals_nom->Write();
-  h_ein_vals_nom->Write();
-  h_Min_vals_nom->Write();
+  h_c_vals_fit->Write();
+  h_d_vals_fit->Write();
+  h_cin_vals_fit->Write();
+  h_din_vals_fit->Write();
+  h_c_vals_nom->Write();
+  h_d_vals_nom->Write();
+  h_cin_vals_nom->Write();
+  h_din_vals_nom->Write();
   
   sw.Stop();
 
