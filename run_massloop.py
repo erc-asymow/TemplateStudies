@@ -21,7 +21,7 @@ if __name__ == '__main__':
         ' --tag='+args.tag+' '+\
         ' --run=Iter0 '+\
         ' --nRMSforGausFit=-1.0 '+\
-        ' --biasResolution=-1.0 ' +\
+        ' --biasResolution=0.1 ' +\
         ' --minNumEvents=100 --minNumEventsPerBin=30 '+\
         ' --minNumMassBins=4 '+\
         ' --rebin=2 '+\

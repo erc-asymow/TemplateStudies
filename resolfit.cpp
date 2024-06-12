@@ -115,10 +115,14 @@ public:
     x_vals_ = VectorXd(n_pars_);
     c_vals_ = VectorXd(n_eta_bins_);
     d_vals_ = VectorXd(n_eta_bins_);
-   
+    c_vals_prevfit_ = VectorXd(n_eta_bins_);
+    d_vals_prevfit_ = VectorXd(n_eta_bins_);
+       
     for(unsigned int i=0; i<n_eta_bins_; i++){
       c_vals_(i) = 0.0;
       d_vals_(i) = 0.0;
+      c_vals_prevfit_(i) = 0.0;
+      d_vals_prevfit_(i) = 0.0;
     }
     for(unsigned int i=0; i<n_pars_; i++){
       x_vals_(i) = 0.0;
@@ -164,7 +168,15 @@ public:
 
       n_dof_ = n_unmasked_bins - n_pars_;
       n_data_ = n_unmasked_bins;
-	
+
+      TH1D* h_c_vals_prevfit = (TH1D*)fin->Get("h_c_vals_prevfit");
+      TH1D* h_d_vals_prevfit = (TH1D*)fin->Get("h_d_vals_prevfit");
+
+      for(unsigned int i=0; i<n_eta_bins_; i++){
+	c_vals_prevfit_(i) = h_c_vals_prevfit->GetBinContent(i+1);
+	d_vals_prevfit_(i) = h_d_vals_prevfit->GetBinContent(i+1);
+      }
+      
       fin->Close();
 
       TFile* faux = TFile::Open("./root/coefficients2016ptfrom20forscaleptfrom20to70forres.root", "READ");
@@ -230,6 +242,13 @@ public:
       return (U_*x_vals_)(i);
   }
 
+  double get_c_prevfit(const unsigned int& i){
+    return c_vals_prevfit_(i);
+  }
+  double get_d_prevfit(const unsigned int& i){
+    return d_vals_prevfit_(i);
+  }
+
   unsigned int get_n_params(){ return n_pars_;}
   unsigned int get_n_data(){ return n_data_;}
   unsigned int get_n_dof(){ return n_dof_;} 
@@ -256,6 +275,8 @@ private:
   vector<double> kmean_vals_;
   VectorXd c_vals_;
   VectorXd d_vals_;
+  VectorXd c_vals_prevfit_;
+  VectorXd d_vals_prevfit_;
   VectorXd x_vals_;
   double kmean_val_;
   vector<float> eta_edges_;
@@ -512,7 +533,10 @@ int main(int argc, char* argv[])
   TH1D* h_d_vals_fit  = new TH1D("h_d_vals_fit", "#hat{d}", n_parameters/2, 0, n_parameters/2);
   TH1D* h_cin_vals_fit  = new TH1D("h_cin_vals_fit", "(#hat{c}+#hat{d}#bar{k})", n_parameters/2, 0, n_parameters/2);
   TH1D* h_din_vals_fit  = new TH1D("h_din_vals_fit", "#hat{d}/#bar{k}", n_parameters/2, 0, n_parameters/2);
-  
+
+  TH1D* h_c_vals_prevfit  = new TH1D("h_c_vals_prevfit", "#hat{c}", n_parameters/2, 0, n_parameters/2);
+  TH1D* h_d_vals_prevfit  = new TH1D("h_d_vals_prevfit", "#hat{d}", n_parameters/2, 0, n_parameters/2);
+
   unsigned int maxfcn(numeric_limits<unsigned int>::max());
   double tolerance(0.001);
   int verbosity = int(nevents<2); 
@@ -591,6 +615,7 @@ int main(int argc, char* argv[])
 	h_cin_vals_fit->SetBinContent(ip+1, xin(i));
 	h_cin_vals_fit->SetBinError(ip+1, xinErr(i));
 	h_cin_vals_nom->SetBinContent(ip+1, fFCN->get_true_params(i, false));
+	h_c_vals_prevfit->SetBinContent(ip+1, fFCN->get_c_prevfit(ip) + x(i));
       }
       else{
 	h_d_vals_fit->SetBinContent(ip+1, x(i));
@@ -599,6 +624,7 @@ int main(int argc, char* argv[])
 	h_din_vals_fit->SetBinContent(ip+1, xin(i));
 	h_din_vals_fit->SetBinError(ip+1, xinErr(i));
 	h_din_vals_nom->SetBinContent(ip+1, fFCN->get_true_params(i, false));
+	h_d_vals_prevfit->SetBinContent(ip+1, fFCN->get_d_prevfit(ip) + x(i));
       }
       //cout << "Param " << i << ": " << x(i) << " +/- " << xErr(i) << ". True value is " << fFCN->get_true_params(i, true) << endl;
     }
@@ -717,6 +743,8 @@ int main(int argc, char* argv[])
   h_d_vals_nom->Write();
   h_cin_vals_nom->Write();
   h_din_vals_nom->Write();
+  h_c_vals_prevfit->Write();
+  h_d_vals_prevfit->Write();
   
   sw.Stop();
 

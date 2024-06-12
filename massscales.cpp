@@ -141,6 +141,8 @@ int main(int argc, char* argv[])
   TH1F* h_A_vals_prevfit = new TH1F("h_A_vals_prevfit", "", n_eta_bins, 0, n_eta_bins );
   TH1F* h_e_vals_prevfit = new TH1F("h_e_vals_prevfit", "", n_eta_bins, 0, n_eta_bins );
   TH1F* h_M_vals_prevfit = new TH1F("h_M_vals_prevfit", "", n_eta_bins, 0, n_eta_bins );
+  TH1F* h_c_vals_prevfit = new TH1F("h_c_vals_prevfit", "", n_eta_bins, 0, n_eta_bins );
+  TH1F* h_d_vals_prevfit = new TH1F("h_d_vals_prevfit", "", n_eta_bins, 0, n_eta_bins );
   
   float kmean_val = 0.5*( 1./pt_edges[0] + 1./pt_edges[ pt_edges.size()-1] );
   VectorXd A_vals_nom( n_eta_bins );
@@ -161,6 +163,8 @@ int main(int argc, char* argv[])
     A_vals_nom(i) = val;
     h_A_vals_nom->SetBinContent(i+1, val);
     h_A_vals_prevfit->SetBinContent(i+1, 0.0);
+    h_c_vals_prevfit->SetBinContent(i+1, 0.0);
+    h_d_vals_prevfit->SetBinContent(i+1, 0.0);
     A_vals_fit(i) = 0.0;
   }
   // bias for e out
@@ -259,12 +263,16 @@ int main(int argc, char* argv[])
     TFile* ffit = TFile::Open(("./resolfit_"+tagSmearFit+"_"+runSmearFit+".root").c_str(), "READ");
     if(ffit!=0){    
       cout << "Using fit results from " <<  std::string(ffit->GetName()) << " as MC smear" << endl;
-      TH1D* h_c_vals_fit = (TH1D*)ffit->Get("h_c_vals_fit");
-      TH1D* h_d_vals_fit = (TH1D*)ffit->Get("h_d_vals_fit");      
+      TH1D* h_c_vals_prevfit_in = (TH1D*)ffit->Get("h_c_vals_prevfit");
+      TH1D* h_d_vals_prevfit_in = (TH1D*)ffit->Get("h_d_vals_prevfit");
+      //TH1D* h_c_vals_fit = (TH1D*)ffit->Get("h_c_vals_fit");
+      //TH1D* h_d_vals_fit = (TH1D*)ffit->Get("h_d_vals_fit");      
       for(unsigned int i=0; i<n_eta_bins; i++){
-	c_vals_fit(i) = h_c_vals_fit->GetBinContent(i+1);
-	d_vals_fit(i) = h_d_vals_fit->GetBinContent(i+1);
-      }      
+	c_vals_fit(i) = h_c_vals_prevfit_in->GetBinContent(i+1);
+	d_vals_fit(i) = h_d_vals_prevfit_in->GetBinContent(i+1);
+      }
+      h_c_vals_prevfit->Add(h_c_vals_prevfit_in, +1.0);
+      h_d_vals_prevfit->Add(h_d_vals_prevfit_in, +1.0);
       ffit->Close();
     }
     else{
@@ -635,6 +643,8 @@ int main(int argc, char* argv[])
       h_A_vals_prevfit->Write();
       h_e_vals_prevfit->Write();
       h_M_vals_prevfit->Write();
+      h_c_vals_prevfit->Write();
+      h_d_vals_prevfit->Write();
       
       for(unsigned int r = 0 ; r<recos.size(); r++){
 
