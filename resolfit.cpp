@@ -456,11 +456,12 @@ int main(int argc, char* argv[])
   TTree* tree = new TTree("tree", "tree");
 
   double edm, fmin, prob;
-  int isvalid, hasAccurateCovar, hasPosDefCovar;
+  int isvalid, hasAccurateCovar, hasPosDefCovar, ndof;
   tree->Branch("edm", &edm, "edm/D");
   tree->Branch("fmin", &fmin, "fmin/D");
   tree->Branch("prob", &prob, "prob/D");
   tree->Branch("isvalid", &isvalid, "isvalid/I");
+  tree->Branch("ndof", &ndof, "ndof/I");
   tree->Branch("hasAccurateCovar", &hasAccurateCovar, "hasAccurateCovar/I");
   tree->Branch("hasPosDefCovar", &hasPosDefCovar, "hasPosDefCovar/I");
   //fFCN->set_seed(seed);
@@ -540,6 +541,7 @@ int main(int argc, char* argv[])
     cout << "\tMigrad..." << endl;
     FunctionMinimum min = migrad(maxfcn, tolerance);
 
+    ndof = fFCN->get_n_dof();
     edm = double(min.Edm());
     fmin = double(min.Fval());
     prob = TMath::Prob((min.Fval()+1)*fFCN->get_n_dof(), fFCN->get_n_dof() );

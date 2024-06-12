@@ -45,9 +45,6 @@ using ROOT::RDF::RNode;
 
 using namespace boost::program_options;
 
-constexpr double mZ = 91.1;
-constexpr double GZ = 2.5;
-
 constexpr double lumiMC = 3.33369e+08/2001.9e+03;
   
 int main(int argc, char* argv[])
@@ -75,12 +72,16 @@ int main(int argc, char* argv[])
 	("lastIter",     value<int>()->default_value(-1), "lastIter")
 	("biasResolution",     value<float>()->default_value(-1.), "number of events")
 	("nRMSforGausFit",     value<float>()->default_value(-1.), "number of events")
+	("minNumMassBins",     value<int>()->default_value(4), "number of events")
 	("rebin",       value<int>()->default_value(2), "rebin")
 	("fitWidth",    bool_switch()->default_value(false), "")
 	("fitNorm",     bool_switch()->default_value(false), "")
 	("usePrevFit",  bool_switch()->default_value(false), "")
 	("tagPrevFit",         value<std::string>()->default_value("closure"), "run type")
 	("runPrevFit",         value<std::string>()->default_value("closure"), "run type")
+	("useSmearFit",         bool_switch()->default_value(false), "")
+	("tagSmearFit",         value<std::string>()->default_value("closure"), "run type")
+	("runSmearFit",         value<std::string>()->default_value("closure"), "run type")
 	("seed",        value<int>()->default_value(4357), "seed");
 
       store(parse_command_line(argc, argv, desc), vm);
@@ -106,6 +107,7 @@ int main(int argc, char* argv[])
   std::string run = vm["run"].as<std::string>();
   int seed        = vm["seed"].as<int>();
   int minNumEventsPerBin   = vm["minNumEventsPerBin"].as<int>();
+  int minNumMassBins = vm["minNumMassBins"].as<int>();
   int rebin       = vm["rebin"].as<int>();
   int firstIter   = vm["firstIter"].as<int>();
   int lastIter    = vm["lastIter"].as<int>();
@@ -114,8 +116,11 @@ int main(int argc, char* argv[])
   bool fitWidth       = vm["fitWidth"].as<bool>();
   bool fitNorm        = vm["fitNorm"].as<bool>();
   bool usePrevFit        = vm["usePrevFit"].as<bool>();
+  bool useSmearFit       = vm["useSmearFit"].as<bool>();
   std::string tagPrevFit = vm["tagPrevFit"].as<std::string>();
   std::string runPrevFit = vm["runPrevFit"].as<std::string>();
+  std::string tagSmearFit = vm["tagSmearFit"].as<std::string>();
+  std::string runSmearFit = vm["runSmearFit"].as<std::string>();
 
   TRandom3* ran0 = new TRandom3(seed);
   
@@ -144,6 +149,8 @@ int main(int argc, char* argv[])
   VectorXd A_vals_fit( n_eta_bins );
   VectorXd e_vals_fit( n_eta_bins );
   VectorXd M_vals_fit( n_eta_bins );
+  VectorXd c_vals_fit( n_eta_bins );
+  VectorXd d_vals_fit( n_eta_bins );
 
   // bias for A out
   for(unsigned int i=0; i<n_eta_bins; i++){
@@ -247,6 +254,23 @@ int main(int argc, char* argv[])
       cout << "No mass fit file!" << endl;
     }
   }
+
+  if(useSmearFit){
+    TFile* ffit = TFile::Open(("./resolfit_"+tagSmearFit+"_"+runSmearFit+".root").c_str(), "READ");
+    if(ffit!=0){    
+      cout << "Using fit results from " <<  std::string(ffit->GetName()) << " as MC smear" << endl;
+      TH1D* h_c_vals_fit = (TH1D*)ffit->Get("h_c_vals_fit");
+      TH1D* h_d_vals_fit = (TH1D*)ffit->Get("h_d_vals_fit");      
+      for(unsigned int i=0; i<n_eta_bins; i++){
+	c_vals_fit(i) = h_c_vals_fit->GetBinContent(i+1);
+	d_vals_fit(i) = h_d_vals_fit->GetBinContent(i+1);
+      }      
+      ffit->Close();
+    }
+    else{
+      cout << "No smear fit file!" << endl;
+    }    
+  }
     
   TFile* fout = TFile::Open(("./massscales_"+tag+"_"+run+".root").c_str(), firstIter<2 ? "RECREATE" : "UPDATE");
   
@@ -324,17 +348,16 @@ int main(int argc, char* argv[])
       
       if( gmuP.Pt()>10. && gmuM.Pt()>10.){
 
-	float scale_smear0P = 1.0;
-	float scale_smear0M = 1.0;
 	float kmuP = 1./gmuP.Pt();
 	float kmuM = 1./gmuM.Pt();
-	float resol0P = resolution(kmuP, gmuP.Eta(), 0.0);
-	float resol0M = resolution(kmuM, gmuM.Eta(), 0.0);
-	float resol1P = resolution(kmuP, gmuP.Eta(), biasResolution);
-	float resol1M = resolution(kmuM, gmuM.Eta(), biasResolution);
 
+	float scale_smear0P = 1.0;
+	float scale_smear0M = 1.0;
+	float extraSmear0P = 0.0;
+	float extraSmear0M = 0.0;
 	float scale_smear1P = 1.0;
 	float scale_smear1M = 1.0;
+
 	unsigned int ietaP = n_eta_bins;
 	for(unsigned int ieta_p = 0; ieta_p<n_eta_bins; ieta_p++){
 	  float eta_p_low = eta_edges[ieta_p];
@@ -347,6 +370,7 @@ int main(int argc, char* argv[])
 	  float eta_m_up  = eta_edges[ieta_m+1];
 	  if( gmuM.Eta()>=eta_m_low && gmuM.Eta()<eta_m_up) ietaM = ieta_m;	  
 	}	
+
 	if(ietaP<n_eta_bins && ietaM<n_eta_bins){
 	  scale_smear0P = (1. + A_vals_fit(ietaP) + e_vals_fit(ietaP)*kmuP - M_vals_fit(ietaP)/kmuP);
 	  scale_smear0M = (1. + A_vals_fit(ietaM) + e_vals_fit(ietaM)*kmuM + M_vals_fit(ietaM)/kmuM);
@@ -354,7 +378,19 @@ int main(int argc, char* argv[])
 	  scale_smear1M = (1. + A_vals_nom(ietaM) + e_vals_nom(ietaM)*kmuM + M_vals_nom(ietaM)/kmuM);
 	  //cout << "smear0:" << scale_smear0P << ": " << 1 << " + " << A_vals_fit(ietaP) << " + " << e_vals_fit(ietaP)*kmuP << " - " << M_vals_fit(ietaP)/kmuP << endl;
 	  //cout << "smear1:" << scale_smear1P << ": " << 1 << " + " << A_vals_nom(ietaP) << " + " << e_vals_nom(ietaP)*kmuP << " - " << M_vals_nom(ietaP)/kmuP << endl;
+
+	  if(useSmearFit){
+	    extraSmear0P = TMath::Sqrt( TMath::Max( 1.0 + c_vals_fit(ietaP) + d_vals_fit(ietaP)*kmuP, 0.0)  ) - 1.0;
+	    extraSmear0M = TMath::Sqrt( TMath::Max( 1.0 + c_vals_fit(ietaM) + d_vals_fit(ietaM)*kmuM, 0.0)  ) - 1.0;
+	    //cout << "extraSmear0P: sqrt( max(1.0 + " << c_vals_fit(ietaP)  << " + " << d_vals_fit(ietaP)*kmuP << ")) - 1.0 = " << extraSmear0P << endl;
+	    //cout << "extraSmear0M: sqrt( max(1.0 + " << c_vals_fit(ietaM)  << " + " << d_vals_fit(ietaM)*kmuM << ")) - 1.0 = " << extraSmear0M << endl;  
+	  }
 	}
+
+	float resol0P = resolution(kmuP, gmuP.Eta(), extraSmear0P);
+	float resol0M = resolution(kmuM, gmuM.Eta(), extraSmear0M);
+	float resol1P = resolution(kmuP, gmuP.Eta(), biasResolution);
+	float resol1M = resolution(kmuM, gmuM.Eta(), biasResolution);
 
 	out.emplace_back( rans[nslot]->Gaus(kmuP*scale_smear0P, resol0P) );
 	out.emplace_back( rans[nslot]->Gaus(kmuM*scale_smear0M, resol0M) );
@@ -726,7 +762,7 @@ int main(int argc, char* argv[])
 	for(int im = 1 ; im<=h_data_i->GetXaxis()->GetNbins(); im++){
 	  if( h_data_i->GetBinContent(im)>minNumEventsPerBin ) n_mass_bins++;
 	}
-	if( n_mass_bins<4 ){
+	if( n_mass_bins<minNumMassBins ){
 	  h_scales->SetBinContent(ibin+1, 0.0);
 	  h_widths->SetBinContent(ibin+1, 0.0);
 	  h_norms->SetBinContent(ibin+1, 0.0);
