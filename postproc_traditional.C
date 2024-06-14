@@ -3,11 +3,13 @@
 
   TString phase_space = "x0p50_y4p00";
   TString input_tag = "DEBUG";
-  TString opt = "wp";
+  TString opt = "z";
 
   bool doPlots = true;
 
   bool extendX = true;
+
+  bool keepYdependence = true;
   
   TCanvas* c = 0;
   if(doPlots){
@@ -125,6 +127,8 @@
       h_systenvDown_i = (TH2D*)h_syst_in_input->Clone("h_pdf_"+proc+"_syst"+TString(Form("%d",isyst))+"_scaleDown");
       double envelope = 0.;
       int env_scale = -1;
+
+      vector<float> envelopes(h_syst_i->GetNbinsY());
       
       // loop over scales	
       for( unsigned int iscale=0; iscale<scales.size(); iscale++){
@@ -150,12 +154,28 @@
 	  h_data_iscale->GetBinContent( ibin_x, ibin_y ) /
 	  h_data_nom->GetBinContent( ibin_x, ibin_y );
 
+	      
 	double avg_nom = 0.;
 	double avg_scale = 0.;
 	for(unsigned int k = 1 ; k<=h_data_nom->GetYaxis()->GetNbins(); k++){
 	  //avgy_binned_ratio += h_data_iscale->GetBinContent( ibin_x, k ) / h_data_nom->GetBinContent( ibin_x, k );
 	  avg_nom   += h_data_nom->GetBinContent( ibin_x, k );
 	  avg_scale += h_data_iscale->GetBinContent( ibin_x, k );
+	}
+
+	vector<float> rescales(h_systenvUp_i->GetNbinsY());
+	for(unsigned int iy=1; iy<=h_systenvUp_i->GetNbinsY(); iy++){
+	  double y_i = h_systenvUp_i->GetYaxis()->GetBinCenter(iy);
+	  int ibin = h_data_nom->FindBin(node_x, y_i);
+	  float ratio_iy = TMath::Abs(h_data_nom->GetBinContent( ibin ))>0. ? h_data_iscale->GetBinContent( ibin ) / h_data_nom->GetBinContent( ibin ) : 1.0;
+	  if(TMath::Abs(ratio_iy-1.0)>=TMath::Abs(envelopes.at(iy-1))){
+	    rescales[iy-1] = (ratio_iy - 1.0)/shift;
+	    envelopes[iy-1] = ratio_iy-1.0;
+	    //if(isyst==5 && iproc==0) cout << y_i << ", ibin " << ibin << ": ratio=" << ratio_iy << ", rescale=" <<  rescales[iy-1] << ", envelope=" << envelopes.at(iy-1) << endl;
+	  }
+	  else{
+	    rescales[iy-1] = envelopes[iy-1]/shift;
+	  }
 	}
 
 	double avgy_binned_ratio = avg_scale/avg_nom;
@@ -168,7 +188,7 @@
 	cout << "\t\tRescale by (" << binned_ratio << " - 1.0)" << "/" << shift << " = " << rescale << endl;
 
 	// consider only those scale variations that don't change the sign
-	if(TMath::Abs(binned_ratio - 1)>envelope && binned_ratio > 0.){
+	if( (TMath::Abs(binned_ratio - 1)>envelope && binned_ratio > 0.) || keepYdependence){
  	  for(unsigned int ix=1; ix<=h_systenvUp_i->GetNbinsX(); ix++){
 	    if(h_systenvUp_i->GetXaxis()->GetBinUpEdge(ix)>xf_max) continue;
 	    for(unsigned int iy=1; iy<=h_systenvUp_i->GetNbinsY(); iy++){
@@ -176,11 +196,22 @@
 	      double nom_val = h_pdf->GetBinContent(ix,iy);
 	      double syst_val = h_syst_i->GetBinContent(ix,iy);
 	      double corr = nom_val!=0. ? syst_val/nom_val - 1.0 : 0.;
+	      
+	      if(keepYdependence){
+		corr *=  TMath::Abs(rescales.at(iy-1));		  
+		h_systenvUp_i->SetBinContent(ix,iy, nom_val*(1 + corr));
+		h_systenvDown_i->SetBinContent(ix,iy, nom_val*(1 - corr));
+		continue;	      
+	      }
+	
 	      corr *= rescale;
+
+	      //cout << "new envelope at " << iy-1 << ": rescales=" << rescale << " envelope=" << envelope << " => corr=" << corr  << endl;
 	      //double clip_corr =  std::max( -1.0, std::min(corr,1.0) );
 	      //if(clip_corr!=corr)
 	      //cout << "\t\tClipping corr: " << corr << " --> " << clip_corr << endl;
 	      //corr = clip_corr;
+	      //cout << "(" << ix << "," << iy << ") => " << 1+corr << endl;
 	      h_systenvUp_i->SetBinContent(ix,iy, nom_val*(1 + corr));
 	      h_systenvDown_i->SetBinContent(ix,iy, nom_val*(1 - corr));
 	    }
@@ -316,20 +347,22 @@
       }
 
       if(doPlots){
-	c->cd( flip ? 2 : 1);	
-	h_systenvUp_i->SetTitle(opt+", "+phase_space+", "+proc+", syst"+TString(Form("%d at node (x=%.2f, y=%.2f)",isyst,node_x, node_y)));
-	h_systenvUp_i->Divide(h_pdf);
-	h_systenvUp_i->SetStats(0);
-	h_systenvUp_i->Draw("COLZ");
-	c->cd(flip ? 1 : 2);
-	h_systenvDown_i->SetTitle(opt+", "+phase_space+", "+proc+", syst"+TString(Form("%d at node (x=%.2f, y=%.2f)",isyst,node_x, node_y)));
-	h_systenvDown_i->Divide(h_pdf);
-	h_systenvDown_i->SetStats(0);
-	h_systenvDown_i->Draw("COLZ");
-	c->cd(3);
-	TH2D* h_pdf_ext = (TH2D*)fout->Get(proc+"/h_pdf_"+proc);
+	c->cd(1);
+ 	TH2D* h_pdf_ext = (TH2D*)fout->Get(proc+"/h_pdf_"+proc);
 	h_pdf_ext->SetStats(0);
 	h_pdf_ext->Draw("COLZ");
+	c->cd(2);	
+	TH2D* h_up = (TH2D*)fout->Get(proc+"/h_pdf_"+proc+"_syst"+TString(Form("%d",isyst))+"Up");
+	h_up->SetTitle(opt+", "+phase_space+", "+proc+", syst"+TString(Form("%d at node (x=%.2f, y=%.2f)",isyst,node_x, node_y)));
+	h_up->Divide(h_pdf_ext);
+	h_up->SetStats(0);
+	h_up->Draw("COLZ");
+	c->cd(3);
+	TH2D* h_down = (TH2D*)fout->Get(proc+"/h_pdf_"+proc+"_syst"+TString(Form("%d",isyst))+"Down");
+	h_down->SetTitle(opt+", "+phase_space+", "+proc+", syst"+TString(Form("%d at node (x=%.2f, y=%.2f)",isyst,node_x, node_y)));
+	h_down->Divide(h_pdf_ext);
+	h_down->SetStats(0);
+	h_down->Draw("COLZ");
 	c->SaveAs( "plots/ratio_scale_"+opt+"_"+phase_space+"_"+proc+"_syst"+TString(Form("%d",isyst))+".png" );
       }
       
