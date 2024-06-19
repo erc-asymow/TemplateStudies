@@ -102,7 +102,6 @@ int main(int argc, char* argv[])
   float lumi       = vm["lumi"].as<float>();
   float nRMSforGausFit = vm["nRMSforGausFit"].as<float>();
   float biasResolution = vm["biasResolution"].as<float>();
-  if(biasResolution<0.) biasResolution = 0.0;
   std::string tag = vm["tag"].as<std::string>();
   std::string run = vm["run"].as<std::string>();
   int seed        = vm["seed"].as<int>();
@@ -123,6 +122,12 @@ int main(int argc, char* argv[])
   std::string runSmearFit = vm["runSmearFit"].as<std::string>();
 
   TRandom3* ran0 = new TRandom3(seed);
+
+  if(biasResolution<0.)
+    biasResolution = 0.0;
+  else
+    biasResolution = ran0->Uniform(-biasResolution,+biasResolution);
+  cout << "Bias in resolution: " << biasResolution << endl;
   
   vector<float> pt_edges  = {25, 30, 35, 40, 45, 55}; 
   vector<float> eta_edges = {-2.4, -2.2, -2.0, -1.8, -1.6, -1.4, -1.2, -1.0, -0.8, -0.6, -0.4, -0.2, 0.0,
@@ -155,11 +160,12 @@ int main(int argc, char* argv[])
   VectorXd d_vals_fit( n_eta_bins );
 
   // bias for A out
+  double val_A_rnd = ran0->Uniform(-0.001, 0.001);
   for(unsigned int i=0; i<n_eta_bins; i++){
     //double val = ran0->Uniform(-0.001, 0.001);
     float y_max = h_eta_edges->GetXaxis()->GetXmax();
     float y_i = h_eta_edges->GetXaxis()->GetBinCenter(i+1); 
-    double val = -0.001*( 1 + (y_i/y_max)*(y_i/y_max) );
+    double val = val_A_rnd*( 1 + (y_i/y_max)*(y_i/y_max) );
     A_vals_nom(i) = val;
     h_A_vals_nom->SetBinContent(i+1, val);
     h_A_vals_prevfit->SetBinContent(i+1, 0.0);
@@ -231,16 +237,10 @@ int main(int argc, char* argv[])
     TFile* ffit = TFile::Open(("./massfit_"+tagPrevFit+"_"+runPrevFit+".root").c_str(), "READ");
     if(ffit!=0){    
       cout << "Using fit results from " <<  std::string(ffit->GetName()) << " as new nominal for smear0" << endl;
-      //TH1D* h_A_vals_fit = (TH1D*)ffit->Get("h_A_vals_fit");
-      //TH1D* h_e_vals_fit = (TH1D*)ffit->Get("h_e_vals_fit");
-      //TH1D* h_M_vals_fit = (TH1D*)ffit->Get("h_M_vals_fit");
       TH1D* h_A_vals_prevfit_in = (TH1D*)ffit->Get("h_A_vals_prevfit");
       TH1D* h_e_vals_prevfit_in = (TH1D*)ffit->Get("h_e_vals_prevfit");
       TH1D* h_M_vals_prevfit_in = (TH1D*)ffit->Get("h_M_vals_prevfit");
       for(unsigned int i=0; i<n_eta_bins; i++){
-	//A_vals_fit(i) = -(h_A_vals_prevfit->GetBinContent(i+1) + h_A_vals_fit->GetBinContent(i+1));
-	//e_vals_fit(i) = -(h_e_vals_prevfit->GetBinContent(i+1) + h_e_vals_fit->GetBinContent(i+1));
-	//M_vals_fit(i) = -(h_M_vals_prevfit->GetBinContent(i+1) + h_M_vals_fit->GetBinContent(i+1));
 	A_vals_fit(i) = -h_A_vals_prevfit_in->GetBinContent(i+1);
 	e_vals_fit(i) = -h_e_vals_prevfit_in->GetBinContent(i+1);
 	M_vals_fit(i) = -h_M_vals_prevfit_in->GetBinContent(i+1);
@@ -265,8 +265,6 @@ int main(int argc, char* argv[])
       cout << "Using fit results from " <<  std::string(ffit->GetName()) << " as MC smear" << endl;
       TH1D* h_c_vals_prevfit_in = (TH1D*)ffit->Get("h_c_vals_prevfit");
       TH1D* h_d_vals_prevfit_in = (TH1D*)ffit->Get("h_d_vals_prevfit");
-      //TH1D* h_c_vals_fit = (TH1D*)ffit->Get("h_c_vals_fit");
-      //TH1D* h_d_vals_fit = (TH1D*)ffit->Get("h_d_vals_fit");      
       for(unsigned int i=0; i<n_eta_bins; i++){
 	c_vals_fit(i) = h_c_vals_prevfit_in->GetBinContent(i+1);
 	d_vals_fit(i) = h_d_vals_prevfit_in->GetBinContent(i+1);
