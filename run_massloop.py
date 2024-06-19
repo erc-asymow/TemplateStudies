@@ -80,6 +80,6 @@ if __name__ == '__main__':
             cmd_hadd = 'hadd -f massfit_'+args.tag+'_merged_Iter'+str(iter)+'.root massfit_'+args.tag+'_toy*_Iter'+str(iter)+'.root'
             print(cmd_hadd)
             if not args.dryrun:
-                os.system(cmd_resol_iteri)
+                os.system(cmd_hadd)
     end = time.time()
     print(args.ntoys, 'toys run in', (end - start)/60., 'min.')
