@@ -13,6 +13,7 @@ parser.add_argument('--dryrun', action='store_true'  , help = 'dry run')
 parser.add_argument('--ntoys', dest = 'ntoys'  , type = int,  default=1, help='')
 parser.add_argument('--tag',   default='SmearRealistic' , help = 'algo')
 parser.add_argument('--niter', dest = 'niter'  , type = int,  default=1, help='')
+parser.add_argument('--forceIter', dest = 'forceIter'  , type = int,  default=-1, help='')
 
 args = parser.parse_args()
 
@@ -29,24 +30,29 @@ def loop_onetoy(seed, toy):
         ' --rebin=2 '+\
         ' --fitNorm --fitWidth '+\
         ' --seed='+str(seed)
-    print(cmd_histo_iter0)
-    if not args.dryrun:
+    if not args.forceIter>0:
+        print(cmd_histo_iter0)
+    if not (args.dryrun or args.forceIter>0):
         os.system(cmd_histo_iter0)
     cmd_fit_iter0 = './massfit --nevents=1 --bias=-1 '+\
         '--tag='+tag+' '+\
         '--run=Iter0 '
-    print(cmd_fit_iter0)
-    if not args.dryrun:
+    if not args.forceIter>0:
+        print(cmd_fit_iter0)
+    if not (args.dryrun or args.forceIter>0):
         os.system(cmd_fit_iter0)
     cmd_resol_iter0 = './resolfit --nevents=1 --bias=-1 '+\
         ' --tag='+tag+' '+\
         ' --run=Iter0 '+\
         ' --maxSigmaErr=0.1 '
-    print(cmd_resol_iter0)
-    if not args.dryrun:
+    if not args.forceIter>0:
+        print(cmd_resol_iter0)
+    if not (args.dryrun or args.forceIter>0):
         os.system(cmd_resol_iter0)
 
     for iter in range(1, args.niter+1):
+        if args.forceIter>0 and iter!=args.forceIter:
+            continue
         cmd_histo_iteri = cmd_histo_iter0.replace('--run=Iter0', '--run=Iter'+str(iter))
         cmd_histo_iteri += ' --usePrevFit '+\
             ' --tagPrevFit='+tag+' '+\
@@ -77,6 +83,8 @@ if __name__ == '__main__':
         loop_onetoy(seed=iseed,toy=itoy)
     if args.ntoys>1:
         for iter in range(0, args.niter+1):
+            if args.forceIter>0 and iter!=args.forceIter:
+                continue
             cmd_hadd = 'hadd -f massfit_'+args.tag+'_merged_Iter'+str(iter)+'.root massfit_'+args.tag+'_toy*_Iter'+str(iter)+'.root'
             print(cmd_hadd)
             if not args.dryrun:
