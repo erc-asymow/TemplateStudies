@@ -1,4 +1,4 @@
-void merge_massloop(TString tag = "SmearRealistic3Loops", TString name = "massloop_in_iter2", bool batch=false){
+void merge_massloop(TString tag = "SmearRealistic3Loops", TString name = "massloop_in_iter2", bool batch=false, bool savePng=false){
 
   //TString plotname = "massloop_in_iter2";
   //TString tag = "SmearRealistic3Loops";
@@ -111,20 +111,20 @@ void merge_massloop(TString tag = "SmearRealistic3Loops", TString name = "masslo
     hp_fit0->SetMarkerStyle(kFullCircle);
     c->cd(p+2);
     hp_nom->SetStats(0);
-    hp_nom->SetMaximum( hp_nom->GetMaximum()*1.5);
-    hp_nom->SetMinimum( hp_nom->GetMinimum()*0.5);
+    //hp_nom->SetMaximum( hp_nom->GetMaximum()*1.5);
+    //hp_nom->SetMinimum( hp_nom->GetMinimum()*0.5);
     hp_fit0->SetStats(0);
-    hp_fit0->SetMaximum( hp_fit0->GetMaximum()*1.5);
-    hp_fit0->SetMinimum( hp_fit0->GetMinimum()*0.5);
+    //hp_fit0->SetMaximum( hp_fit0->GetMaximum()*1.5);
+    //hp_fit0->SetMinimum( hp_fit0->GetMinimum()*0.5);
 
-    if(p>=1){
-      hp_fit0->SetMaximum( + (hp_fit0->GetMaximum()+hp_fit0->GetBinError(1))*1.1 );
-      hp_fit0->SetMinimum( - (hp_fit0->GetMaximum()+hp_fit0->GetBinError(1))*1.1 );
-    }
+    //if(p>=1){
+    //  hp_fit0->SetMaximum( + (hp_fit0->GetMaximum()+hp_fit0->GetBinError(1))*1.1 );
+    //  hp_fit0->SetMinimum( - (hp_fit0->GetMaximum()+hp_fit0->GetBinError(1))*1.1 );
+    //}
 
     if(p==0){
-      hp_fit0->SetMaximum( 0.0022 );
-      hp_fit0->SetMinimum( 0.0005 );
+      hp_fit0->SetMaximum( +0.002 );
+      hp_fit0->SetMinimum( -0.002 );
     }
     if(p==1){
       hp_fit0->SetMaximum( +0.0025 );
@@ -140,7 +140,7 @@ void merge_massloop(TString tag = "SmearRealistic3Loops", TString name = "masslo
 
   c->Update();
   c->Draw();
-  c->SaveAs(plotname+".png");
+  if(savePng) c->SaveAs(plotname+".png");
   if(batch){
     fIter0->Close();
     fIter1->Close();

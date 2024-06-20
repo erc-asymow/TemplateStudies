@@ -675,7 +675,7 @@ int main(int argc, char* argv[])
 	  //cout << hi_m->Integral() << ", " << hi->Integral() << ", " << hi_m->GetMean() << endl;
 	  if( hi_m->Integral() > minNumEvents && hi->Integral() > minNumEvents  &&  hi_m->GetMean()>75. && hi_m->GetMean()<105. ){
 	    h_map.at("mask_"+recos[r])->SetBinContent(i+1, 1);
-	    TF1* gf = new TF1("gf","[0]/TMath::Sqrt(2)/[2]*TMath::Exp( -0.5*(x-[1])*(x-[1])/[2]/[2] )",
+	    TF1* gf = new TF1("gf","[0]/TMath::Sqrt(2*TMath::Pi())/[2]*TMath::Exp( -0.5*(x-[1])*(x-[1])/[2]/[2] )",
 			      hi->GetXaxis()->GetBinLowEdge(1), hi->GetXaxis()->GetBinUpEdge( hi->GetXaxis()->GetNbins() ));      
 	    gf->SetParameter(0, hi->Integral());
 	    gf->SetParameter(1, hi->GetMean());
