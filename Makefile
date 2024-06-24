@@ -63,3 +63,6 @@ resolfit: resolfit.cpp
 
 massscales: massscales.cpp
 	$(GCC) $(CXXFLAGS) -o $(BINDIR)/massscales massscales.cpp  
+
+massscales_data: massscales_data.cpp
+	$(GCC) $(CXXFLAGS) -o $(BINDIR)/massscales_data massscales_data.cpp  
