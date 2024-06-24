@@ -107,7 +107,6 @@ int main(int argc, char* argv[])
   int rebin       = vm["rebin"].as<int>();
   int firstIter   = vm["firstIter"].as<int>();
   int lastIter    = vm["lastIter"].as<int>();
-  bool skipReco     = vm["skipReco"].as<bool>();
   bool saveHistos     = vm["saveHistos"].as<bool>();
   bool fitWidth       = vm["fitWidth"].as<bool>();
   bool fitNorm        = vm["fitNorm"].as<bool>();
@@ -167,7 +166,6 @@ int main(int argc, char* argv[])
     h_M_vals_prevfit->SetBinContent(i+1, 0.0);
     M_vals_fit(i) = 0.0;
   }            
-
   
   std::vector<string> recos = {"reco", "smear0"}; 
 
@@ -182,33 +180,6 @@ int main(int argc, char* argv[])
   std::map<string, unsigned int> idx_map;
   idx_map.insert( std::make_pair<string, unsigned int >("reco",   1 ) );
   idx_map.insert( std::make_pair<string, unsigned int >("smear0", 2 ) );
-
-  /*
-  TH1D* histobudget = 0;
-  TH1D* histohitres = 0;
-  TFile* faux = TFile::Open("root/coefficients2016ptfrom20forscaleptfrom20to70forres.root", "READ");
-  if(faux!=0){
-    histobudget = (TH1D*)faux->Get("histobudget");
-    histohitres = (TH1D*)faux->Get("histohitres");
-  }
-  auto resolution = [histobudget,histohitres](float k, float eta, float bias)->float{
-    float out = 0.02*k*(1.0 + bias);
-    if(histobudget!=0 && histohitres!=0){
-      int eta_bin = histobudget->FindBin(eta);
-      if(eta_bin<1) eta_bin = 1;
-      else if(eta_bin>histobudget->GetNbinsX()) eta_bin = histobudget->GetNbinsX();
-      float budget = histobudget->GetBinContent( eta_bin );
-      float hitres = histohitres->GetBinContent( eta_bin );
-      float budget2 = budget*budget;
-      float hitres2 = hitres*hitres;
-      out = TMath::Sqrt( budget2 + hitres2/k/k )*k;
-      out *= (1.0 + bias);
-      //cout << budget << " + " << hitres/k << " ==> " << out/k << endl;
-      return out;
-    }
-    return out;
-  };
-  */
   
   if(usePrevFit){
     TFile* ffit = TFile::Open(("./massfit_"+tagPrevFit+"_"+runPrevFit+".root").c_str(), "READ");
@@ -253,7 +224,7 @@ int main(int argc, char* argv[])
     
   TFile* fout = TFile::Open(("./massscales_"+tag+"_"+run+".root").c_str(), firstIter<2 ? "RECREATE" : "UPDATE");
   
-  for(unsigned int iter=-1; iter<3; iter++){
+  for(int iter=-1; iter<3; iter++){
 
     if( !(iter>=firstIter && iter<=lastIter) ) continue;
 
@@ -270,19 +241,19 @@ int main(int argc, char* argv[])
     }
     else{
       in_files = {
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016FDataPostVFP_TrackFitV722_NanoProdv6/240509_051502/0000/NanoV9MCPostVFP_*.root",
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016GDataPostVFP_TrackFitV722_NanoProdv6/240509_051653/0000/NanoV9MCPostVFP_*.root",
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016GDataPostVFP_TrackFitV722_NanoProdv6/240509_051653/0001/NanoV9MCPostVFP_*.root",
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016GDataPostVFP_TrackFitV722_NanoProdv6/240509_051653/0002/NanoV9MCPostVFP_*.root",
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016GDataPostVFP_TrackFitV722_NanoProdv6/240509_051653/0003/NanoV9MCPostVFP_*.root",
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016GDataPostVFP_TrackFitV722_NanoProdv6/240509_051653/0004/NanoV9MCPostVFP_*.root",
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0000/NanoV9MCPostVFP_*.root",
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0001/NanoV9MCPostVFP_*.root",
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0002/NanoV9MCPostVFP_*.root",
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0003/NanoV9MCPostVFP_*.root",
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0004/NanoV9MCPostVFP_*.root",
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0005/NanoV9MCPostVFP_*.root",
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0006/NanoV9MCPostVFP_*.root"
+	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016FDataPostVFP_TrackFitV722_NanoProdv6/240509_051502/0000/NanoV9DataPostVFP_*.root",
+	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016GDataPostVFP_TrackFitV722_NanoProdv6/240509_051653/0000/NanoV9DataPostVFP_*.root",
+	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016GDataPostVFP_TrackFitV722_NanoProdv6/240509_051653/0001/NanoV9DataPostVFP_*.root",
+	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016GDataPostVFP_TrackFitV722_NanoProdv6/240509_051653/0002/NanoV9DataPostVFP_*.root",
+	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016GDataPostVFP_TrackFitV722_NanoProdv6/240509_051653/0003/NanoV9DataPostVFP_*.root",
+	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016GDataPostVFP_TrackFitV722_NanoProdv6/240509_051653/0004/NanoV9DataPostVFP_*.root",
+	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0000/NanoV9DataPostVFP_*.root",
+	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0001/NanoV9DataPostVFP_*.root",
+	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0002/NanoV9DataPostVFP_*.root",
+	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0003/NanoV9DataPostVFP_*.root",
+	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0004/NanoV9DataPostVFP_*.root",
+	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0005/NanoV9DataPostVFP_*.root",
+	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0006/NanoV9DataPostVFP_*.root"
       };      
     }
     
@@ -315,7 +286,8 @@ int main(int argc, char* argv[])
       if( Muon_charge[idxs[0]]*Muon_charge[idxs[1]] > 0 ) return false;
       return true;
     }, {"idxs", "Muon_charge", "HLT_IsoMu24"} ));
-    
+
+    // MC
     if(iter>=0){
       
       dlast = std::make_unique<RNode>(dlast->Define("weight", [](float weight)->float{
@@ -524,11 +496,9 @@ int main(int argc, char* argv[])
       for(unsigned int r = 0 ; r<recos.size(); r++){
 	unsigned int jpos = (idx_map.at(recos[r])-1)*2;
 	dlast = std::make_unique<RNode>(dlast->Define( TString((recos[r]+"_jscale_weight").c_str()), [jpos](RVecF weights_jac, float weight)->float{
-	  //unisgned int jpos = (idx_map[recos[r]]-1)*2;
 	  return weights_jac.at( jpos )*weight;
 	}, {"weights_jac", "weight" } ));
 	dlast = std::make_unique<RNode>(dlast->Define( TString((recos[r]+"_jwidth_weight").c_str()), [jpos](RVecF weights_jac, float weight)->float{
-	  //unisgned int jpos = (idx_map[recos[r]]-1)*2 + 1;
 	  return weights_jac.at( jpos+1 )*weight;
 	}, {"weights_jac", "weight" } ));
       }
@@ -600,11 +570,14 @@ int main(int argc, char* argv[])
 
     if(iter==-1){
       histos2D.emplace_back(dlast->Histo2D({ "h_data_bin_m", "nominal", n_bins, 0, double(n_bins), x_nbins, x_low, x_high}, "index_data", "data_m", "weight" ));
+      auto colNames = dlast->GetColumnNames();
+      double total = *(dlast->Count());  
+      std::cout << colNames.size() << " columns created. Total event count is " << total  << std::endl;
     }
     else if(iter==0){
       for(unsigned int r = 0 ; r<recos.size(); r++){
-	histos2D.emplace_back(dlast->Histo2D({ "h_"+TString(recos[r].c_str())+"_bin_m",    "nominal", n_bins, 0, double(n_bins), x_nbins, x_low, x_high}, "index_"+TString(recos[r].c_str()), TString(recos[r].c_str())+"_m", "weight_"+recos[r] ));
-	histos2D.emplace_back(dlast->Histo2D({ "h_"+TString(recos[r].c_str())+"_bin_dm",   "nominal", n_bins, 0, double(n_bins), 24, -6.0, 6.0},          "index_"+TString(recos[r].c_str()), TString(recos[r].c_str())+"_dm", "weight_"+recos[r]));
+	histos2D.emplace_back(dlast->Histo2D({ "h_"+TString(recos[r].c_str())+"_bin_m",    "nominal", n_bins, 0, double(n_bins), x_nbins, x_low, x_high}, "index_"+TString(recos[r].c_str()), TString(recos[r].c_str())+"_m", "weight" ));
+	histos2D.emplace_back(dlast->Histo2D({ "h_"+TString(recos[r].c_str())+"_bin_dm",   "nominal", n_bins, 0, double(n_bins), 24, -6.0, 6.0},          "index_"+TString(recos[r].c_str()), TString(recos[r].c_str())+"_dm", "weight"));
       }
       auto colNames = dlast->GetColumnNames();
       double total = *(dlast->Count());  
@@ -707,12 +680,10 @@ int main(int argc, char* argv[])
       }
     }
 
-    if(iter==2){
-
+    else if(iter==2){
       if(saveHistos && fout->GetDirectory("postfit")==0){
 	fout->mkdir("postfit");
       }
-
       TTree* treescales = new TTree("treescales","treescales");
       int inmassbins, indof, ibinIdx  ;
       float inevents, ibeta, ibetaErr, ialpha, ialphaErr, inu, inuErr, iprob, ichi2old, ichi2new; 
@@ -889,6 +860,7 @@ int main(int argc, char* argv[])
 	
       cout << h_masks->Integral() << " scales have been computed" << endl;
     }
+
     for(auto r : rans) delete r;
   }
   
