@@ -1,4 +1,4 @@
-void merge_massloop(TString tag = "SmearRealistic3Loops", TString name = "massloop_in_iter2", bool batch=false, bool savePng=false){
+void merge_massloop(TString tag = "SmearRealistic3Loops", TString name = "massloop_in_iter2", bool batch=false, bool savePng=false, bool isData=true){
 
   //TString plotname = "massloop_in_iter2";
   //TString tag = "SmearRealistic3Loops";
@@ -14,25 +14,33 @@ void merge_massloop(TString tag = "SmearRealistic3Loops", TString name = "masslo
   TFile* fsIter1 = TFile::Open("massscales_"+tag+"_Iter1.root", "READ");
   TFile* fsIter2 = TFile::Open("massscales_"+tag+"_Iter2.root", "READ");
   TFile* fsIter3 = TFile::Open("massscales_"+tag+"_Iter3.root", "READ");
+  TFile* fsIter4 = TFile::Open("massscales_"+tag+"_Iter4.root", "READ");
   
   TH1D* hmass_smear0 = 0;
   TH1D* hmass_smear1 = 0;
+  TString data_name = isData ? "h_data_bin_m" : "h_smear1_bin_m";
+  TString data_namep = isData ? "data" : "smear1";
   if(string(plotname.Data()).find("iter0")!=string::npos){
     hmass_smear0 = ((TH2D*)fsIter0->Get("h_smear0_bin_m"))->ProjectionY("smear0");
-    hmass_smear1 = ((TH2D*)fsIter0->Get("h_smear1_bin_m"))->ProjectionY("smear1");
+    hmass_smear1 = ((TH2D*)fsIter0->Get(data_name))->ProjectionY(data_namep);
   }
   else if(string(plotname.Data()).find("iter1")!=string::npos){
     hmass_smear0 = ((TH2D*)fsIter1->Get("h_smear0_bin_m"))->ProjectionY("smear0");
-    hmass_smear1 = ((TH2D*)fsIter1->Get("h_smear1_bin_m"))->ProjectionY("smear1");
+    hmass_smear1 = ((TH2D*)fsIter1->Get(data_name))->ProjectionY(data_namep);
   }
   else if(string(plotname.Data()).find("iter2")!=string::npos){
     hmass_smear0 = ((TH2D*)fsIter2->Get("h_smear0_bin_m"))->ProjectionY("smear0");
-    hmass_smear1 = ((TH2D*)fsIter2->Get("h_smear1_bin_m"))->ProjectionY("smear1");
+    hmass_smear1 = ((TH2D*)fsIter2->Get(data_name))->ProjectionY(data_namep);
   }
   else if(string(plotname.Data()).find("iter3")!=string::npos && fsIter3!=0){
     hmass_smear0 = ((TH2D*)fsIter3->Get("h_smear0_bin_m"))->ProjectionY("smear0");
-    hmass_smear1 = ((TH2D*)fsIter3->Get("h_smear1_bin_m"))->ProjectionY("smear1");
+    hmass_smear1 = ((TH2D*)fsIter3->Get(data_name))->ProjectionY(data_namep);
   }
+  else if(string(plotname.Data()).find("iter4")!=string::npos && fsIter4!=0){
+    hmass_smear0 = ((TH2D*)fsIter4->Get("h_smear0_bin_m"))->ProjectionY("smear0");
+    hmass_smear1 = ((TH2D*)fsIter4->Get(data_name))->ProjectionY(data_namep);
+  }
+  hmass_smear0->Scale(hmass_smear1->Integral()/hmass_smear0->Integral());
   hmass_smear1->Divide(hmass_smear0);
   hmass_smear1->SetLineColor(kBlack);
   hmass_smear1->SetMaximum(1.1);
@@ -47,6 +55,7 @@ void merge_massloop(TString tag = "SmearRealistic3Loops", TString name = "masslo
   TFile* fIter1 = TFile::Open("massfit_"+tag+"_Iter1.root", "READ");
   TFile* fIter2 = TFile::Open("massfit_"+tag+"_Iter2.root", "READ");
   TFile* fIter3 = TFile::Open("massfit_"+tag+"_Iter3.root", "READ");
+  TFile* fIter4 = TFile::Open("massfit_"+tag+"_Iter4.root", "READ");
 
   //vector<TString> params = {"Ain", "ein", "Min"};
   vector<TString> params = {"A", "e", "M"};
@@ -59,10 +68,14 @@ void merge_massloop(TString tag = "SmearRealistic3Loops", TString name = "masslo
   TTree* t3 = 0;
   if(fIter3!=0)
     t3 = (TTree*) fIter3->Get("tree");
+  TTree* t4 = 0;
+  if(fIter4!=0)
+    t4 = (TTree*) fIter4->Get("tree");
   double fmin0, prob0;
   double fmin1, prob1;
   double fmin2, prob2;
   double fmin3, prob3;
+  double fmin4, prob4;
   t0->SetBranchAddress("fmin", &fmin0);
   t0->SetBranchAddress("prob", &prob0);
   t1->SetBranchAddress("fmin", &fmin1);
@@ -76,6 +89,11 @@ void merge_massloop(TString tag = "SmearRealistic3Loops", TString name = "masslo
     t3->SetBranchAddress("fmin", &fmin3);
     t3->SetBranchAddress("prob", &prob3);
     t3->GetEntry(0);
+  }
+  if(fIter4!=0){
+    t4->SetBranchAddress("fmin", &fmin4);
+    t4->SetBranchAddress("prob", &prob4);
+    t4->GetEntry(0);
   }
 
   TH1D* hp_nom_template  = (TH1D*) fIter0->Get("h_A_vals_nom");
@@ -97,6 +115,9 @@ void merge_massloop(TString tag = "SmearRealistic3Loops", TString name = "masslo
     TH1D* hp_fit3 = 0;
     if(fIter3!=0)
       hp_fit3 = (TH1D*) fIter3->Get("h_"+params[p]+"_vals_fit");
+    TH1D* hp_fit4 = 0;
+    if(fIter4!=0)
+      hp_fit4 = (TH1D*) fIter4->Get("h_"+params[p]+"_vals_fit");
     
     hp_fit0->SetTitle(Form("#chi^{2}/ndof = %.2f (prob=%.2f)", 1+fmin0, prob0));
     if( string(plotname.Data()).find("iter1")!=string::npos ){
@@ -122,6 +143,18 @@ void merge_massloop(TString tag = "SmearRealistic3Loops", TString name = "masslo
       hp_fit0->Add(hp_fit2);
       hp_fit0->Add(hp_fit3);
       hp_fit0->SetTitle(Form("#chi^{2}/ndof = %.2f (prob=%.2f)", 1+fmin3, prob3));
+    }
+    else if( string(plotname.Data()).find("iter4")!=string::npos && fIter4!=0 ){
+      for(unsigned int ib=1; ib<=hp_fit1->GetXaxis()->GetNbins();ib++) hp_fit0->SetBinError(ib, hp_fit4->GetBinError(ib) );
+      for(unsigned int ib=1; ib<=hp_fit1->GetXaxis()->GetNbins();ib++) hp_fit1->SetBinError(ib, 0.);
+      for(unsigned int ib=1; ib<=hp_fit2->GetXaxis()->GetNbins();ib++) hp_fit2->SetBinError(ib, 0.);
+      for(unsigned int ib=1; ib<=hp_fit3->GetXaxis()->GetNbins();ib++) hp_fit3->SetBinError(ib, 0.);
+      for(unsigned int ib=1; ib<=hp_fit4->GetXaxis()->GetNbins();ib++) hp_fit4->SetBinError(ib, 0.);
+      hp_fit0->Add(hp_fit1);
+      hp_fit0->Add(hp_fit2);
+      hp_fit0->Add(hp_fit3);
+      hp_fit0->Add(hp_fit4);
+      hp_fit0->SetTitle(Form("#chi^{2}/ndof = %.2f (prob=%.2f)", 1+fmin4, prob4));
     }
     hp_nom->SetLineColor(kBlue);
     hp_nom->SetLineWidth(3);
@@ -214,7 +247,9 @@ void merge_massloop(TString tag = "SmearRealistic3Loops", TString name = "masslo
 
 
 void hadd_massloop_toys(TString name = "massloop_in"){
-  vector<TString> iters = {"iter0", "iter1", "iter2", "iter3"};
+  vector<TString> iters = { //"iter0", "iter1", "iter2", "iter3"
+    "iter4"
+  };
   for(unsigned int it=0; it<iters.size(); it++){
     cout << "Doing iter " << iters[it] << endl;
     for(int itoy=0; itoy<100; itoy++){
@@ -237,6 +272,7 @@ void merge_massloop_toys(TString tag = "SmearRealisticRnd_merged", TString name 
   TH1D* h_pIter1 = 0;
   TH1D* h_pIter2 = 0;
   TH1D* h_pIter3 = 0;
+  TH1D* h_pIter4 = 0;
 
   TCanvas* c = new TCanvas("c", "canvas", 1600, 400);
   c->Divide(3,1);
@@ -257,7 +293,7 @@ void merge_massloop_toys(TString tag = "SmearRealisticRnd_merged", TString name 
   TFile* fIter1 = TFile::Open("merge_massloop_"+tag+"_"+name+"_iter1.root", "READ");
   TFile* fIter2 = TFile::Open("merge_massloop_"+tag+"_"+name+"_iter2.root", "READ");
   TFile* fIter3 = TFile::Open("merge_massloop_"+tag+"_"+name+"_iter3.root", "READ");
-  
+  TFile* fIter4 = TFile::Open("merge_massloop_"+tag+"_"+name+"_iter4.root", "READ");
     
   vector<TString> params = {"A", "e", "M"};
   
@@ -272,6 +308,8 @@ void merge_massloop_toys(TString tag = "SmearRealisticRnd_merged", TString name 
     h_pIter2 = new TH1D(Form("h_%s_Iter2", params[p].Data()), "", nparams, 0, nparams);   
     if(fIter3!=0)
       h_pIter3 = new TH1D(Form("h_%s_Iter3", params[p].Data()), "", nparams, 0, nparams);         
+    if(fIter4!=0)
+      h_pIter4 = new TH1D(Form("h_%s_Iter4", params[p].Data()), "", nparams, 0, nparams);         
       
     for(int ip = 0; ip<nparams; ip++){
       h_pIter0->GetXaxis()->SetBinLabel(ip+1, h_template->GetXaxis()->GetBinLabel(ip+1));
@@ -279,6 +317,8 @@ void merge_massloop_toys(TString tag = "SmearRealisticRnd_merged", TString name 
       h_pIter2->GetXaxis()->SetBinLabel(ip+1, h_template->GetXaxis()->GetBinLabel(ip+1));
       if(fIter3!=0)
 	h_pIter3->GetXaxis()->SetBinLabel(ip+1, h_template->GetXaxis()->GetBinLabel(ip+1));
+      if(fIter4!=0)
+	h_pIter4->GetXaxis()->SetBinLabel(ip+1, h_template->GetXaxis()->GetBinLabel(ip+1));
     }
     
     TTree* t0 = (TTree*) fIter0->Get("tree");
@@ -287,6 +327,9 @@ void merge_massloop_toys(TString tag = "SmearRealisticRnd_merged", TString name 
     TTree* t3 = 0;
     if(fIter3!=0)
       t3 = (TTree*) fIter3->Get("tree");
+    TTree* t4 = 0;
+    if(fIter4!=0)
+      t4 = (TTree*) fIter4->Get("tree");
 
     TH1D* hpulls = new TH1D(Form("hpulls%d",p), "", 40, -8, 8);
     for(int ip = 0; ip<nparams; ip++){
@@ -362,6 +405,24 @@ void merge_massloop_toys(TString tag = "SmearRealisticRnd_merged", TString name 
 	h_pIter3->SetBinError(ip+1, plotMean ? mean_err : rms_err);
 	hpulls->Reset();
       }
+
+      if(fIter4!=0){
+	t4->Draw(formula.Data(), "", "");
+	gf->SetParameter(0, 100.);
+	gf->SetParameter(1, 0.);
+	gf->SetParameter(2, 1.0 );      
+	hpulls->Fit("gf", "QR", "", -3, 3);
+	mean = gf->GetParameter(1);
+	mean_err = gf->GetParError(1);
+	rms = TMath::Abs(gf->GetParameter(2));
+	rms_err = gf->GetParError(2);
+	//rms = hpulls->GetRMS();
+	//rms_err = hpulls->GetRMSError();
+	h_pIter4->SetBinContent(ip+1, plotMean ? mean : rms);
+	h_pIter4->SetBinError(ip+1, plotMean ? mean_err : rms_err);
+	hpulls->Reset();
+      }
+
       delete gf;
     }
 
@@ -380,9 +441,15 @@ void merge_massloop_toys(TString tag = "SmearRealisticRnd_merged", TString name 
     h_pIter2->SetMarkerSize(1.3);
     if(fIter3!=0){
       h_pIter3->SetLineColor(kMagenta);
-      h_pIter3->SetMarkerStyle(kOpenCircle);
+      h_pIter3->SetMarkerStyle(kFullCircle);
       h_pIter3->SetMarkerColor(kMagenta);
       h_pIter3->SetMarkerSize(1.3);
+    }
+    if(fIter4!=0){
+      h_pIter4->SetLineColor(kOrange);
+      h_pIter4->SetMarkerStyle(kFullCircle);
+      h_pIter4->SetMarkerColor(kOrange);
+      h_pIter4->SetMarkerSize(1.3);
     }
     
     h_pIter0->SetTitle(Form("%s of pulls for param %s (%s)",
@@ -397,6 +464,8 @@ void merge_massloop_toys(TString tag = "SmearRealisticRnd_merged", TString name 
     h_pIter2->Draw("ESAME");
     if(fIter3!=0)
       h_pIter3->Draw("ESAME");
+    if(fIter4!=0)
+      h_pIter4->Draw("ESAME");
     
     if(p==0){
       leg1->AddEntry(h_pIter0, "Iter 0", "PL");
@@ -404,6 +473,8 @@ void merge_massloop_toys(TString tag = "SmearRealisticRnd_merged", TString name 
       leg1->AddEntry(h_pIter2, "Iter 2", "PL");
       if(fIter3!=0)
 	leg1->AddEntry(h_pIter3, "Iter 3", "PL");
+      if(fIter4!=0)
+	leg1->AddEntry(h_pIter4, "Iter 4", "PL");
     }
     leg1->Draw();
     TF1* line = new TF1("line", plotMean ? "0.0" : "1.0", 0, nparams);
@@ -420,6 +491,8 @@ void merge_massloop_toys(TString tag = "SmearRealisticRnd_merged", TString name 
     fIter0->Close();
     fIter1->Close();
     fIter2->Close();
+    if(fIter3!=0) fIter3->Close();
+    if(fIter4!=0) fIter4->Close();
     delete c;
   }
 }
