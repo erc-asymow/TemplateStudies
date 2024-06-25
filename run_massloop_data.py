@@ -26,7 +26,8 @@ def loop_one():
         ' --minNumEvents=100 --minNumEventsPerBin=30 '+\
         ' --minNumMassBins=4 '+\
         ' --rebin=2 '+\
-        ' --fitNorm --fitWidth '
+        ' --fitNorm --fitWidth '+\
+        ' --useKf '
     if not args.forceIter>0:
         print(cmd_histo_iter0)
     if not (args.dryrun or args.forceIter>0):
