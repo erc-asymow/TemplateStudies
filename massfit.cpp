@@ -257,7 +257,10 @@ public:
 
   unsigned int get_n_params(){ return n_pars_;}
   unsigned int get_n_data(){ return n_data_;}
-  unsigned int get_n_dof(){ return n_dof_;} 
+  unsigned int get_n_dof(){ return n_dof_;}
+
+  double get_first_pt_edge(){ return pt_edges_.at(0) ;}
+  double get_last_pt_edge(){ return pt_edges_.at(n_pt_bins_) ;} 
 
   double get_U(const unsigned int& i, const unsigned int& j){
     return U_(i,j);
@@ -578,6 +581,15 @@ int main(int argc, char* argv[])
   TH1D* h_e_vals_prevfit  = new TH1D("h_e_vals_prevfit", "#hat{e}", n_parameters/3, 0, n_parameters/3);
   TH1D* h_M_vals_prevfit  = new TH1D("h_M_vals_prevfit", "#hat{M}", n_parameters/3, 0, n_parameters/3);
 
+  TH2D* h_scales_nom_plus   = new TH2D("h_scales_nom_plus", "scales nominal plus; #eta bin", n_parameters/3, 0, n_parameters/3,
+				       50, fFCN->get_first_pt_edge(), fFCN->get_last_pt_edge() );
+  TH2D* h_scales_fit_plus   = new TH2D("h_scales_fit_plus", "scales plus; #eta bin", n_parameters/3, 0, n_parameters/3,
+				       50, fFCN->get_first_pt_edge(), fFCN->get_last_pt_edge() );
+  TH2D* h_scales_nom_minus  = new TH2D("h_scales_nom_minus", "scales nominal minus; #eta bin", n_parameters/3, 0, n_parameters/3,
+				       50, fFCN->get_first_pt_edge(), fFCN->get_last_pt_edge() );
+  TH2D* h_scales_fit_minus  = new TH2D("h_scales_fit_minus", "scales minus; #eta bin", n_parameters/3, 0, n_parameters/3,
+				       50, fFCN->get_first_pt_edge(), fFCN->get_last_pt_edge() );
+
   unsigned int maxfcn(numeric_limits<unsigned int>::max());
   double tolerance(0.001);
   int verbosity = int(nevents<2); 
@@ -643,6 +655,44 @@ int main(int argc, char* argv[])
     for(unsigned int i = 0 ; i<n_parameters; i++){
       xErr(i) = TMath::Sqrt(Vout(i,i));
     }    
+
+    for(unsigned int ib = 0 ; ib<n_parameters/3; ib++){
+      Eigen::Vector3d xi;
+      xi <<
+	x(ib) + fFCN->get_A_prevfit(ib),
+	x(ib + n_parameters/3) + fFCN->get_e_prevfit(ib),
+	x(ib + 2*n_parameters/3) + fFCN->get_M_prevfit(ib); 
+      Eigen::Vector3d xnomi;
+      xnomi <<
+	fFCN->get_true_params(ib, true),
+	fFCN->get_true_params(ib + n_parameters/3, true),
+	fFCN->get_true_params(ib + 2*n_parameters/3, true);
+      for(unsigned int jb = 0 ; jb<h_scales_nom_plus->GetYaxis()->GetNbins(); jb++){
+	double kj = 1./h_scales_nom_plus->GetYaxis()->GetBinCenter(jb+1);
+	Eigen::Vector3d ajp;
+	Eigen::Vector3d ajm;
+	ajp << 1.0, kj, -1./kj;
+	ajm << 1.0, kj, +1./kj;
+	Eigen::Matrix3d Vj;
+	Vj <<
+	  Vout(ib, ib),                  Vout(ib, ib+n_parameters/3),                  Vout(ib, ib+2*n_parameters/3),
+	  Vout(ib+n_parameters/3, ib),   Vout(ib+n_parameters/3, ib+n_parameters/3) ,  Vout(ib+n_parameters/3, ib+2*n_parameters/3),
+	  Vout(ib+2*n_parameters/3, ib), Vout(ib+2*n_parameters/3, ib+n_parameters/3), Vout(ib+2*n_parameters/3, ib+2*n_parameters/3);
+	MatrixXd scalejp    = ajp.transpose()*xi;
+	MatrixXd scalenomjp = ajp.transpose()*xnomi;
+	MatrixXd Vscalejp   = ajp.transpose()*Vj*ajp;
+	MatrixXd scalejm    = ajm.transpose()*xi;
+	MatrixXd scalenomjm = ajm.transpose()*xnomi;
+	MatrixXd Vscalejm   = ajm.transpose()*Vj*ajm;
+	h_scales_nom_plus->SetBinContent(ib+1, jb+1, 1.0 + scalenomjp(0,0) );
+	h_scales_fit_plus->SetBinContent(ib+1, jb+1, 1.0 + scalejp(0,0) );
+	h_scales_fit_plus->SetBinError(ib+1, jb+1, TMath::Sqrt(Vscalejp(0,0)) );
+	h_scales_nom_minus->SetBinContent(ib+1, jb+1, 1.0 + scalenomjm(0,0) );
+	h_scales_fit_minus->SetBinContent(ib+1, jb+1, 1.0 + scalejm(0,0) );
+	h_scales_fit_minus->SetBinError(ib+1, jb+1, TMath::Sqrt(Vscalejm(0,0)) );
+      }      
+    }
+
     for(unsigned int i = 0 ; i<n_parameters; i++){
       tparIn[i]     = xin(i);
       tparIn0[i]    = fFCN->get_true_params(i, false) ;
@@ -811,6 +861,10 @@ int main(int argc, char* argv[])
   h_Ain_vals_nom->Write();
   h_ein_vals_nom->Write();
   h_Min_vals_nom->Write();
+  h_scales_nom_plus->Write();
+  h_scales_fit_plus->Write();
+  h_scales_nom_minus->Write();
+  h_scales_fit_minus->Write();
   
   sw.Stop();
 

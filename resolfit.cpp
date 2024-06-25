@@ -253,6 +253,9 @@ public:
   unsigned int get_n_data(){ return n_data_;}
   unsigned int get_n_dof(){ return n_dof_;} 
 
+  double get_first_pt_edge(){ return pt_edges_.at(0) ;}
+  double get_last_pt_edge(){ return pt_edges_.at(n_pt_bins_) ;} 
+
   double get_U(const unsigned int& i, const unsigned int& j){
     return U_(i,j);
   }
@@ -537,6 +540,11 @@ int main(int argc, char* argv[])
   TH1D* h_c_vals_prevfit  = new TH1D("h_c_vals_prevfit", "#hat{c}", n_parameters/2, 0, n_parameters/2);
   TH1D* h_d_vals_prevfit  = new TH1D("h_d_vals_prevfit", "#hat{d}", n_parameters/2, 0, n_parameters/2);
 
+  TH2D* h_resols_nom   = new TH2D("h_resols_nom", "resols nominal; #eta bin", n_parameters/2, 0, n_parameters/2,
+				       50, fFCN->get_first_pt_edge(), fFCN->get_last_pt_edge() );
+  TH2D* h_resols_fit   = new TH2D("h_resols_fit", "resols; #eta bin", n_parameters/2, 0, n_parameters/2,
+				       50, fFCN->get_first_pt_edge(), fFCN->get_last_pt_edge() );
+
   unsigned int maxfcn(numeric_limits<unsigned int>::max());
   double tolerance(0.001);
   int verbosity = int(nevents<2); 
@@ -599,7 +607,35 @@ int main(int argc, char* argv[])
     VectorXd xErr(n_parameters);
     for(unsigned int i = 0 ; i<n_parameters; i++){
       xErr(i) = TMath::Sqrt(Vout(i,i));
-    }    
+    }
+
+    for(unsigned int ib = 0 ; ib<n_parameters/2; ib++){
+      Eigen::Vector2d xi;
+      xi <<
+	x(ib) + fFCN->get_c_prevfit(ib),
+	x(ib + n_parameters/2) + fFCN->get_d_prevfit(ib);
+      Eigen::Vector2d xnomi;
+      xnomi <<
+	fFCN->get_true_params(ib, true),
+	fFCN->get_true_params(ib + n_parameters/2, true);
+      for(unsigned int jb = 0 ; jb<h_resols_nom->GetYaxis()->GetNbins(); jb++){
+	double kj = 1./h_resols_nom->GetYaxis()->GetBinCenter(jb+1);
+	Eigen::Vector2d aj;
+	aj << 1.0, kj;
+	Eigen::Matrix2d Vj;
+	Vj <<
+	  Vout(ib, ib),                  Vout(ib, ib+n_parameters/2),
+	  Vout(ib+n_parameters/2, ib),   Vout(ib+n_parameters/2, ib+n_parameters/2);
+	MatrixXd scalej    = aj.transpose()*xi;
+	MatrixXd scalenomj = aj.transpose()*xnomi;
+	MatrixXd Vscalej   = aj.transpose()*Vj*aj;
+	h_resols_nom->SetBinContent(ib+1, jb+1, TMath::Sqrt( 1.0 + scalenomj(0,0)) );
+	h_resols_fit->SetBinContent(ib+1, jb+1, TMath::Sqrt( 1.0 + scalej(0,0)) );
+	h_resols_fit->SetBinError(ib+1, jb+1, TMath::Sqrt(Vscalej(0,0)) );
+      }      
+    }
+
+    
     for(unsigned int i = 0 ; i<n_parameters; i++){
       tparIn[i]     = xin(i);
       tparIn0[i]    = fFCN->get_true_params(i, false) ;
@@ -745,6 +781,8 @@ int main(int argc, char* argv[])
   h_din_vals_nom->Write();
   h_c_vals_prevfit->Write();
   h_d_vals_prevfit->Write();
+  h_resols_nom->Write();
+  h_resols_fit->Write();
   
   sw.Stop();
 
