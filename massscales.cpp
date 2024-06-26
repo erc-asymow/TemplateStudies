@@ -325,7 +325,7 @@ int main(int argc, char* argv[])
       return out;
     }, {"nMuon", "Muon_looseId", "Muon_dxybs", "Muon_isGlobal",
 	"Muon_highPurity","Muon_mediumId", "Muon_pfRelIso04_all",
-	"Muon_pt", "Muon_eta" } ));
+	"Muon_cvhPt", "Muon_cvhEta" } ));
 
     dlast = std::make_unique<RNode>(dlast->Filter( [](RVecUI idxs, RVecI Muon_charge, bool HLT_IsoMu24 ){
       if( idxs.size()!=2 || !HLT_IsoMu24) return false;
@@ -413,7 +413,7 @@ int main(int argc, char* argv[])
       }
       return out;
 	}, {"idxs",
-	"Muon_pt", "Muon_eta", "Muon_phi", "Muon_mass", "Muon_charge",
+	"Muon_cvhPt", "Muon_cvhEta", "Muon_cvhPhi", "Muon_mass", "Muon_charge",
 	"nGenPart", "GenPart_status", "GenPart_statusFlags", "GenPart_pdgId",
 	"GenPart_pt", "GenPart_eta", "GenPart_phi", "GenPart_mass"} ));
 
@@ -467,7 +467,7 @@ int main(int argc, char* argv[])
 	}
       }
       return out;
-    }, {"idxs", "Muon_pt", "Muon_eta", "Muon_charge", "Muon_ksmear"} ));
+    }, {"idxs", "Muon_cvhPt", "Muon_cvhEta", "Muon_charge", "Muon_ksmear"} ));
 
     for(unsigned int r = 0 ; r<recos.size(); r++){
       dlast = std::make_unique<RNode>(dlast->Define( TString(("index_"+recos[r]).c_str()), [r](RVecUI indexes){
@@ -520,7 +520,7 @@ int main(int argc, char* argv[])
       
       return out;
     }, {"idxs",
-	"Muon_pt", "Muon_eta", "Muon_phi", "Muon_mass", "Muon_charge",
+	"Muon_cvhPt", "Muon_cvhEta", "Muon_cvhPhi", "Muon_mass", "Muon_charge",
 	"nGenPart", "GenPart_status", "GenPart_statusFlags", "GenPart_pdgId",
 	"GenPart_pt", "GenPart_eta", "GenPart_phi", "GenPart_mass",
 	"Muon_ksmear"} ));

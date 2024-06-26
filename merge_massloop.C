@@ -15,6 +15,9 @@ void merge_massloop(TString tag = "SmearRealistic3Loops", TString name = "masslo
   TFile* fsIter2 = TFile::Open("massscales_"+tag+"_Iter2.root", "READ");
   TFile* fsIter3 = TFile::Open("massscales_"+tag+"_Iter3.root", "READ");
   TFile* fsIter4 = TFile::Open("massscales_"+tag+"_Iter4.root", "READ");
+  TFile* fsIter5 = TFile::Open("massscales_"+tag+"_Iter5.root", "READ");
+  TFile* fsIter6 = TFile::Open("massscales_"+tag+"_Iter6.root", "READ");
+  TFile* fsIter7 = TFile::Open("massscales_"+tag+"_Iter7.root", "READ");
   
   TH1D* hmass_smear0 = 0;
   TH1D* hmass_smear1 = 0;
@@ -40,6 +43,18 @@ void merge_massloop(TString tag = "SmearRealistic3Loops", TString name = "masslo
     hmass_smear0 = ((TH2D*)fsIter4->Get("h_smear0_bin_m"))->ProjectionY("smear0");
     hmass_smear1 = ((TH2D*)fsIter4->Get(data_name))->ProjectionY(data_namep);
   }
+  else if(string(plotname.Data()).find("iter5")!=string::npos && fsIter5!=0){
+    hmass_smear0 = ((TH2D*)fsIter5->Get("h_smear0_bin_m"))->ProjectionY("smear0");
+    hmass_smear1 = ((TH2D*)fsIter5->Get(data_name))->ProjectionY(data_namep);
+  }
+  else if(string(plotname.Data()).find("iter6")!=string::npos && fsIter6!=0){
+    hmass_smear0 = ((TH2D*)fsIter6->Get("h_smear0_bin_m"))->ProjectionY("smear0");
+    hmass_smear1 = ((TH2D*)fsIter6->Get(data_name))->ProjectionY(data_namep);
+  }
+  else if(string(plotname.Data()).find("iter7")!=string::npos && fsIter7!=0){
+    hmass_smear0 = ((TH2D*)fsIter7->Get("h_smear0_bin_m"))->ProjectionY("smear0");
+    hmass_smear1 = ((TH2D*)fsIter7->Get(data_name))->ProjectionY(data_namep);
+  }
   hmass_smear0->Scale(hmass_smear1->Integral()/hmass_smear0->Integral());
   hmass_smear1->Divide(hmass_smear0);
   hmass_smear1->SetLineColor(kBlack);
@@ -56,6 +71,9 @@ void merge_massloop(TString tag = "SmearRealistic3Loops", TString name = "masslo
   TFile* fIter2 = TFile::Open("massfit_"+tag+"_Iter2.root", "READ");
   TFile* fIter3 = TFile::Open("massfit_"+tag+"_Iter3.root", "READ");
   TFile* fIter4 = TFile::Open("massfit_"+tag+"_Iter4.root", "READ");
+  TFile* fIter5 = TFile::Open("massfit_"+tag+"_Iter5.root", "READ");
+  TFile* fIter6 = TFile::Open("massfit_"+tag+"_Iter6.root", "READ");
+  TFile* fIter7 = TFile::Open("massfit_"+tag+"_Iter7.root", "READ");
 
   //vector<TString> params = {"Ain", "ein", "Min"};
   vector<TString> params = {"A", "e", "M"};
@@ -71,11 +89,23 @@ void merge_massloop(TString tag = "SmearRealistic3Loops", TString name = "masslo
   TTree* t4 = 0;
   if(fIter4!=0)
     t4 = (TTree*) fIter4->Get("tree");
+  TTree* t5 = 0;
+  if(fIter5!=0)
+    t5 = (TTree*) fIter5->Get("tree");
+  TTree* t6 = 0;
+  if(fIter6!=0)
+    t6 = (TTree*) fIter6->Get("tree");
+  TTree* t7 = 0;
+  if(fIter7!=0)
+    t7 = (TTree*) fIter7->Get("tree");
   double fmin0, prob0;
   double fmin1, prob1;
   double fmin2, prob2;
   double fmin3, prob3;
   double fmin4, prob4;
+  double fmin5, prob5;
+  double fmin6, prob6;
+  double fmin7, prob7;
   t0->SetBranchAddress("fmin", &fmin0);
   t0->SetBranchAddress("prob", &prob0);
   t1->SetBranchAddress("fmin", &fmin1);
@@ -94,6 +124,21 @@ void merge_massloop(TString tag = "SmearRealistic3Loops", TString name = "masslo
     t4->SetBranchAddress("fmin", &fmin4);
     t4->SetBranchAddress("prob", &prob4);
     t4->GetEntry(0);
+  }
+  if(fIter5!=0){
+    t5->SetBranchAddress("fmin", &fmin5);
+    t5->SetBranchAddress("prob", &prob5);
+    t5->GetEntry(0);
+  }
+  if(fIter6!=0){
+    t6->SetBranchAddress("fmin", &fmin6);
+    t6->SetBranchAddress("prob", &prob6);
+    t6->GetEntry(0);
+  }
+  if(fIter7!=0){
+    t7->SetBranchAddress("fmin", &fmin7);
+    t7->SetBranchAddress("prob", &prob7);
+    t7->GetEntry(0);
   }
 
   TH1D* hp_nom_template  = (TH1D*) fIter0->Get("h_A_vals_nom");
@@ -118,6 +163,15 @@ void merge_massloop(TString tag = "SmearRealistic3Loops", TString name = "masslo
     TH1D* hp_fit4 = 0;
     if(fIter4!=0)
       hp_fit4 = (TH1D*) fIter4->Get("h_"+params[p]+"_vals_fit");
+    TH1D* hp_fit5 = 0;
+    if(fIter5!=0)
+      hp_fit5 = (TH1D*) fIter5->Get("h_"+params[p]+"_vals_fit");
+    TH1D* hp_fit6 = 0;
+    if(fIter6!=0)
+      hp_fit6 = (TH1D*) fIter6->Get("h_"+params[p]+"_vals_fit");
+    TH1D* hp_fit7 = 0;
+    if(fIter7!=0)
+      hp_fit7 = (TH1D*) fIter7->Get("h_"+params[p]+"_vals_fit");
     
     hp_fit0->SetTitle(Form("#chi^{2}/ndof = %.2f (prob=%.2f)", 1+fmin0, prob0));
     if( string(plotname.Data()).find("iter1")!=string::npos ){
@@ -156,6 +210,54 @@ void merge_massloop(TString tag = "SmearRealistic3Loops", TString name = "masslo
       hp_fit0->Add(hp_fit4);
       hp_fit0->SetTitle(Form("#chi^{2}/ndof = %.2f (prob=%.2f)", 1+fmin4, prob4));
     }
+    else if( string(plotname.Data()).find("iter5")!=string::npos && fIter5!=0 ){
+      for(unsigned int ib=1; ib<=hp_fit1->GetXaxis()->GetNbins();ib++) hp_fit0->SetBinError(ib, hp_fit5->GetBinError(ib) );
+      for(unsigned int ib=1; ib<=hp_fit1->GetXaxis()->GetNbins();ib++) hp_fit1->SetBinError(ib, 0.);
+      for(unsigned int ib=1; ib<=hp_fit2->GetXaxis()->GetNbins();ib++) hp_fit2->SetBinError(ib, 0.);
+      for(unsigned int ib=1; ib<=hp_fit3->GetXaxis()->GetNbins();ib++) hp_fit3->SetBinError(ib, 0.);
+      for(unsigned int ib=1; ib<=hp_fit4->GetXaxis()->GetNbins();ib++) hp_fit4->SetBinError(ib, 0.);
+      for(unsigned int ib=1; ib<=hp_fit4->GetXaxis()->GetNbins();ib++) hp_fit5->SetBinError(ib, 0.);
+      hp_fit0->Add(hp_fit1);
+      hp_fit0->Add(hp_fit2);
+      hp_fit0->Add(hp_fit3);
+      hp_fit0->Add(hp_fit4);
+      hp_fit0->Add(hp_fit5);
+      hp_fit0->SetTitle(Form("#chi^{2}/ndof = %.2f (prob=%.2f)", 1+fmin5, prob5));
+    }
+    else if( string(plotname.Data()).find("iter6")!=string::npos && fIter6!=0 ){
+      for(unsigned int ib=1; ib<=hp_fit1->GetXaxis()->GetNbins();ib++) hp_fit0->SetBinError(ib, hp_fit6->GetBinError(ib) );
+      for(unsigned int ib=1; ib<=hp_fit1->GetXaxis()->GetNbins();ib++) hp_fit1->SetBinError(ib, 0.);
+      for(unsigned int ib=1; ib<=hp_fit2->GetXaxis()->GetNbins();ib++) hp_fit2->SetBinError(ib, 0.);
+      for(unsigned int ib=1; ib<=hp_fit3->GetXaxis()->GetNbins();ib++) hp_fit3->SetBinError(ib, 0.);
+      for(unsigned int ib=1; ib<=hp_fit4->GetXaxis()->GetNbins();ib++) hp_fit4->SetBinError(ib, 0.);
+      for(unsigned int ib=1; ib<=hp_fit4->GetXaxis()->GetNbins();ib++) hp_fit5->SetBinError(ib, 0.);
+      for(unsigned int ib=1; ib<=hp_fit4->GetXaxis()->GetNbins();ib++) hp_fit6->SetBinError(ib, 0.);
+      hp_fit0->Add(hp_fit1);
+      hp_fit0->Add(hp_fit2);
+      hp_fit0->Add(hp_fit3);
+      hp_fit0->Add(hp_fit4);
+      hp_fit0->Add(hp_fit5);
+      hp_fit0->Add(hp_fit6);
+      hp_fit0->SetTitle(Form("#chi^{2}/ndof = %.2f (prob=%.2f)", 1+fmin6, prob6));
+    }
+    else if( string(plotname.Data()).find("iter7")!=string::npos && fIter7!=0 ){
+      for(unsigned int ib=1; ib<=hp_fit1->GetXaxis()->GetNbins();ib++) hp_fit0->SetBinError(ib, hp_fit7->GetBinError(ib) );
+      for(unsigned int ib=1; ib<=hp_fit1->GetXaxis()->GetNbins();ib++) hp_fit1->SetBinError(ib, 0.);
+      for(unsigned int ib=1; ib<=hp_fit2->GetXaxis()->GetNbins();ib++) hp_fit2->SetBinError(ib, 0.);
+      for(unsigned int ib=1; ib<=hp_fit3->GetXaxis()->GetNbins();ib++) hp_fit3->SetBinError(ib, 0.);
+      for(unsigned int ib=1; ib<=hp_fit4->GetXaxis()->GetNbins();ib++) hp_fit4->SetBinError(ib, 0.);
+      for(unsigned int ib=1; ib<=hp_fit4->GetXaxis()->GetNbins();ib++) hp_fit5->SetBinError(ib, 0.);
+      for(unsigned int ib=1; ib<=hp_fit4->GetXaxis()->GetNbins();ib++) hp_fit6->SetBinError(ib, 0.);
+      for(unsigned int ib=1; ib<=hp_fit4->GetXaxis()->GetNbins();ib++) hp_fit7->SetBinError(ib, 0.);
+      hp_fit0->Add(hp_fit1);
+      hp_fit0->Add(hp_fit2);
+      hp_fit0->Add(hp_fit3);
+      hp_fit0->Add(hp_fit4);
+      hp_fit0->Add(hp_fit5);
+      hp_fit0->Add(hp_fit6);
+      hp_fit0->Add(hp_fit7);
+      hp_fit0->SetTitle(Form("#chi^{2}/ndof = %.2f (prob=%.2f)", 1+fmin7, prob7));
+    }
     hp_nom->SetLineColor(kBlue);
     hp_nom->SetLineWidth(3);
     hp_fit0->SetLineColor(kBlack);
@@ -176,7 +278,7 @@ void merge_massloop(TString tag = "SmearRealistic3Loops", TString name = "masslo
 
     if(p==0 && savePng){
       hp_fit0->SetMaximum( +0.002 );
-      hp_fit0->SetMinimum( -0.002 );
+      hp_fit0->SetMinimum( -0.002 );      
     }
     if(p==1 && savePng){
       hp_fit0->SetMaximum( +0.0025 );
