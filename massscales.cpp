@@ -82,6 +82,7 @@ int main(int argc, char* argv[])
 	("useSmearFit",         bool_switch()->default_value(false), "")
 	("tagSmearFit",         value<std::string>()->default_value("closure"), "run type")
 	("runSmearFit",         value<std::string>()->default_value("closure"), "run type")
+	("useMCasData",  bool_switch()->default_value(false), "")
 	("seed",        value<int>()->default_value(4357), "seed");
 
       store(parse_command_line(argc, argv, desc), vm);
@@ -120,7 +121,8 @@ int main(int argc, char* argv[])
   std::string runPrevFit = vm["runPrevFit"].as<std::string>();
   std::string tagSmearFit = vm["tagSmearFit"].as<std::string>();
   std::string runSmearFit = vm["runSmearFit"].as<std::string>();
-
+  bool useMCasData  = vm["useMCasData"].as<bool>();
+  
   TRandom3* ran0 = new TRandom3(seed);
 
   if(biasResolution<0.)
@@ -334,9 +336,9 @@ int main(int argc, char* argv[])
     }, {"idxs", "Muon_charge", "HLT_IsoMu24"} ));
 
     dlast = std::make_unique<RNode>(dlast->DefineSlot("Muon_ksmear", [&](unsigned int nslot, RVecUI idxs,
-									  RVecF Muon_pt, RVecF Muon_eta, RVecF Muon_phi, RVecF Muon_mass, RVecI Muon_charge,
-									  UInt_t nGenPart, RVecI GenPart_status, RVecI GenPart_statusFlags, RVecI GenPart_pdgId,
-									  RVecF GenPart_pt, RVecF GenPart_eta, RVecF GenPart_phi, RVecF GenPart_mass)->RVecF {
+									 RVecF Muon_pt, RVecF Muon_eta, RVecF Muon_phi, RVecF Muon_mass, RVecI Muon_charge,
+									 UInt_t nGenPart, RVecI GenPart_status, RVecI GenPart_statusFlags, RVecI GenPart_pdgId,
+									 RVecF GenPart_pt, RVecF GenPart_eta, RVecF GenPart_phi, RVecF GenPart_mass)->RVecF {
       RVecF out;
       unsigned int idxP = Muon_charge[idxs[0]]>0 ? idxs[0] : idxs[1];
       unsigned int idxM = Muon_charge[idxs[0]]>0 ? idxs[1] : idxs[0];
@@ -398,10 +400,18 @@ int main(int argc, char* argv[])
 	float resol1P = resolution(kmuP, gmuP.Eta(), biasResolution);
 	float resol1M = resolution(kmuM, gmuM.Eta(), biasResolution);
 
-	out.emplace_back( rans[nslot]->Gaus(kmuP*scale_smear0P, resol0P) );
-	out.emplace_back( rans[nslot]->Gaus(kmuM*scale_smear0M, resol0M) );
-	out.emplace_back( rans[nslot]->Gaus(kmuP*scale_smear1P, resol1P) );
-	out.emplace_back( rans[nslot]->Gaus(kmuM*scale_smear1M, resol1M) );
+	if(useMCasData){
+	  out.emplace_back( (1./gmuP.Pt() + (1./muP.Pt() - 1./gmuP.Pt())*(1.0 + extraSmear0P))*scale_smear0P  );
+	  out.emplace_back( (1./gmuM.Pt() + (1./muM.Pt() - 1./gmuM.Pt())*(1.0 + extraSmear0M))*scale_smear0M  );
+	  out.emplace_back( (1./gmuP.Pt() + (1./muP.Pt() - 1./gmuP.Pt())*(1.0 + biasResolution))*scale_smear1P  );
+	  out.emplace_back( (1./gmuM.Pt() + (1./muM.Pt() - 1./gmuM.Pt())*(1.0 + biasResolution))*scale_smear1M  );
+	}
+	else{
+	  out.emplace_back( rans[nslot]->Gaus(kmuP*scale_smear0P, resol0P) );
+	  out.emplace_back( rans[nslot]->Gaus(kmuM*scale_smear0M, resol0M) );
+	  out.emplace_back( rans[nslot]->Gaus(kmuP*scale_smear1P, resol1P) );
+	  out.emplace_back( rans[nslot]->Gaus(kmuM*scale_smear1M, resol1M) );
+	}
       }
       else{
 	//smear0
@@ -412,11 +422,11 @@ int main(int argc, char* argv[])
 	out.emplace_back(0.0);
       }
       return out;
-	}, {"idxs",
+    }, {"idxs",
 	"Muon_cvhPt", "Muon_cvhEta", "Muon_cvhPhi", "Muon_mass", "Muon_charge",
 	"nGenPart", "GenPart_status", "GenPart_statusFlags", "GenPart_pdgId",
 	"GenPart_pt", "GenPart_eta", "GenPart_phi", "GenPart_mass"} ));
-
+    
     dlast = std::make_unique<RNode>(dlast->Define("indexes", [&](RVecUI idxs, RVecF Muon_pt, RVecF Muon_eta, RVecI Muon_charge, RVecF Muon_ksmear)-> RVecUI {
       unsigned int idxP = Muon_charge[idxs[0]]>0 ? idxs[0] : idxs[1];
       unsigned int idxM = Muon_charge[idxs[0]]>0 ? idxs[1] : idxs[0];
@@ -496,8 +506,8 @@ int main(int argc, char* argv[])
       }
       
       if( gmuP.Pt()>10. && gmuM.Pt()>10.){
-	out.emplace_back( (gmuP + gmuM).M() );
 
+	out.emplace_back( (gmuP + gmuM).M() );
 	out.emplace_back( (muP + muM).M() );
 
 	float ksmear0P = Muon_ksmear[0]>0. ? Muon_ksmear[0] : 1./(pt_edges[0]-0.01);
