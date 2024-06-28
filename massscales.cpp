@@ -73,6 +73,7 @@ int main(int argc, char* argv[])
 	("biasResolution",     value<float>()->default_value(-1.), "number of events")
 	("nRMSforGausFit",     value<float>()->default_value(-1.), "number of events")
 	("minNumMassBins",     value<int>()->default_value(4), "number of events")
+	("maxRMS",      value<float>()->default_value(-1.), "number of events")
 	("rebin",       value<int>()->default_value(2), "rebin")
 	("fitWidth",    bool_switch()->default_value(false), "")
 	("fitNorm",     bool_switch()->default_value(false), "")
@@ -122,7 +123,8 @@ int main(int argc, char* argv[])
   std::string tagSmearFit = vm["tagSmearFit"].as<std::string>();
   std::string runSmearFit = vm["runSmearFit"].as<std::string>();
   bool useMCasData  = vm["useMCasData"].as<bool>();
-  
+  float maxRMS = vm["maxRMS"].as<float>();
+    
   TRandom3* ran0 = new TRandom3(seed);
 
   if(biasResolution<0.)
@@ -131,9 +133,9 @@ int main(int argc, char* argv[])
     biasResolution = ran0->Uniform(-biasResolution,+biasResolution);
   cout << "Bias in resolution: " << biasResolution << endl;
   
-  vector<float> pt_edges  = {25, 30, 35, 40, 45, 55}; 
+  vector<float> pt_edges  = {25, 30, 35, 40, 45, 55};
   vector<float> eta_edges = {-2.4, -2.2, -2.0, -1.8, -1.6, -1.4, -1.2, -1.0, -0.8, -0.6, -0.4, -0.2, 0.0,
-			      0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4};
+			     0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4};
 
   TH1F* h_pt_edges  = new TH1F("h_pt_edges", "",  pt_edges.size()-1, pt_edges.data());
   TH1F* h_eta_edges = new TH1F("h_eta_edges", "", eta_edges.size()-1, eta_edges.data());
@@ -697,6 +699,8 @@ int main(int argc, char* argv[])
 	    meanerr_i = gf->GetParError(1);
 	    rms_i     = TMath::Abs(gf->GetParameter(2));
 	    rmserr_i  = gf->GetParError(2);
+	    if(maxRMS>0. && rms_i>maxRMS)
+	      h_map.at("mask_"+recos[r])->SetBinContent(i+1, 0);
 	    //cout << "Fit " << mean_i << endl;
 	    delete gf;
 	  }
@@ -728,6 +732,7 @@ int main(int argc, char* argv[])
       TTree* treescales = new TTree("treescales","treescales");
       int inmassbins, indof, ibinIdx  ;
       float inevents, ibeta, ibetaErr, ialpha, ialphaErr, inu, inuErr, iprob, ichi2old, ichi2new; 
+      float imean, irms;
       treescales->Branch("nevents",&inevents,"nevents/F");
       treescales->Branch("beta",&ibeta,"beta/F");
       treescales->Branch("betaErr",&ibetaErr,"betaErr/F");
@@ -741,6 +746,8 @@ int main(int argc, char* argv[])
       treescales->Branch("nmassbins",&inmassbins,"nmassbins/I");
       treescales->Branch("ndof",&indof,"ndof/I");
       treescales->Branch("binIdx",&ibinIdx,"binIdx/I");
+      treescales->Branch("mean",&imean,"mean/F");
+      treescales->Branch("rms", &irms,"rms/F");
       
       TH1D* h_scales  = new TH1D("h_scales", "", n_bins, 0, double(n_bins));
       TH1D* h_widths  = new TH1D("h_widths", "", n_bins, 0, double(n_bins));
@@ -750,6 +757,7 @@ int main(int argc, char* argv[])
 
       TH2D* h_data_2D   = (TH2D*)fout->Get("h_smear1_bin_m");
       TH2D* h_nom_2D    = (TH2D*)fout->Get("h_smear0_bin_m");
+      TH2D* h_nomdm_2D  = (TH2D*)fout->Get("h_smear0_bin_dm");
       TH1D* h_nom_mask  = (TH1D*)fout->Get("h_mask_smear0_bin_dm");
       TH2D* h_jscale_2D = (TH2D*)fout->Get("h_smear0_bin_jac_scale");
       TH2D* h_jwidth_2D = (TH2D*)fout->Get("h_smear0_bin_jac_width");
@@ -764,8 +772,12 @@ int main(int argc, char* argv[])
 	TH1D* h_data_i    = (TH1D*)h_data_2D->ProjectionY( Form("h_data_i_%d",ibin ),     ibin+1, ibin+1 );
 	TH1D* h_nom_i     = (TH1D*)h_nom_2D->ProjectionY( Form("h_nom_i_%d", ibin),       ibin+1, ibin+1 );
 	TH1D* h_jscale_i  = (TH1D*)h_jscale_2D->ProjectionY( Form("h_jscale_i_%d", ibin), ibin+1, ibin+1 );
-	TH1D* h_jwidth_i  = (TH1D*)h_jwidth_2D->ProjectionY( Form("h_jwidth_i_%d", ibin), ibin+1, ibin+1 );	
+	TH1D* h_jwidth_i  = (TH1D*)h_jwidth_2D->ProjectionY( Form("h_jwidth_i_%d", ibin), ibin+1, ibin+1 );
+	TH1D* h_nomdm_i   = (TH1D*)h_nomdm_2D->ProjectionY( Form("h_nomdm_i_%d", ibin),       ibin+1, ibin+1 );
 
+	imean = h_nomdm_i->GetMean();
+	irms  = h_nomdm_i->GetRMS();
+	
 	if(rebin>1){
 	  h_data_i->Rebin(rebin);
 	  h_nom_i->Rebin(rebin);
