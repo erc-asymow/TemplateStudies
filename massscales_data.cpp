@@ -267,30 +267,30 @@ int main(int argc, char* argv[])
     }
 
     auto dlast = std::make_unique<RNode>(d);
-    
-    dlast = std::make_unique<RNode>(dlast->Define("idxs", [&](UInt_t nMuon, RVecB Muon_looseId, RVecF Muon_dxybs, RVecB Muon_isGlobal,
-							      RVecB Muon_highPurity, RVecB Muon_mediumId, RVecF Muon_pfRelIso04_all,
-							      RVecF Muon_pt, RVecF Muon_eta)->RVecUI {
-      RVecUI out;
-      for(unsigned int i = 0; i < nMuon; i++){
-	if( Muon_looseId[i] && TMath::Abs(Muon_dxybs[i]) < 0.05 && Muon_isGlobal[i] && Muon_highPurity[i] && Muon_mediumId[i] && Muon_pfRelIso04_all[i]<0.15 &&
-	    Muon_pt[i] >= pt_edges[0] && Muon_pt[i] < pt_edges[ n_pt_bins ]  && Muon_eta[i]>=eta_edges[0] && Muon_eta[i]<=eta_edges[ n_eta_bins ]  ){
-	  out.emplace_back(i);
-	}
-      }
-      return out;
-    }, {"nMuon", "Muon_looseId", "Muon_dxybs", "Muon_isGlobal",
-	"Muon_highPurity","Muon_mediumId", "Muon_pfRelIso04_all",
-	useKf ? "Muon_pt" : "Muon_cvhPt", useKf ? "Muon_eta" : "Muon_cvhEta" } ));
-    
-    dlast = std::make_unique<RNode>(dlast->Filter( [](RVecUI idxs, RVecI Muon_charge, bool HLT_IsoMu24 ){
-      if( idxs.size()!=2 || !HLT_IsoMu24) return false;
-      if( Muon_charge[idxs[0]]*Muon_charge[idxs[1]] > 0 ) return false;
-      return true;
-    }, {"idxs", "Muon_charge", "HLT_IsoMu24"} ));
-
+        
     // MC
     if(iter>=0){
+
+      dlast = std::make_unique<RNode>(dlast->Define("idxs", [&](UInt_t nMuon, RVecB Muon_looseId, RVecF Muon_dxybs, RVecB Muon_isGlobal,
+								RVecB Muon_highPurity, RVecB Muon_mediumId, RVecF Muon_pfRelIso04_all,
+								RVecF Muon_pt, RVecF Muon_eta)->RVecUI {
+	RVecUI out;
+	for(unsigned int i = 0; i < nMuon; i++){
+	  if( Muon_looseId[i] && TMath::Abs(Muon_dxybs[i]) < 0.05 && Muon_isGlobal[i] && Muon_highPurity[i] && Muon_mediumId[i] && Muon_pfRelIso04_all[i]<0.15 &&
+	      Muon_pt[i] >= pt_edges[0] && Muon_pt[i] < pt_edges[ n_pt_bins ]  && Muon_eta[i]>=eta_edges[0] && Muon_eta[i]<=eta_edges[ n_eta_bins ]  ){
+	    out.emplace_back(i);
+	  }
+	}
+	return out;
+      }, {"nMuon", "Muon_looseId", "Muon_dxybs", "Muon_isGlobal",
+	  "Muon_highPurity","Muon_mediumId", "Muon_pfRelIso04_all",
+	  useKf ? "Muon_pt" : "Muon_cvhidealPt", useKf ? "Muon_eta" : "Muon_cvhidealEta" } ));
+
+      dlast = std::make_unique<RNode>(dlast->Filter( [](RVecUI idxs, RVecI Muon_charge, bool HLT_IsoMu24 ){
+	if( idxs.size()!=2 || !HLT_IsoMu24) return false;
+	if( Muon_charge[idxs[0]]*Muon_charge[idxs[1]] > 0 ) return false;
+	return true;
+      }, {"idxs", "Muon_charge", "HLT_IsoMu24"} ));
       
       dlast = std::make_unique<RNode>(dlast->Define("weight", [](float weight)->float{
 	return std::copysign(1.0, weight);
@@ -362,7 +362,7 @@ int main(int argc, char* argv[])
 	}
 	return out;
       }, {"idxs",
-	  useKf ? "Muon_pt" : "Muon_cvhPt", useKf ? "Muon_eta" : "Muon_cvhEta", useKf ? "Muon_phi" : "Muon_cvhPhi", "Muon_mass", "Muon_charge",
+	  useKf ? "Muon_pt" : "Muon_cvhidealPt", useKf ? "Muon_eta" : "Muon_cvhidealEta", useKf ? "Muon_phi" : "Muon_cvhidealPhi", "Muon_mass", "Muon_charge",
 	  "nGenPart", "GenPart_status", "GenPart_statusFlags", "GenPart_pdgId",
 	  "GenPart_pt", "GenPart_eta", "GenPart_phi", "GenPart_mass"} ));
       
@@ -408,7 +408,7 @@ int main(int argc, char* argv[])
 	  }
 	}
 	return out;
-      }, {"idxs", useKf ? "Muon_pt" : "Muon_cvhPt", useKf ? "Muon_eta" : "Muon_cvhEta", "Muon_charge", "Muon_ksmear"} ));
+      }, {"idxs", useKf ? "Muon_pt" : "Muon_cvhidealPt", useKf ? "Muon_eta" : "Muon_cvhidealEta", "Muon_charge", "Muon_ksmear"} ));
       
       for(unsigned int r = 0 ; r<recos.size(); r++){
 	dlast = std::make_unique<RNode>(dlast->Define( TString(("index_"+recos[r]).c_str()), [r](RVecUI indexes){
@@ -450,7 +450,7 @@ int main(int argc, char* argv[])
 	
 	return out;
     }, {"idxs",
-	useKf ? "Muon_pt" : "Muon_cvhPt", useKf ? "Muon_eta" : "Muon_cvhEta", useKf ? "Muon_phi" : "Muon_cvhPhi", "Muon_mass", "Muon_charge",
+	useKf ? "Muon_pt" : "Muon_cvhidealPt", useKf ? "Muon_eta" : "Muon_cvhidealEta", useKf ? "Muon_phi" : "Muon_cvhidealPhi", "Muon_mass", "Muon_charge",
 	"nGenPart", "GenPart_status", "GenPart_statusFlags", "GenPart_pdgId",
 	"GenPart_pt", "GenPart_eta", "GenPart_phi", "GenPart_mass",
 	"Muon_ksmear"} ));
@@ -510,6 +510,27 @@ int main(int argc, char* argv[])
     // data
     else{
 
+      dlast = std::make_unique<RNode>(dlast->Define("idxs", [&](UInt_t nMuon, RVecB Muon_looseId, RVecF Muon_dxybs, RVecB Muon_isGlobal,
+								RVecB Muon_highPurity, RVecB Muon_mediumId, RVecF Muon_pfRelIso04_all,
+								RVecF Muon_pt, RVecF Muon_eta)->RVecUI {
+	RVecUI out;
+	for(unsigned int i = 0; i < nMuon; i++){
+	  if( Muon_looseId[i] && TMath::Abs(Muon_dxybs[i]) < 0.05 && Muon_isGlobal[i] && Muon_highPurity[i] && Muon_mediumId[i] && Muon_pfRelIso04_all[i]<0.15 &&
+	      Muon_pt[i] >= pt_edges[0] && Muon_pt[i] < pt_edges[ n_pt_bins ]  && Muon_eta[i]>=eta_edges[0] && Muon_eta[i]<=eta_edges[ n_eta_bins ]  ){
+	    out.emplace_back(i);
+	  }
+	}
+	return out;
+      }, {"nMuon", "Muon_looseId", "Muon_dxybs", "Muon_isGlobal",
+	  "Muon_highPurity","Muon_mediumId", "Muon_pfRelIso04_all",
+	  useKf ? "Muon_pt" : "Muon_cvhPt", useKf ? "Muon_eta" : "Muon_cvhEta" } ));
+      
+      dlast = std::make_unique<RNode>(dlast->Filter( [](RVecUI idxs, RVecI Muon_charge, bool HLT_IsoMu24 ){
+	if( idxs.size()!=2 || !HLT_IsoMu24) return false;
+	if( Muon_charge[idxs[0]]*Muon_charge[idxs[1]] > 0 ) return false;
+	return true;
+      }, {"idxs", "Muon_charge", "HLT_IsoMu24"} ));      
+	  
       dlast = std::make_unique<RNode>(dlast->Define("weight", []()->float{ return 1.0; }, {} ));          
             
       dlast = std::make_unique<RNode>(dlast->Define("index_data", [&](RVecUI idxs, RVecF Muon_pt, RVecF Muon_eta, RVecI Muon_charge)-> unsigned int {
