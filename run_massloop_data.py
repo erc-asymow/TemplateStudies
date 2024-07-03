@@ -19,15 +19,16 @@ args = parser.parse_args()
 def loop_one():    
 
     tag = args.tag
-    cmd_histo_iter0 = './massscales_data --lumi=16.1 --firstIter=-1 --lastIter=2 '+\
+    cmd_histo_iter0 = './massscales_data --lumi=51. --firstIter=-1 --lastIter=2 '+\
         ' --tag='+tag+' '+\
         ' --run=Iter0 '+\
-        ' --nRMSforGausFit=-1.0 '+\
+        ' --nRMSforGausFit=-1 '+\
         ' --minNumEvents=100 --minNumEventsPerBin=30 '+\
         ' --minNumMassBins=4 '+\
         ' --rebin=2 '+\
         ' --fitNorm --fitWidth '+\
-        ' --useKf '
+        '  --y2018 --scaleToData '
+        #' --useKf '
     if not args.forceIter>0:
         print(cmd_histo_iter0)
     if not (args.dryrun or args.forceIter>0):

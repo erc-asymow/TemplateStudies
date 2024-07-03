@@ -45,8 +45,10 @@ using ROOT::RDF::RNode;
 
 using namespace boost::program_options;
 
-constexpr double lumiMC = 3.33369e+08/2001.9e+03;
-  
+constexpr double lumiMC2016 = 3.33369e+08/2001.9e+03;
+constexpr double lumiMC2017 = 4.9803e+07/2001.9e+03;
+constexpr double lumiMC2018 = 6.84093e+07/2001.9e+03;
+
 int main(int argc, char* argv[])
 {
 
@@ -81,6 +83,10 @@ int main(int argc, char* argv[])
 	("tagSmearFit",         value<std::string>()->default_value("closure"), "run type")
 	("runSmearFit",         value<std::string>()->default_value("closure"), "run type")
 	("useKf",             bool_switch()->default_value(false), "")
+	("scaleToData",       bool_switch()->default_value(false), "")
+	("y2016",             bool_switch()->default_value(false), "")
+	("y2017",             bool_switch()->default_value(false), "")
+	("y2018",             bool_switch()->default_value(false), "")
 	("seed",        value<int>()->default_value(4357), "seed");
 
       store(parse_command_line(argc, argv, desc), vm);
@@ -114,11 +120,17 @@ int main(int argc, char* argv[])
   bool usePrevFit        = vm["usePrevFit"].as<bool>();
   bool useSmearFit       = vm["useSmearFit"].as<bool>();
   bool useKf             = vm["useKf"].as<bool>();
+  bool y2016             = vm["y2016"].as<bool>();
+  bool y2017             = vm["y2017"].as<bool>();
+  bool y2018             = vm["y2018"].as<bool>();
   std::string tagPrevFit = vm["tagPrevFit"].as<std::string>();
   std::string runPrevFit = vm["runPrevFit"].as<std::string>();
   std::string tagSmearFit = vm["tagSmearFit"].as<std::string>();
   std::string runSmearFit = vm["runSmearFit"].as<std::string>();
-
+  bool scaleToData        = vm["scaleToData"].as<bool>();
+  
+  assert( y2016 || y2017 || y2018 );
+  
   TRandom3* ran0 = new TRandom3(seed);
 
   vector<float> pt_edges  = {25, 30, 35, 40, 45, 55}; 
@@ -235,28 +247,98 @@ int main(int argc, char* argv[])
 
     vector<string> in_files = {};
     if(iter>=0){
-      in_files = {"/scratch/wmass/y2016/DYJetsToMuMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_TrackFitV722_NanoProdv6/240509_040854/0000/NanoV9MCPostVFP_*.root",
-		  "/scratch/wmass/y2016/DYJetsToMuMu_H2ErratumFix_PDFExt_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_TrackFitV722_NanoProdv6/240509_041233/0000/NanoV9MCPostVFP_*.root",
-		  "/scratch/wmass/y2016/DYJetsToMuMu_H2ErratumFix_PDFExt_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_TrackFitV722_NanoProdv6/240509_041233/0001/NanoV9MCPostVFP_*.root",
-		  "/scratch/wmass/y2016/DYJetsToMuMu_H2ErratumFix_PDFExt_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_TrackFitV722_NanoProdv6/240509_041233/0002/NanoV9MCPostVFP_*.root"
-      };
+
+      if(y2016){
+	in_files = {
+	  "/scratch/wmass/y2016/DYJetsToMuMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_TrackFitV722_NanoProdv6/240509_040854/0000/NanoV9MCPostVFP_*.root",
+	  "/scratch/wmass/y2016/DYJetsToMuMu_H2ErratumFix_PDFExt_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_TrackFitV722_NanoProdv6/240509_041233/0000/NanoV9MCPostVFP_*.root",
+	  "/scratch/wmass/y2016/DYJetsToMuMu_H2ErratumFix_PDFExt_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_TrackFitV722_NanoProdv6/240509_041233/0001/NanoV9MCPostVFP_*.root",
+	  "/scratch/wmass/y2016/DYJetsToMuMu_H2ErratumFix_PDFExt_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_TrackFitV722_NanoProdv6/240509_041233/0002/NanoV9MCPostVFP_*.root"
+	};
+      }
+      else if(y2017){
+	in_files = {
+	  "/scratch/wmass/y2017/DYJetsToMuMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2017_TrackFitV722_NanoProdv3/NanoV9MC2017_*.root"
+	};
+      }
+      else if(y2018){
+	in_files = {
+	  "/scratch/wmass/y2018/DYJetsToMuMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_TrackFitV722_NanoProdv3/240124_121800/0000/NanoV9MC2018_*.root",
+	  "/scratch/wmass/y2018/DYJetsToMuMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_TrackFitV722_NanoProdv3/240124_121800/0001/NanoV9MC2018_*.root"
+	};
+      }      
     }
     else{
-      in_files = {
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016FDataPostVFP_TrackFitV722_NanoProdv6/240509_051502/0000/NanoV9DataPostVFP_*.root",
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016GDataPostVFP_TrackFitV722_NanoProdv6/240509_051653/0000/NanoV9DataPostVFP_*.root",
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016GDataPostVFP_TrackFitV722_NanoProdv6/240509_051653/0001/NanoV9DataPostVFP_*.root",
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016GDataPostVFP_TrackFitV722_NanoProdv6/240509_051653/0002/NanoV9DataPostVFP_*.root",
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016GDataPostVFP_TrackFitV722_NanoProdv6/240509_051653/0003/NanoV9DataPostVFP_*.root",
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016GDataPostVFP_TrackFitV722_NanoProdv6/240509_051653/0004/NanoV9DataPostVFP_*.root",
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0000/NanoV9DataPostVFP_*.root",
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0001/NanoV9DataPostVFP_*.root",
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0002/NanoV9DataPostVFP_*.root",
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0003/NanoV9DataPostVFP_*.root",
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0004/NanoV9DataPostVFP_*.root",
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0005/NanoV9DataPostVFP_*.root",
-	"/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0006/NanoV9DataPostVFP_*.root"
-      };      
+      if(y2016){
+	in_files = {
+	  "/scratch/wmass/y2016/SingleMuon/NanoV9Run2016FDataPostVFP_TrackFitV722_NanoProdv6/240509_051502/0000/NanoV9DataPostVFP_*.root",
+	  "/scratch/wmass/y2016/SingleMuon/NanoV9Run2016GDataPostVFP_TrackFitV722_NanoProdv6/240509_051653/0000/NanoV9DataPostVFP_*.root",
+	  "/scratch/wmass/y2016/SingleMuon/NanoV9Run2016GDataPostVFP_TrackFitV722_NanoProdv6/240509_051653/0001/NanoV9DataPostVFP_*.root",
+	  "/scratch/wmass/y2016/SingleMuon/NanoV9Run2016GDataPostVFP_TrackFitV722_NanoProdv6/240509_051653/0002/NanoV9DataPostVFP_*.root",
+	  "/scratch/wmass/y2016/SingleMuon/NanoV9Run2016GDataPostVFP_TrackFitV722_NanoProdv6/240509_051653/0003/NanoV9DataPostVFP_*.root",
+	  "/scratch/wmass/y2016/SingleMuon/NanoV9Run2016GDataPostVFP_TrackFitV722_NanoProdv6/240509_051653/0004/NanoV9DataPostVFP_*.root",
+	  "/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0000/NanoV9DataPostVFP_*.root",
+	  "/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0001/NanoV9DataPostVFP_*.root",
+	  "/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0002/NanoV9DataPostVFP_*.root",
+	  "/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0003/NanoV9DataPostVFP_*.root",
+	  "/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0004/NanoV9DataPostVFP_*.root",
+	  "/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0005/NanoV9DataPostVFP_*.root",
+	  "/scratch/wmass/y2016/SingleMuon/NanoV9Run2016HDataPostVFP_TrackFitV722_NanoProdv6/240509_051807/0006/NanoV9DataPostVFP_*.root"
+	};
+      }
+      else if(y2017){
+	in_files = {
+	  "/scratch/wmass/y2017/SingleMuon/NanoV9Run2017B_TrackFitV722_NanoProdv3/240127_110915/0000/NanoV9Data2017_*.root",
+	  "/scratch/wmass/y2017/SingleMuon/NanoV9Run2017B_TrackFitV722_NanoProdv3/240127_110915/0001/NanoV9Data2017_*.root",
+	  "/scratch/wmass/y2017/SingleMuon/NanoV9Run2017B_TrackFitV722_NanoProdv3/240127_110915/0002/NanoV9Data2017_*.root",
+	  "/scratch/wmass/y2017/SingleMuon/NanoV9Run2017B_TrackFitV722_NanoProdv3/240127_110915/0003/NanoV9Data2017_*.root",
+	  "/scratch/wmass/y2017/SingleMuon/NanoV9Run2017C_TrackFitV722_NanoProdv3/240127_115941/0000/NanoV9Data2017_*.root",
+	  "/scratch/wmass/y2017/SingleMuon/NanoV9Run2017C_TrackFitV722_NanoProdv3/240127_115941/0001/NanoV9Data2017_*.root",
+	  "/scratch/wmass/y2017/SingleMuon/NanoV9Run2017C_TrackFitV722_NanoProdv3/240127_115941/0002/NanoV9Data2017_*.root",
+	  "/scratch/wmass/y2017/SingleMuon/NanoV9Run2017C_TrackFitV722_NanoProdv3/240127_115941/0003/NanoV9Data2017_*.root",
+	  "/scratch/wmass/y2017/SingleMuon/NanoV9Run2017C_TrackFitV722_NanoProdv3/240127_115941/0004/NanoV9Data2017_*.root",
+	  "/scratch/wmass/y2017/SingleMuon/NanoV9Run2017C_TrackFitV722_NanoProdv3/240127_115941/0005/NanoV9Data2017_*.root",
+	  "/scratch/wmass/y2017/SingleMuon/NanoV9Run2017D_TrackFitV722_NanoProdv3/240127_120137/0000/NanoV9Data2017_*.root",
+	  "/scratch/wmass/y2017/SingleMuon/NanoV9Run2017D_TrackFitV722_NanoProdv3/240127_120137/0001/NanoV9Data2017_*.root",
+	  "/scratch/wmass/y2017/SingleMuon/NanoV9Run2017D_TrackFitV722_NanoProdv3/240127_120137/0002/NanoV9Data2017_*.root",
+	  "/scratch/wmass/y2017/SingleMuon/NanoV9Run2017E_TrackFitV722_NanoProdv3/240127_121346/0000/NanoV9Data2017_*.root",
+	  "/scratch/wmass/y2017/SingleMuon/NanoV9Run2017E_TrackFitV722_NanoProdv3/240127_121346/0001/NanoV9Data2017_*.root",
+	  "/scratch/wmass/y2017/SingleMuon/NanoV9Run2017E_TrackFitV722_NanoProdv3/240127_121346/0002/NanoV9Data2017_*.root",
+	  "/scratch/wmass/y2017/SingleMuon/NanoV9Run2017E_TrackFitV722_NanoProdv3/240127_121346/0003/NanoV9Data2017_*.root",
+	  "/scratch/wmass/y2017/SingleMuon/NanoV9Run2017E_TrackFitV722_NanoProdv3/240127_121346/0004/NanoV9Data2017_*.root",
+	  "/scratch/wmass/y2017/SingleMuon/NanoV9Run2017F_TrackFitV722_NanoProdv3/240127_122701/0000/NanoV9Data2017_*.root",
+	  "/scratch/wmass/y2017/SingleMuon/NanoV9Run2017F_TrackFitV722_NanoProdv3/240127_122701/0001/NanoV9Data2017_*.root",
+	  "/scratch/wmass/y2017/SingleMuon/NanoV9Run2017F_TrackFitV722_NanoProdv3/240127_122701/0002/NanoV9Data2017_*.root",
+	  "/scratch/wmass/y2017/SingleMuon/NanoV9Run2017F_TrackFitV722_NanoProdv3/240127_122701/0003/NanoV9Data2017_*.root",
+	  "/scratch/wmass/y2017/SingleMuon/NanoV9Run2017F_TrackFitV722_NanoProdv3/240127_122701/0004/NanoV9Data2017_*.root",
+	  "/scratch/wmass/y2017/SingleMuon/NanoV9Run2017F_TrackFitV722_NanoProdv3/240127_122701/0005/NanoV9Data2017_*.root",
+	  "/scratch/wmass/y2017/SingleMuon/NanoV9Run2017F_TrackFitV722_NanoProdv3/240127_122701/0006/NanoV9Data2017_*.root"
+	};
+      }
+      else if(y2018){
+	in_files = {
+	  "/scratch/wmass/y2018/SingleMuon/NanoV9Run2018A_TrackFitV722_NanoProdv3/231102_185937/0000/NanoV9Data2018_*.root",
+	  "/scratch/wmass/y2018/SingleMuon/NanoV9Run2018A_TrackFitV722_NanoProdv3/231102_185937/0001/NanoV9Data2018_*.root",
+	  "/scratch/wmass/y2018/SingleMuon/NanoV9Run2018A_TrackFitV722_NanoProdv3/231102_185937/0002/NanoV9Data2018_*.root",
+	  "/scratch/wmass/y2018/SingleMuon/NanoV9Run2018A_TrackFitV722_NanoProdv3/231102_185937/0003/NanoV9Data2018_*.root",
+	  "/scratch/wmass/y2018/SingleMuon/NanoV9Run2018A_TrackFitV722_NanoProdv3/231102_185937/0004/NanoV9Data2018_*.root",
+	  "/scratch/wmass/y2018/SingleMuon/NanoV9Run2018A_TrackFitV722_NanoProdv3/231102_185937/0005/NanoV9Data2018_*.root",
+	  "/scratch/wmass/y2018/SingleMuon/NanoV9Run2018A_TrackFitV722_NanoProdv3/231102_185937/0006/NanoV9Data2018_*.root",
+	  "/scratch/wmass/y2018/SingleMuon/NanoV9Run2018B_TrackFitV722_NanoProdv3/231103_093816/0000/NanoV9Data2018_*.root",
+	  "/scratch/wmass/y2018/SingleMuon/NanoV9Run2018B_TrackFitV722_NanoProdv3/231103_093816/0001/NanoV9Data2018_*.root",
+	  "/scratch/wmass/y2018/SingleMuon/NanoV9Run2018B_TrackFitV722_NanoProdv3/231103_093816/0002/NanoV9Data2018_*.root",
+	  "/scratch/wmass/y2018/SingleMuon/NanoV9Run2018C_TrackFitV722_NanoProdv3/231103_101410/0000/NanoV9Data2018_*.root",
+	  "/scratch/wmass/y2018/SingleMuon/NanoV9Run2018C_TrackFitV722_NanoProdv3/231103_101410/0001/NanoV9Data2018_*.root",
+	  "/scratch/wmass/y2018/SingleMuon/NanoV9Run2018C_TrackFitV722_NanoProdv3/231103_101410/0002/NanoV9Data2018_*.root",
+	  "/scratch/wmass/y2018/SingleMuon/NanoV9Run2018D_TrackFitV722_NanoProdv3/231107_134901/0000/NanoV9Data2018_*.root",
+	  "/scratch/wmass/y2018/SingleMuon/NanoV9Run2018D_TrackFitV722_NanoProdv3/231107_134901/0001/NanoV9Data2018_*.root",
+	  "/scratch/wmass/y2018/SingleMuon/NanoV9Run2018D_TrackFitV722_NanoProdv3/231107_134901/0002/NanoV9Data2018_*.root",
+	  "/scratch/wmass/y2018/SingleMuon/NanoV9Run2018D_TrackFitV722_NanoProdv3/231107_134901/0003/NanoV9Data2018_*.root",
+	  "/scratch/wmass/y2018/SingleMuon/NanoV9Run2018D_TrackFitV722_NanoProdv3/231107_134901/0004/NanoV9Data2018_*.root",
+	  "/scratch/wmass/y2018/SingleMuon/NanoV9Run2018D_TrackFitV722_NanoProdv3/231107_134901/0005/NanoV9Data2018_*.root",
+	  "/scratch/wmass/y2018/SingleMuon/NanoV9Run2018D_TrackFitV722_NanoProdv3/231107_134901/0006/NanoV9Data2018_*.root"
+	};
+      }
     }
     
     ROOT::RDataFrame d( "Events", in_files );
@@ -613,23 +695,28 @@ int main(int argc, char* argv[])
 	histos2D.emplace_back(dlast->Histo2D({"h_"+TString(recos[r].c_str())+"_bin_jac_width", "nominal", n_bins, 0, double(n_bins), x_nbins, x_low, x_high}, "index_"+TString(recos[r].c_str()), TString(recos[r].c_str())+"_m", TString(recos[r].c_str())+"_jwidth_weight"));
       }
     }
-    
-    fout->cd();
-    std::cout << "Writing histos..." << std::endl;
-    double sf = lumi>0. ? lumi/lumiMC : 1.0; //double(lumi)/double(minNumEvents);
-    for(auto h : histos1D){
-      if(iter>=0) h->Scale(sf);
-      string h_name = std::string(h->GetName());
-      h->Write();
-    }
-    for(auto h : histos2D){
-      if(iter>=0) h->Scale(sf);
-      string h_name = std::string(h->GetName());
-      std::cout << "Total number of events in 2D histo " << h_name << ": " << h->GetEntries() << std::endl;
-      h->Write();
-    }    
-    std::cout << "Total slots: " << dlast->GetNSlots() << std::endl;
 
+    if(iter<2){
+      fout->cd();
+      std::cout << "Writing histos..." << std::endl;
+      double lumiMC = lumiMC2016;
+      if(y2017)      lumiMC = lumiMC2017;
+      else if(y2018) lumiMC = lumiMC2018;
+      double sf = lumi>0. ? lumi/lumiMC : 1.0; //double(lumi)/double(minNumEvents);
+      for(auto h : histos1D){
+	if(iter>=0) h->Scale(sf);
+	string h_name = std::string(h->GetName());
+	h->Write();
+      }
+      for(auto h : histos2D){
+	if(iter>=0) h->Scale(sf);
+	string h_name = std::string(h->GetName());
+	std::cout << "Total number of events in 2D histo " << h_name << ": " << h->GetEntries() << std::endl;
+	h->Write();
+      }    
+      std::cout << "Total slots: " << dlast->GetNSlots() << std::endl;
+    }
+    
     // fill histos
     if(iter==0){
 
@@ -748,6 +835,17 @@ int main(int argc, char* argv[])
 	TH1D* h_jscale_i  = (TH1D*)h_jscale_2D->ProjectionY( Form("h_jscale_i_%d", ibin), ibin+1, ibin+1 );
 	TH1D* h_jwidth_i  = (TH1D*)h_jwidth_2D->ProjectionY( Form("h_jwidth_i_%d", ibin), ibin+1, ibin+1 );	
 
+	if(scaleToData){
+	  double data_norm_i = h_data_i->Integral();
+	  double mc_norm_i = h_nom_i->Integral();
+	  if(data_norm_i>0. && mc_norm_i>0.){
+	    double sf_i = data_norm_i/mc_norm_i;
+	    h_nom_i->Scale(sf_i);
+	    h_jscale_i->Scale(sf_i);
+	    h_jwidth_i->Scale(sf_i);
+	  }
+	}
+	
 	if(rebin>1){
 	  h_data_i->Rebin(rebin);
 	  h_nom_i->Rebin(rebin);
