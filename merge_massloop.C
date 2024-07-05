@@ -316,6 +316,8 @@ void merge_massloop(TString tag = "SmearRealistic3Loops", TString name = "masslo
     //}
 
     if(p==0 && savePng){
+      //hp_fit0->SetMaximum( 0.);
+      //hp_fit0->SetMinimum( -0.0022 );      
       hp_fit0->SetMaximum( +0.002 );
       hp_fit0->SetMinimum( -0.002 );      
     }
@@ -324,8 +326,8 @@ void merge_massloop(TString tag = "SmearRealistic3Loops", TString name = "masslo
       hp_fit0->SetMinimum( -0.0025 );
     }
     if(p==2 && savePng){
-      hp_fit0->SetMaximum( +0.0015 );
-      hp_fit0->SetMinimum( -0.0015 );
+      hp_fit0->SetMaximum( +0.0025 );
+      hp_fit0->SetMinimum( -0.0025 );
     }          
     hp_fit0->Draw("HISTPE");
     hp_nom->Draw("HISTSAME");
@@ -638,3 +640,71 @@ void merge_massloop_toys(TString tag = "SmearRealisticRnd_merged", TString name 
   }
 }
 
+void merge_massloop_ratio(TString tag = "PostVFP", TString name = "Iter0", TString selection = "LL"){
+
+  TString plotname = TString("ratio_") + name + TString("_") + tag + TString("_") + selection + TString(".png");
+  
+  TCanvas* c = new TCanvas("c", "canvas", 600, 600);
+  
+  TFile* fsIter = TFile::Open("massscales_"+tag+"_"+name+".root", "READ");
+  TString mc_name    = "h_smear0_bin_m";
+  TString data_name  = "h_data_bin_m";
+  TH2D* h2mass_smear0 = (TH2D*)fsIter->Get(mc_name);
+  TH2D* h2mass_smear1 = (TH2D*)fsIter->Get(data_name);
+
+  TH1D* eta_edges = (TH1D*)fsIter->Get("h_eta_edges");
+  TH1D* pt_edges = (TH1D*)fsIter->Get("h_pt_edges");
+  
+  unsigned int n_eta_bins = 24;
+  unsigned int n_pt_bins = 5;
+  unsigned int ibin = 0;
+  for(unsigned int ieta_p = 0; ieta_p<n_eta_bins; ieta_p++){
+    for(unsigned int ipt_p = 0; ipt_p<n_pt_bins; ipt_p++){
+      for(unsigned int ieta_m = 0; ieta_m<n_eta_bins; ieta_m++){
+	for(unsigned int ipt_m = 0; ipt_m<n_pt_bins; ipt_m++){
+	  float etap = TMath::Abs(eta_edges->GetXaxis()->GetBinCenter(ieta_p+1));
+	  float etam = TMath::Abs(eta_edges->GetXaxis()->GetBinCenter(ieta_m+1));
+	  float ptp = TMath::Abs(pt_edges->GetXaxis()->GetBinCenter(ipt_p+1));
+	  float ptm = TMath::Abs(pt_edges->GetXaxis()->GetBinCenter(ipt_m+1));
+	  bool accept = true;
+	  if(selection=="CC")
+	    accept = etap<1.5 && etam<1.5;
+	  else if(selection=="FC")
+	    accept = (etap<1.5 && etam>1.5) || (etap>1.5 && etam<1.5);
+	  else if(selection=="FF")
+	    accept = etap>1.5 && etam>1.5;
+	  else if(selection=="LL")
+	    accept =  (ptp<35 && ptm<35) ;
+	  else if(selection=="LH")
+	    accept =  (ptp<35 && ptm>35) || (ptp>35 && ptm<35) ;
+	  else if(selection=="HH")
+	    accept =  (ptp>35 && ptm>35) ;
+	  if( !accept ){
+	    for(unsigned int iy=0; iy<h2mass_smear0->GetYaxis()->GetNbins(); iy++){
+	      h2mass_smear0->SetBinContent(ibin+1, iy+1, 0.0);
+	      h2mass_smear1->SetBinContent(ibin+1, iy+1, 0.0);
+	    }
+	  }
+	  ibin++;
+	}
+      }
+    }
+  }
+
+  TH1D* hmass_smear0 = h2mass_smear0->ProjectionY("smear0");
+  TH1D* hmass_smear1 = h2mass_smear1->ProjectionY("smear1");
+
+  hmass_smear0->Scale(hmass_smear1->Integral()/hmass_smear0->Integral());
+  hmass_smear1->Divide(hmass_smear0);
+  hmass_smear1->SetLineColor(kBlack);
+  hmass_smear1->SetMaximum(1.025);
+  hmass_smear1->SetMinimum(0.975);
+  hmass_smear1->SetStats(0);
+  hmass_smear1->SetTitle(tag+", "+name+", "+selection);
+
+  c->cd();
+  hmass_smear1->Draw("HISTE");
+
+  c->SaveAs(plotname);
+  
+}
