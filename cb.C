@@ -17,11 +17,15 @@
 
 using namespace RooFit;
 
-int fit(int ib=-1, float minFrac=0.995, bool savePlots=false){
+int fit(int ib=-1, float minFrac=0.995, bool savePlots=false, bool forceGaus=false){
 
-
-  if(ib<-1){
+  bool verbosity = true;
+  int printlevel = 1;
+  if(ib<0 || true){
     RooMsgService::instance().setGlobalKillBelow(RooFit::FATAL);
+    gErrorIgnoreLevel = 6001;
+    verbosity = false;
+    printlevel = -1;
   }
     
   TFile* fout = TFile::Open("cb.root", "RECREATE");
@@ -97,8 +101,8 @@ int fit(int ib=-1, float minFrac=0.995, bool savePlots=false){
 						 Minimizer("Minuit2"),
 						 Range( rname.Data() ),
 						 Save(), SumW2Error(true),
-						 PrintLevel(ib>=0 ? 1 : -1),
-						 Verbose(ib>=0) )};
+						 PrintLevel(printlevel),
+						 Verbose(verbosity) )};
     edm = r->edm();
     status = r->status();
     fr = frac.getVal();
@@ -113,8 +117,8 @@ int fit(int ib=-1, float minFrac=0.995, bool savePlots=false){
 						 Minimizer("Minuit2"),
 						 Range( rname.Data() ),
 						 Save(), SumW2Error(true),
-						 PrintLevel(ib>=0 ? 1 : -1),
-						 Verbose(ib>=0) )};      
+						 PrintLevel(printlevel),
+						 Verbose(verbosity) )};      
       r = rn;
       flag = 1;
     }
@@ -129,8 +133,8 @@ int fit(int ib=-1, float minFrac=0.995, bool savePlots=false){
 						Minimizer("Minuit2"),
 						Range( rname.Data() ),
 						Save(), SumW2Error(true),
-						PrintLevel(ib>=0 ? 1 : -1),
-						Verbose(ib>=0) )};      
+						PrintLevel(printlevel),
+						Verbose(verbosity) )};      
       r = rn;
       flag = 2;
     }
@@ -145,15 +149,15 @@ int fit(int ib=-1, float minFrac=0.995, bool savePlots=false){
 						Minimizer("Minuit2"),
 						Range( rname.Data() ),
 						Save(), SumW2Error(true),
-						PrintLevel(ib>=0 ? 1 : -1),
-						Verbose(ib>=0) )};      
+						PrintLevel(printlevel),
+						Verbose(verbosity) )};      
       r = rn;
       flag = 3;
     }
     edm = r->edm();
     status = r->status();
     
-    if(status!=0){
+    if(status!=0 || forceGaus){
       fallBack_Gaus = true;
       rname = "r3";
       std::shared_ptr<RooFitResult> rn{gaus.fitTo(data,
@@ -161,8 +165,8 @@ int fit(int ib=-1, float minFrac=0.995, bool savePlots=false){
 						 Minimizer("Minuit2"),
 						 Range( rname.Data() ),
 						 Save(), SumW2Error(true),
-						 PrintLevel(ib>=0 ? 1 : -1),
-						 Verbose(ib>=0) )};      
+						 PrintLevel(printlevel),
+						 Verbose(verbosity) )};      
       r = rn;
       flag = 4;
     }
@@ -172,20 +176,29 @@ int fit(int ib=-1, float minFrac=0.995, bool savePlots=false){
     tree->Fill();
     
     if(ib>=0 || savePlots){
-      if(ib>=0) r->Print();      
+      if(verbosity) r->Print();      
+
+      RooDerivative* der = 0;
+
       RooPlot* frame = mass.frame();
+      frame->SetTitle(Form( "Bin %d: status=%d, flag=%d, edm=%.3f, norm=%.1f", bin, status, flag, edm, norm ));
       data.plotOn(frame);
-      if(!fallBack_CB && !fallBack_Gaus){
+      if(flag==0){
 	pdfTot.plotOn(frame, VisualizeError(*r), Range( rname.Data() ));
 	pdfTot.plotOn(frame, Components(pdf), LineColor(kGreen), Range( rname.Data() ));
 	pdfTot.plotOn(frame, Components(bkg), LineColor(kRed), Range( rname.Data() ));
 	pdfTot.plotOn(frame, LineColor(kBlue), Range( rname.Data() ));
+	der = pdfTot.derivative(mass, 1, 0.00005 );
       }
-      else if(fallBack_CB){
-	pdf.plotOn(frame, VisualizeError(*r), Range( rname.Data() ));
+      else if(flag==1 || flag==2 || flag==3){
+	pdf.plotOn(frame, VisualizeError(*r),  Range( rname.Data() ));
+	pdf.plotOn(frame, LineColor(kBlue),  Range( rname.Data() ));
+	der = pdf.derivative(mass, 1, 0.00005 );
       }
-      else if(fallBack_Gaus){
+      else if(flag==4){
 	gaus.plotOn(frame, VisualizeError(*r), Range( rname.Data() ));
+	gaus.plotOn(frame, LineColor(kBlue),  Range( rname.Data() ));
+	der = gaus.derivative(mass, 1, 0.00005 );
       }
       data.plotOn(frame);
       
@@ -202,25 +215,18 @@ int fit(int ib=-1, float minFrac=0.995, bool savePlots=false){
       TH1D* h_jwidth = (TH1D*)h_der->Clone("h_jwidth");  
       h_jwidth->SetStats(0);
       h_jwidth->SetTitle("resolution Jacobian");
-      RooDerivative* der = 0;
-      if(!fallBack_CB && !fallBack_Gaus)
-	der = pdfTot.derivative(mass, 1, 0.001 );
-      else if(fallBack_CB)
-	der = pdf.derivative(mass, 1, 0.001 );
-      else if(fallBack_Gaus)
-	der = gaus.derivative(mass, 1, 0.001 );
-	
+
       for(int ib=1; ib<=h_der->GetXaxis()->GetNbins();ib++){
 	double x = h_der->GetXaxis()->GetBinCenter(ib);
 	mass.setVal( x );
 	//RooDerivative* der = pdf.derivative(mass, 1, 0.001 ); 
 	double fprime = der->getVal();
 	double f = 0.;
-	if(!fallBack_CB && !fallBack_Gaus)
+	if(flag==0)
 	  f = pdfTot.getVal();
-	else if(fallBack_CB)
+	else if(flag==1 || flag==2 || flag==3)
 	  f = pdf.getVal();
-	else if(fallBack_Gaus)
+	else if(flag==4)
 	  f = gaus.getVal();	
 	h_der->SetBinContent(ib, fprime);
 	h_jscale->SetBinContent(ib, -fprime/f * hm->GetMean());   
@@ -237,7 +243,10 @@ int fit(int ib=-1, float minFrac=0.995, bool savePlots=false){
       h_jwidth->Draw();
       c->Update();
       c->Draw();
-      if(savePlots) c->SaveAs(Form("plots/cb/cbfit_bin%d.png", ibin));
+      if(savePlots){
+	c->SaveAs(Form("plots/cb/cbfit_bin%d.png", ibin));
+	delete c;
+      }
     }
   }
 
