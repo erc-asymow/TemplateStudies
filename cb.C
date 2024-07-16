@@ -21,7 +21,7 @@ int fit(int ib=-1, float minFrac=0.995, bool savePlots=false, bool forceGaus=fal
 
   bool verbosity = true;
   int printlevel = 1;
-  if(ib<0 || true){
+  if(ib<0){
     RooMsgService::instance().setGlobalKillBelow(RooFit::FATAL);
     gErrorIgnoreLevel = 6001;
     verbosity = false;
@@ -159,7 +159,8 @@ int fit(int ib=-1, float minFrac=0.995, bool savePlots=false, bool forceGaus=fal
     
     if(status!=0 || forceGaus){
       fallBack_Gaus = true;
-      rname = "r3";
+      rname = "r4";
+      mass.setRange( rname.Data() , -3.0, 3.0);
       std::shared_ptr<RooFitResult> rn{gaus.fitTo(data,
 						 InitialHesse(true),
 						 Minimizer("Minuit2"),
@@ -245,9 +246,14 @@ int fit(int ib=-1, float minFrac=0.995, bool savePlots=false, bool forceGaus=fal
       c->Draw();
       if(savePlots){
 	c->SaveAs(Form("plots/cb/cbfit_bin%d.png", ibin));
+	delete h_der;
+	delete h_jscale;
+	delete h_jwidth;
 	delete c;
       }
     }
+    delete h;
+    delete hm;
   }
 
   fout->cd();
