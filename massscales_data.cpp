@@ -569,24 +569,25 @@ int main(int argc, char* argv[])
 	  return masses.size()>0 ? masses.at( mpos ) - masses.at(0) : -99.;
 	}, {"masses"} ));            
       }
-      
-      dlast = std::make_unique<RNode>(dlast->Define("weights_jac", [n_bins,recos,h_map,hCB_map,idx_map,useCBpdf](RVecF masses, RVecUI indexes)->RVecF{
-	RVecF out;
-	if(masses.size()==0){
-	  for(unsigned int r = 0 ; r<recos.size(); r++){
-	    out.emplace_back(0.0);
-	    out.emplace_back(0.0);
-	  }
-	  return out;
-	}
-	
-	float gen_m  = masses.at(0);
 
-	if(!useCBpdf){
-	  for(unsigned int r = 0 ; r<recos.size(); r++){
- 	    unsigned int rpos = idx_map.at(recos[r]);
-	    TH1D* h_mean = h_map.at("mean_"+recos[r]);
-	    TH1D* h_rms  = h_map.at("rms_"+recos[r]);
+      for(unsigned int r = 0 ; r<recos.size(); r++){
+	string rname = recos[r];
+	unsigned int rpos = idx_map.at(rname);
+
+	dlast = std::make_unique<RNode>(dlast->Define(TString( (recos[r]+"_weights_jac").c_str() ), [n_bins,r,rpos,rname,&h_map,&hCB_map,useCBpdf](RVecF masses, RVecUI indexes)->RVecF{
+	  
+	  RVecF out;
+	  if(masses.size()==0){
+	    out.emplace_back(0.0);
+	    out.emplace_back(0.0);
+	    return out;
+	  }
+	
+	  float gen_m  = masses.at(0);
+
+	  if(!useCBpdf){
+	    TH1D* h_mean = h_map.at("mean_"+rname);
+	    TH1D* h_rms  = h_map.at("rms_"+rname);
 	    float reco_m = masses.at( rpos );	
 	    float reco_delta = 0.;
 	    float reco_sigma = 0.;
@@ -599,11 +600,8 @@ int main(int argc, char* argv[])
 	    out.emplace_back(reco_jscale);
 	    out.emplace_back(reco_jwidth);
 	  }
-	}
-	else{
-	  for(unsigned int r = 0 ; r<recos.size(); r++){
-	    TH2D* h_lnder = hCB_map.at("lnder_"+recos[r]);
-	    unsigned int rpos = idx_map.at(recos[r]);
+	  else{
+	    TH2D* h_lnder = hCB_map.at("lnder_"+rname);
 	    float reco_m = masses.at( rpos );
 	    float dm = reco_m-gen_m;
 	    int bin_lnder = h_lnder->GetYaxis()->FindBin( dm );
@@ -617,19 +615,21 @@ int main(int argc, char* argv[])
 	    out.emplace_back(reco_jscale);
 	    out.emplace_back(reco_jwidth);
 	  }
-	}
-
-	return out;
-      }, {"masses", "indexes"} ));
+	  
+	  return out;
+	}, {"masses", "indexes"} ));
+      }
       
       for(unsigned int r = 0 ; r<recos.size(); r++){
-	unsigned int jpos = (idx_map.at(recos[r])-1)*2;
-	dlast = std::make_unique<RNode>(dlast->Define( TString((recos[r]+"_jscale_weight").c_str()), [jpos](RVecF weights_jac, float weight)->float{
-	  return weights_jac.at( jpos )*weight;
-	}, {"weights_jac", "weight" } ));
-	dlast = std::make_unique<RNode>(dlast->Define( TString((recos[r]+"_jwidth_weight").c_str()), [jpos](RVecF weights_jac, float weight)->float{
-	  return weights_jac.at( jpos+1 )*weight;
-	}, {"weights_jac", "weight" } ));
+	//unsigned int jpos = (idx_map.at(recos[r])-1)*2;
+	dlast = std::make_unique<RNode>(dlast->Define( TString((recos[r]+"_jscale_weight").c_str()), [](RVecF weights_jac, float weight)->float{
+	  //return weights_jac.at( jpos )*weight;
+	  return weights_jac.at( 0 )*weight;
+	}, { recos[r]+"_weights_jac", "weight" } ));
+	dlast = std::make_unique<RNode>(dlast->Define( TString((recos[r]+"_jwidth_weight").c_str()), [](RVecF weights_jac, float weight)->float{
+	  //return weights_jac.at( jpos+1 )*weight;
+	  return weights_jac.at( 1 )*weight;
+	}, { recos[r]+"_weights_jac", "weight" } ));
       }
       
     }
@@ -778,6 +778,8 @@ int main(int argc, char* argv[])
       h_d_vals_prevfit->Write();
       
       for(unsigned int r = 0 ; r<recos.size(); r++){
+
+	if(recos[r]!="smear0") continue;
 	
 	TH2D* h_reco_dm = (TH2D*)fout->Get(TString( ("h_"+recos[r]+"_bin_dm").c_str()) );
 	TH2D* h_reco_m  = (TH2D*)fout->Get(TString( ("h_"+recos[r]+"_bin_m").c_str()) );
@@ -789,7 +791,7 @@ int main(int argc, char* argv[])
 
 	if(useCBpdf){
 	  hCB_map["lnder_"+recos[r]] = new TH2D( TString( ("h_lnder_"+recos[r]+"_bin_dm").c_str() ),"", n_bins, 0, double(n_bins),
-						 h_reco_dm->GetXaxis()->GetNbins()*2, h_reco_dm->GetXaxis()->GetXmin(), h_reco_dm->GetXaxis()->GetXmax());
+						 h_reco_dm->GetYaxis()->GetNbins()*2, h_reco_dm->GetYaxis()->GetXmin(), h_reco_dm->GetYaxis()->GetXmax());
 	}
 	else{
 	  h_map["mean_"+recos[r]] = new TH1D( TString( ("h_mean_"+recos[r]+"_bin_dm").c_str() ),"", n_bins, 0, double(n_bins));
@@ -800,9 +802,9 @@ int main(int argc, char* argv[])
 	for(unsigned int i = 0; i<n_bins; i++ ){
 	  if(i%1000==0){
 	    if(!useCBpdf)
-	      cout << "Doing gaus fit for bin " << i << " / " << n_bins << endl;
+	      cout << "Doing gaus fit for bin " << i << " / " << n_bins << " of " << recos[r] << endl;
 	    else
-	      cout << "Doing CB fit for bin " << i << " / " << n_bins << endl;
+	      cout << "Doing CB fit for bin " << i << " / " << n_bins << " of " << recos[r] << endl;
 	  }
 	  TString projname(Form("bin_%d_", i));
 	  projname += TString( recos[r].c_str() );
@@ -978,7 +980,11 @@ int main(int argc, char* argv[])
 	      else if(flag==4)
 		f = gaus.getVal();	
 	      h_der->SetBinContent(i+1,ib+1, fprime/f);
-	    }	    
+	    }
+ 	    if(i==139){
+	      TH1D* proj = (TH1D*)h_der->ProjectionY("py", i+1, i+1);
+	      proj->Print("all");
+	    }
 	  }
 	  
 	  delete hi;
@@ -989,13 +995,17 @@ int main(int argc, char* argv[])
       fout->cd();
     
       for(unsigned int r = 0 ; r<recos.size(); r++){	  
-	h_map["mask_"+recos[r]]->Write();
+	if(h_map["mask_"+recos[r]]!=0)
+	  h_map["mask_"+recos[r]]->Write();
 	if(!useCBpdf){
-	  h_map["mean_"+recos[r]]->Write();
-	  h_map["rms_"+recos[r]]->Write();
+	  if(h_map["mean_"+recos[r]]!=0)
+	    h_map["mean_"+recos[r]]->Write();
+	  if(h_map["rms_"+recos[r]]!=0)
+	    h_map["rms_"+recos[r]]->Write();
 	}
 	//else{
-	//  hCB_map["lnder_"+recos[r]]->Write();
+	//cout << "Writing " << hCB_map["lnder_"+recos[r]]->GetName() << endl;
+	//hCB_map["lnder_"+recos[r]]->Write();
 	//}
       }
     }
