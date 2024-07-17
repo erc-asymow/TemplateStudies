@@ -4,6 +4,7 @@
 #include "TVector.h"
 #include "TVectorT.h"
 #include "TMath.h"
+#include "TError.h"
 #include "TF1.h"
 #include "TF2.h"
 #include "TGraphErrors.h"
@@ -24,6 +25,19 @@
 #include "Minuit2/FCNGradientBase.h"
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Dense>
+
+#include "RooRealVar.h"
+#include "RooDerivative.h"
+#include "RooDataSet.h"
+#include "RooGaussian.h"
+#include "RooAddPdf.h"
+#include "RooExponential.h"
+#include "RooCrystalBall.h"
+#include "RooFitResult.h"
+#include "RooMsgService.h"
+#include "RooPlot.h"
+
+using namespace RooFit;
 
 //#include <Eigen/Core>
 //#include <Eigen/Dense>
@@ -76,7 +90,7 @@ int main(int argc, char* argv[])
 	("rebin",       value<int>()->default_value(2), "rebin")
 	("fitWidth",    bool_switch()->default_value(false), "")
 	("fitNorm",     bool_switch()->default_value(false), "")
-	("usePrevFit",  bool_switch()->default_value(false), "")
+	("usePrevFit",  bool_switch()->default_value(false), "")	
 	("tagPrevFit",         value<std::string>()->default_value("closure"), "run type")
 	("runPrevFit",         value<std::string>()->default_value("closure"), "run type")
 	("useSmearFit",         bool_switch()->default_value(false), "")
@@ -84,6 +98,8 @@ int main(int argc, char* argv[])
 	("runSmearFit",         value<std::string>()->default_value("closure"), "run type")
 	("useKf",             bool_switch()->default_value(false), "")
 	("scaleToData",       bool_switch()->default_value(false), "")
+	("useCBpdf",          bool_switch()->default_value(false), "")
+	("minFrac",           value<float>()->default_value(0.995), "")
 	("y2016",             bool_switch()->default_value(false), "")
 	("y2017",             bool_switch()->default_value(false), "")
 	("y2018",             bool_switch()->default_value(false), "")
@@ -128,7 +144,9 @@ int main(int argc, char* argv[])
   std::string tagSmearFit = vm["tagSmearFit"].as<std::string>();
   std::string runSmearFit = vm["runSmearFit"].as<std::string>();
   bool scaleToData        = vm["scaleToData"].as<bool>();
-  
+  bool useCBpdf           = vm["useCBpdf"].as<bool>();
+  float minFrac           = vm["minFrac"].as<float>();
+    
   assert( y2016 || y2017 || y2018 );
   
   TRandom3* ran0 = new TRandom3(seed);
@@ -188,6 +206,11 @@ int main(int argc, char* argv[])
     h_map.insert( std::make_pair<string, TH1D* >("mean_"+recos[r], 0 ) );
     h_map.insert( std::make_pair<string, TH1D* >("rms_"+recos[r],  0 ) );
     h_map.insert( std::make_pair<string, TH1D* >("mask_"+recos[r],  0 ) );
+  }
+
+  std::map<string, TH2D*> hCB_map;
+  for(unsigned int r = 0; r<recos.size(); r++){    
+    hCB_map.insert( std::make_pair<string, TH2D* >("lnder_"+recos[r], 0 ) );
   }
 
   // map of positions in RVecF "masses"
@@ -531,12 +554,12 @@ int main(int argc, char* argv[])
 	}
 	
 	return out;
-    }, {"idxs",
-	useKf ? "Muon_pt" : "Muon_cvhidealPt", useKf ? "Muon_eta" : "Muon_cvhidealEta", useKf ? "Muon_phi" : "Muon_cvhidealPhi", "Muon_mass", "Muon_charge",
-	"nGenPart", "GenPart_status", "GenPart_statusFlags", "GenPart_pdgId",
-	"GenPart_pt", "GenPart_eta", "GenPart_phi", "GenPart_mass",
-	"Muon_ksmear"} ));
-
+      }, {"idxs",
+	  useKf ? "Muon_pt" : "Muon_cvhidealPt", useKf ? "Muon_eta" : "Muon_cvhidealEta", useKf ? "Muon_phi" : "Muon_cvhidealPhi", "Muon_mass", "Muon_charge",
+	  "nGenPart", "GenPart_status", "GenPart_statusFlags", "GenPart_pdgId",
+	  "GenPart_pt", "GenPart_eta", "GenPart_phi", "GenPart_mass",
+	  "Muon_ksmear"} ));
+      
       for(unsigned int r = 0 ; r<recos.size(); r++){
 	unsigned int mpos = idx_map.at(recos[r]);
 	dlast = std::make_unique<RNode>(dlast->Define(TString( (recos[r]+"_m").c_str() ), [mpos](RVecF masses){
@@ -547,7 +570,7 @@ int main(int argc, char* argv[])
 	}, {"masses"} ));            
       }
       
-      dlast = std::make_unique<RNode>(dlast->Define("weights_jac", [n_bins,recos,h_map,idx_map](RVecF masses, RVecUI indexes)->RVecF{
+      dlast = std::make_unique<RNode>(dlast->Define("weights_jac", [n_bins,recos,h_map,hCB_map,idx_map,useCBpdf](RVecF masses, RVecUI indexes)->RVecF{
 	RVecF out;
 	if(masses.size()==0){
 	  for(unsigned int r = 0 ; r<recos.size(); r++){
@@ -558,25 +581,47 @@ int main(int argc, char* argv[])
 	}
 	
 	float gen_m  = masses.at(0);
-	for(unsigned int r = 0 ; r<recos.size(); r++){
-	  unsigned int rpos = idx_map.at(recos[r]);
-	  TH1D* h_mean = h_map.at("mean_"+recos[r]);
-	  TH1D* h_rms  = h_map.at("rms_"+recos[r]);
-	  float reco_m = masses.at( rpos );	
-	  float reco_delta = 0.;
-	  float reco_sigma = 0.;
-	  if(indexes[r]<n_bins){
-	    reco_delta = h_mean->GetBinContent(indexes[r]+1);
-	    reco_sigma = h_rms->GetBinContent(indexes[r]+1);
+
+	if(!useCBpdf){
+	  for(unsigned int r = 0 ; r<recos.size(); r++){
+ 	    unsigned int rpos = idx_map.at(recos[r]);
+	    TH1D* h_mean = h_map.at("mean_"+recos[r]);
+	    TH1D* h_rms  = h_map.at("rms_"+recos[r]);
+	    float reco_m = masses.at( rpos );	
+	    float reco_delta = 0.;
+	    float reco_sigma = 0.;
+	    if(indexes[r]<n_bins){
+	      reco_delta = h_mean->GetBinContent(indexes[r]+1);
+	      reco_sigma = h_rms->GetBinContent(indexes[r]+1);
+	    }
+	    float reco_jscale = reco_sigma>0. ? +(reco_m - (gen_m+reco_delta) )*(gen_m+reco_delta)/reco_sigma/reco_sigma : 0.0;
+	    float reco_jwidth = reco_sigma>0. ? +(reco_m - (gen_m+reco_delta) )*(reco_m - (gen_m+reco_delta) )/reco_sigma/reco_sigma - 1.0 : 0.0;
+	    out.emplace_back(reco_jscale);
+	    out.emplace_back(reco_jwidth);
 	  }
-	  float reco_jscale = reco_sigma>0. ? +(reco_m - (gen_m+reco_delta) )*(gen_m+reco_delta)/reco_sigma/reco_sigma : 0.0;
-	  float reco_jwidth = reco_sigma>0. ? +(reco_m - (gen_m+reco_delta) )*(reco_m - (gen_m+reco_delta) )/reco_sigma/reco_sigma - 1.0 : 0.0;
-	  out.emplace_back(reco_jscale);
-	  out.emplace_back(reco_jwidth);
 	}
+	else{
+	  for(unsigned int r = 0 ; r<recos.size(); r++){
+	    TH2D* h_lnder = hCB_map.at("lnder_"+recos[r]);
+	    unsigned int rpos = idx_map.at(recos[r]);
+	    float reco_m = masses.at( rpos );
+	    float dm = reco_m-gen_m;
+	    int bin_lnder = h_lnder->GetYaxis()->FindBin( dm );
+	    if( bin_lnder==0 )
+	      bin_lnder = 1;
+	    else if( bin_lnder==h_lnder->GetYaxis()->GetNbins()+1 )
+	      bin_lnder = h_lnder->GetYaxis()->GetNbins();
+	    float lnder = indexes[r]<n_bins ? h_lnder->GetBinContent(indexes[r]+1, bin_lnder) : 0.;
+	    float reco_jscale = -lnder*reco_m;
+	    float reco_jwidth = -(1.0 + lnder*dm);
+	    out.emplace_back(reco_jscale);
+	    out.emplace_back(reco_jwidth);
+	  }
+	}
+
 	return out;
       }, {"masses", "indexes"} ));
-
+      
       for(unsigned int r = 0 ; r<recos.size(); r++){
 	unsigned int jpos = (idx_map.at(recos[r])-1)*2;
 	dlast = std::make_unique<RNode>(dlast->Define( TString((recos[r]+"_jscale_weight").c_str()), [jpos](RVecF weights_jac, float weight)->float{
@@ -682,7 +727,7 @@ int main(int argc, char* argv[])
     else if(iter==0){
       for(unsigned int r = 0 ; r<recos.size(); r++){
 	histos2D.emplace_back(dlast->Histo2D({ "h_"+TString(recos[r].c_str())+"_bin_m",    "nominal", n_bins, 0, double(n_bins), x_nbins, x_low, x_high}, "index_"+TString(recos[r].c_str()), TString(recos[r].c_str())+"_m", "weight" ));
-	histos2D.emplace_back(dlast->Histo2D({ "h_"+TString(recos[r].c_str())+"_bin_dm",   "nominal", n_bins, 0, double(n_bins), 24, -6.0, 6.0},          "index_"+TString(recos[r].c_str()), TString(recos[r].c_str())+"_dm", "weight"));
+	histos2D.emplace_back(dlast->Histo2D({ "h_"+TString(recos[r].c_str())+"_bin_dm",   "nominal", n_bins, 0, double(n_bins), 40, -10.0, 10.0},          "index_"+TString(recos[r].c_str()), TString(recos[r].c_str())+"_dm", "weight"));
       }
       auto colNames = dlast->GetColumnNames();
       double total = *(dlast->Count());  
@@ -736,57 +781,222 @@ int main(int argc, char* argv[])
 	
 	TH2D* h_reco_dm = (TH2D*)fout->Get(TString( ("h_"+recos[r]+"_bin_dm").c_str()) );
 	TH2D* h_reco_m  = (TH2D*)fout->Get(TString( ("h_"+recos[r]+"_bin_m").c_str()) );
+
 	if( h_reco_dm==0 || h_reco_m==0 ){
 	  cout << "h_reco_dm/h_reco_m NOT FOUND" << endl;
 	  continue;
 	}
-	h_map["mean_"+recos[r]] = new TH1D( TString( ("h_mean_"+recos[r]+"_bin_dm").c_str() ),"", n_bins, 0, double(n_bins));
-	h_map["rms_"+recos[r]]  = new TH1D( TString( ("h_rms_"+recos[r]+"_bin_dm").c_str() ),"", n_bins, 0, double(n_bins));
+
+	if(useCBpdf){
+	  hCB_map["lnder_"+recos[r]] = new TH2D( TString( ("h_lnder_"+recos[r]+"_bin_dm").c_str() ),"", n_bins, 0, double(n_bins),
+						 h_reco_dm->GetXaxis()->GetNbins()*2, h_reco_dm->GetXaxis()->GetXmin(), h_reco_dm->GetXaxis()->GetXmax());
+	}
+	else{
+	  h_map["mean_"+recos[r]] = new TH1D( TString( ("h_mean_"+recos[r]+"_bin_dm").c_str() ),"", n_bins, 0, double(n_bins));
+	  h_map["rms_"+recos[r]]  = new TH1D( TString( ("h_rms_"+recos[r]+"_bin_dm").c_str() ), "", n_bins, 0, double(n_bins));
+	}
 	h_map["mask_"+recos[r]] = new TH1D( TString( ("h_mask_"+recos[r]+"_bin_dm").c_str() ),"", n_bins, 0, double(n_bins));
+
 	for(unsigned int i = 0; i<n_bins; i++ ){
-	  if(i%1000==0) cout << "Doing gaus fit for bin " << i << " / " << n_bins << endl;
+	  if(i%1000==0){
+	    if(!useCBpdf)
+	      cout << "Doing gaus fit for bin " << i << " / " << n_bins << endl;
+	    else
+	      cout << "Doing CB fit for bin " << i << " / " << n_bins << endl;
+	  }
 	  TString projname(Form("bin_%d_", i));
 	  projname += TString( recos[r].c_str() );
 	  TH1D* hi   = (TH1D*)h_reco_dm->ProjectionY( projname+"_dm", i+1, i+1 );
 	  TH1D* hi_m = (TH1D*)h_reco_m->ProjectionY( projname+"_m", i+1, i+1 );
-	  double mean_i = 0.0;
-	  double meanerr_i = 0.0;
-	  double rms_i = 0.0;
-	  double rmserr_i = 0.0;
-	  //cout << hi_m->Integral() << ", " << hi->Integral() << ", " << hi_m->GetMean() << endl;
-	  if( hi_m->Integral() > minNumEvents && hi->Integral() > minNumEvents  &&  hi_m->GetMean()>75. && hi_m->GetMean()<105. ){
-	    h_map.at("mask_"+recos[r])->SetBinContent(i+1, 1);
-	    TF1* gf = new TF1("gf","[0]/TMath::Sqrt(2*TMath::Pi())/[2]*TMath::Exp( -0.5*(x-[1])*(x-[1])/[2]/[2] )",
-			      hi->GetXaxis()->GetBinLowEdge(1), hi->GetXaxis()->GetBinUpEdge( hi->GetXaxis()->GetNbins() ));      
-	    gf->SetParameter(0, hi->Integral());
-	    gf->SetParameter(1, hi->GetMean());
-	    gf->SetParameter(2, hi->GetRMS() );
-	    float m_min = nRMSforGausFit>0. ? TMath::Max(-nRMSforGausFit*hi->GetRMS(), -6.0) : -6.0;
-	    float m_max = nRMSforGausFit>0. ? TMath::Min(+nRMSforGausFit*hi->GetRMS(), +6.0) : +6.0;
-	    hi->Fit("gf", "QR", "", m_min, m_max );
-	    mean_i    = gf->GetParameter(1);
-	    meanerr_i = gf->GetParError(1);
-	    rms_i     = TMath::Abs(gf->GetParameter(2));
-	    rmserr_i  = gf->GetParError(2);
-	    //cout << "Fit " << mean_i << endl;
-	    delete gf;
+
+	  // gaus pdf
+	  if(!useCBpdf){
+	    double mean_i = 0.0;
+	    double meanerr_i = 0.0;
+	    double rms_i = 0.0;
+	    double rmserr_i = 0.0;
+	    //cout << hi_m->Integral() << ", " << hi->Integral() << ", " << hi_m->GetMean() << endl;
+	    if( hi_m->Integral() > minNumEvents && hi->Integral() > minNumEvents  &&  hi_m->GetMean()>75. && hi_m->GetMean()<105. ){
+	      h_map.at("mask_"+recos[r])->SetBinContent(i+1, 1);
+	      TF1* gf = new TF1("gf","[0]/TMath::Sqrt(2*TMath::Pi())/[2]*TMath::Exp( -0.5*(x-[1])*(x-[1])/[2]/[2] )",
+				hi->GetXaxis()->GetBinLowEdge(1), hi->GetXaxis()->GetBinUpEdge( hi->GetXaxis()->GetNbins() ));      
+	      gf->SetParameter(0, hi->Integral());
+	      gf->SetParameter(1, hi->GetMean());
+	      gf->SetParameter(2, hi->GetRMS() );
+	      float m_min = nRMSforGausFit>0. ? TMath::Max(-nRMSforGausFit*hi->GetRMS(), -6.0) : -6.0;
+	      float m_max = nRMSforGausFit>0. ? TMath::Min(+nRMSforGausFit*hi->GetRMS(), +6.0) : +6.0;
+	      hi->Fit("gf", "QR", "", m_min, m_max );
+	      mean_i    = gf->GetParameter(1);
+	      meanerr_i = gf->GetParError(1);
+	      rms_i     = TMath::Abs(gf->GetParameter(2));
+	      rmserr_i  = gf->GetParError(2);
+	      //cout << "Fit " << mean_i << endl;
+	      delete gf;
+	    }
+	    else{
+	      h_map.at("mask_"+recos[r])->SetBinContent(i+1, 0);
+	    }
+	    h_map.at("mean_"+recos[r])->SetBinContent(i+1, mean_i);
+	    h_map.at("mean_"+recos[r])->SetBinError(i+1, meanerr_i);
+	    h_map.at("rms_"+recos[r])->SetBinContent(i+1, rms_i);
+	    h_map.at("rms_"+recos[r])->SetBinError(i+1, rmserr_i);
 	  }
+	  // CB pdf
 	  else{
-	    h_map.at("mask_"+recos[r])->SetBinContent(i+1, 0);
+
+	    if( !(hi_m->Integral() > minNumEvents && hi->Integral() > minNumEvents  &&  hi_m->GetMean()>75. && hi_m->GetMean()<105.) ){
+	      h_map.at("mask_"+recos[r])->SetBinContent(i+1, 0);
+	      continue;
+	    }
+	    h_map.at("mask_"+recos[r])->SetBinContent(i+1, 1);
+
+	    //continue;
+
+	    bool verbosity = false;
+	    int printlevel = -1;
+	    RooMsgService::instance().setGlobalKillBelow(RooFit::FATAL);
+	    gErrorIgnoreLevel = 6001;
+
+	    int status = -99;
+	    int flag = -99;
+	    float fr = -99.;
+	    
+	    RooRealVar mass("mass", Form("mass for bin %d", i), hi->GetXaxis()->GetXmin(), hi->GetXaxis()->GetXmax());
+	    mass.setRange("r1", -10.0, 10.0);
+	    
+	    RooDataHist data("data", "", RooArgList(mass), hi );
+	    
+	    RooRealVar x0("x0", "", hi->GetMean(), mass.getMin(), mass.getMax() );
+	    RooRealVar sigmaL("sigmaL", "", hi->GetRMS(), hi->GetRMS()*0.5, hi->GetRMS()*2 );
+	    RooRealVar sigmaR("sigmaR", "", hi->GetRMS(), hi->GetRMS()*0.5, hi->GetRMS()*2 );
+	    RooRealVar alphaL("alphaL", "", 1.0, 0.2, +10 );
+	    RooRealVar alphaR("alphaR", "", 1.0, 0.2, +10 );
+	    RooRealVar nL("nL", "", 2, 1, 100 );
+	    RooRealVar nR("nR", "", 2, 1, 100 );
+	    RooRealVar tau("tau", "", 0., -10, 10);    
+	    RooRealVar frac("frac", "", 0.9, 0., 1.);
+	    
+	    RooCrystalBall pdf("pdf", "", mass, x0, sigmaL, sigmaR, alphaL, nL, alphaR, nR);
+	    RooGaussian gaus("pdf", "", mass, x0, sigmaL);	    
+	    RooExponential bkg("bkg", "", mass, tau);
+	    RooAddPdf pdfTot("pdfTot", "", {pdf, bkg}, frac);
+
+	    TString rname = "r1";
+	    pdfTot.fixCoefRange( rname.Data() );
+	    pdfTot.fixCoefNormalization(mass);
+
+	    std::shared_ptr<RooFitResult> rfit{pdfTot.fitTo(data,
+							    InitialHesse(true),
+							    Minimizer("Minuit2"),
+							    Range( rname.Data() ),
+							    Save(), SumW2Error(true),
+							    PrintLevel(printlevel),
+							    Verbose(verbosity) )};
+	    status = rfit->status();
+	    fr = frac.getVal();
+	    flag = 0;
+
+	    if(fr>minFrac){
+	      std::shared_ptr<RooFitResult> rn{pdf.fitTo(data,
+							 InitialHesse(true),
+							 Minimizer("Minuit2"),
+							 Range( rname.Data() ),
+							 Save(), SumW2Error(true),
+							 PrintLevel(printlevel),
+							 Verbose(verbosity) )}; 
+	      rfit = rn;
+	      flag = 1;
+	    }
+	    status = rfit->status();
+
+	    if(status!=0){
+	      rname = "r2";
+	      mass.setRange( rname.Data(), -8.0, 8.0);
+	      std::shared_ptr<RooFitResult> rn{pdf.fitTo(data,
+							 InitialHesse(true),
+							 Minimizer("Minuit2"),
+							 Range( rname.Data() ),
+							 Save(), SumW2Error(true),
+							 PrintLevel(printlevel),
+							 Verbose(verbosity) )};      
+	      rfit = rn;
+	      flag = 2;
+	    }
+	    status = rfit->status();
+
+	    if(status!=0){
+	      rname = "r3";
+	      mass.setRange( rname.Data() , -6.0, 6.0);
+	      std::shared_ptr<RooFitResult> rn{pdf.fitTo(data,
+							 InitialHesse(true),
+							 Minimizer("Minuit2"),
+							 Range( rname.Data() ),
+							 Save(), SumW2Error(true),
+							 PrintLevel(printlevel),
+							 Verbose(verbosity) )};      
+	      rfit = rn;
+	      flag = 3;
+	    }
+	    status = rfit->status();
+    
+	    if(status!=0){
+	      rname = "r4";
+	      mass.setRange( rname.Data() , -3.0, 3.0);
+	      std::shared_ptr<RooFitResult> rn{gaus.fitTo(data,
+							  InitialHesse(true),
+							  Minimizer("Minuit2"),
+							  Range( rname.Data() ),
+							  Save(), SumW2Error(true),
+							  PrintLevel(printlevel),
+							  Verbose(verbosity) )};      
+	      rfit = rn;
+	      flag = 4;
+	    }
+	    status = rfit->status();
+
+	    RooDerivative* der = 0;
+	    if(flag==0){
+	      der = pdfTot.derivative(mass, 1, 0.00005 );
+	    }
+	    else if(flag==1 || flag==2 || flag==3){
+	      der = pdf.derivative(mass, 1, 0.00005 );
+	    }
+	    else if(flag==4){
+	      der = gaus.derivative(mass, 1, 0.00005 );
+	    }
+
+	    TH2D* h_der = hCB_map.at("lnder_"+recos[r]);
+	    for(int ib=0; ib<h_der->GetYaxis()->GetNbins();ib++){
+	      double x = h_der->GetYaxis()->GetBinCenter(ib+1);
+	      mass.setVal( x );
+	      double fprime = der->getVal();
+	      double f = 0.;
+	      if(flag==0)
+		f = pdfTot.getVal();
+	      else if(flag==1 || flag==2 || flag==3)
+		f = pdf.getVal();
+	      else if(flag==4)
+		f = gaus.getVal();	
+	      h_der->SetBinContent(i+1,ib+1, fprime/f);
+	    }	    
 	  }
-	  h_map.at("mean_"+recos[r])->SetBinContent(i+1, mean_i);
-	  h_map.at("mean_"+recos[r])->SetBinError(i+1, meanerr_i);
-	  h_map.at("rms_"+recos[r])->SetBinContent(i+1, rms_i);
-	  h_map.at("rms_"+recos[r])->SetBinError(i+1, rmserr_i);
+	  
+	  delete hi;
+	  delete hi_m;
 	} 
       }
       
       fout->cd();
     
       for(unsigned int r = 0 ; r<recos.size(); r++){	  
-	h_map["mean_"+recos[r]]->Write();
-	h_map["rms_"+recos[r]]->Write();
 	h_map["mask_"+recos[r]]->Write();
+	if(!useCBpdf){
+	  h_map["mean_"+recos[r]]->Write();
+	  h_map["rms_"+recos[r]]->Write();
+	}
+	//else{
+	//  hCB_map["lnder_"+recos[r]]->Write();
+	//}
       }
     }
 
