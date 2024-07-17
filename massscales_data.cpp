@@ -603,7 +603,7 @@ int main(int argc, char* argv[])
 	  else{
 	    TH2D* h_lnder = hCB_map.at("lnder_"+rname);
 	    float reco_m = masses.at( rpos );
-	    float dm = reco_m-gen_m;
+	    float dm = reco_m-gexn_m;
 	    int bin_lnder = h_lnder->GetYaxis()->FindBin( dm );
 	    if( bin_lnder==0 )
 	      bin_lnder = 1;
@@ -621,13 +621,10 @@ int main(int argc, char* argv[])
       }
       
       for(unsigned int r = 0 ; r<recos.size(); r++){
-	//unsigned int jpos = (idx_map.at(recos[r])-1)*2;
 	dlast = std::make_unique<RNode>(dlast->Define( TString((recos[r]+"_jscale_weight").c_str()), [](RVecF weights_jac, float weight)->float{
-	  //return weights_jac.at( jpos )*weight;
 	  return weights_jac.at( 0 )*weight;
 	}, { recos[r]+"_weights_jac", "weight" } ));
 	dlast = std::make_unique<RNode>(dlast->Define( TString((recos[r]+"_jwidth_weight").c_str()), [](RVecF weights_jac, float weight)->float{
-	  //return weights_jac.at( jpos+1 )*weight;
 	  return weights_jac.at( 1 )*weight;
 	}, { recos[r]+"_weights_jac", "weight" } ));
       }
@@ -981,10 +978,10 @@ int main(int argc, char* argv[])
 		f = gaus.getVal();	
 	      h_der->SetBinContent(i+1,ib+1, fprime/f);
 	    }
- 	    if(i==139){
-	      TH1D* proj = (TH1D*)h_der->ProjectionY("py", i+1, i+1);
-	      proj->Print("all");
-	    }
+ 	    //if(i==139){
+	    //TH1D* proj = (TH1D*)h_der->ProjectionY("py", i+1, i+1);
+	    //proj->Print("all");
+	    //}
 	  }
 	  
 	  delete hi;
