@@ -5,7 +5,11 @@ import copy
 import math
 import ROOT
 import time
-   
+
+
+# 2016: 16.1
+# 2017: 41.0
+# 2018: ??
 parser = argparse.ArgumentParser(description='run')
 
 parser.add_argument('--none', action='store_true'  , help = 'none')
@@ -19,7 +23,7 @@ args = parser.parse_args()
 def loop_one():    
 
     tag = args.tag
-    cmd_histo_iter0 = './massscales_data --lumi=51. --firstIter=-1 --lastIter=2 '+\
+    cmd_histo_iter0 = './massscales_data --lumi=16.1 --firstIter=-1 --lastIter=2 '+\
         ' --tag='+tag+' '+\
         ' --run=Iter0 '+\
         ' --nRMSforGausFit=-1 '+\
@@ -27,7 +31,8 @@ def loop_one():
         ' --minNumMassBins=4 '+\
         ' --rebin=2 '+\
         ' --fitNorm --fitWidth '+\
-        '  --y2018 --scaleToData '
+        '  --y2016 --scaleToData '+\
+        ' --useCBpdf '
         #' --useKf '
     if not args.forceIter>0:
         print(cmd_histo_iter0)
