@@ -603,7 +603,7 @@ int main(int argc, char* argv[])
 	  else{
 	    TH2D* h_lnder = hCB_map.at("lnder_"+rname);
 	    float reco_m = masses.at( rpos );
-	    float dm = reco_m-gexn_m;
+	    float dm = reco_m-gen_m;
 	    int bin_lnder = h_lnder->GetYaxis()->FindBin( dm );
 	    if( bin_lnder==0 )
 	      bin_lnder = 1;
