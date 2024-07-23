@@ -33,6 +33,8 @@
   scales.emplace_back( std::make_pair<TString,int>("twoone", 5) );
   scales_names.emplace_back("muRUp");
   */
+
+  /*
   scales.emplace_back( std::make_pair<TString,int>("twotwo_oneone", 7) );
   scales_names.emplace_back("muRmuFUp");
   scales.emplace_back( std::make_pair<TString,int>("point5point5_oneone", 11) );
@@ -45,6 +47,21 @@
   scales_names.emplace_back("muRDown");
   scales.emplace_back( std::make_pair<TString,int>("twoone_oneone", 23) );
   scales_names.emplace_back("muRUp");
+  */
+
+  scales.emplace_back( std::make_pair<TString,int>("oneone_twotwo", 1) );
+  scales_names.emplace_back("muRmuFUp");
+  scales.emplace_back( std::make_pair<TString,int>("oneone_point5point5", 2) );
+  scales_names.emplace_back("muRmuFDown");
+  scales.emplace_back( std::make_pair<TString,int>("oneone_onepoint5", 3) );
+  scales_names.emplace_back("muFDown");
+  scales.emplace_back( std::make_pair<TString,int>("oneone_onetwo", 6) );
+  scales_names.emplace_back("muFUp");
+  scales.emplace_back( std::make_pair<TString,int>("oneone_point5one", 4) );
+  scales_names.emplace_back("muRDown");
+  scales.emplace_back( std::make_pair<TString,int>("oneone_twoone", 5) );
+  scales_names.emplace_back("muRUp");
+
   
   vector<TString> procs = {"A0",
 			   "A1",
@@ -139,6 +156,17 @@
 	TFile* fin_iscale = TFile::Open("root/fout_fit_scale_31point_"+proc+"_"+phase_space+"_"+opt+"_"+proc+"_x1_y2.root", "READ");
 	TH2D* h_data_nom    = (TH2D*)fin_iscale->Get("h_data_0");
 	TH2D* h_data_iscale = (TH2D*)fin_iscale->Get("h_data_"+TString(Form("%d", scale_idx)));
+
+	// rebin
+	if(proc=="A4"){
+	  h_data_nom->Rebin2D(3,5);
+	  h_data_iscale->Rebin2D(3,5);
+	}
+	else{
+	  h_data_nom->Rebin2D(3,15);
+	  h_data_iscale->Rebin2D(3,15);
+	}
+
 	int ibin_x = h_data_nom->GetXaxis()->FindBin(node_x);	
 	int ibin_y = h_data_nom->GetYaxis()->FindBin(node_y);
 
