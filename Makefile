@@ -66,3 +66,6 @@ massscales: massscales.cpp
 
 massscales_data: massscales_data.cpp
 	$(GCC) $(CXXFLAGS) -o $(BINDIR)/massscales_data massscales_data.cpp  
+
+mcstat: mcstat.cpp
+	$(GCC) $(CXXFLAGS) -o $(BINDIR)/mcstat mcstat.cpp  
