@@ -78,12 +78,20 @@ int main(int argc, char* argv[])
 
   TFile* fout = TFile::Open(("root/mcstat_"+tag+".root").c_str(), "RECREATE");
   TTree* tree = new TTree("tree", "");
-  double mu0, mu1, err0, err1;
-  tree->Branch("mu0", &mu0, "mu0/D");
-  tree->Branch("mu1", &mu1, "mu1/D");
-  tree->Branch("err0", &err0, "err0/D");
-  tree->Branch("err1", &err1, "err1/D");
-  
+  double mu_data, err_data;
+  double mu_data5s, err_data5s;
+  double mu_mc, err_mc;
+  double mu_true, err_true;
+  tree->Branch("mu_data",  &mu_data, "mu_data/D");
+  tree->Branch("err_data", &err_data, "err_data/D");
+  tree->Branch("mu_data5s",  &mu_data5s, "mu_data5s/D");
+  tree->Branch("err_data5s", &err_data5s, "err_data5s/D");
+  tree->Branch("mu_mc",  &mu_mc, "mu_mc/D");
+  tree->Branch("err_mc", &err_mc, "err_mc/D");
+  tree->Branch("mu_true",  &mu_true, "mu_true/D");
+  tree->Branch("err_true", &err_true, "err_true/D");
+
+   
   TH1D* h_true_0 = new TH1D("h_true_0", "", nbins, 0.0, 1.0);
   TH1D* h_true_1 = new TH1D("h_true_1", "", nbins, 0.0, 1.0);
   for(int ib = 1; ib<=nbins; ib++){
@@ -120,6 +128,9 @@ int main(int argc, char* argv[])
   MatrixXd C_true = ( A_true.transpose()*invV_true*A_true ).inverse();
   cout << "True errors on mu_[0,1] = [" << TMath::Sqrt(C_true(0,0)) << "," << TMath::Sqrt(C_true(1,1)) << "]" << endl;
 
+  mu_true = 0.0;
+  err_true = TMath::Sqrt(C_true(0,0));
+  
   /*
   MatrixXd C_inv = MatrixXd::Zero(2, 2);
   for(unsigned int ib=0; ib<nbins; ib++){
@@ -131,33 +142,50 @@ int main(int argc, char* argv[])
 
   MatrixXd A_itoy = MatrixXd::Zero(nbins, 2);
   MatrixXd invV_itoy = MatrixXd::Zero(nbins, nbins);
+  MatrixXd invV5s_itoy = MatrixXd::Zero(nbins, nbins);
+  MatrixXd invVMC_itoy = MatrixXd::Zero(nbins, nbins);
   VectorXd y_itoy(nbins);
-  VectorXd y0_itoy(nbins);
+  VectorXd y5s_itoy(nbins);
+  VectorXd yMC_itoy(nbins);
+  VectorXd ynom_itoy(nbins);
   
   unsigned int ntoys = 3000;
   for(unsigned int itoy=0; itoy<ntoys; itoy++){
 
     MatrixXd invC_itoy = MatrixXd::Zero(2, 2);
+    MatrixXd invC5s_itoy = MatrixXd::Zero(2, 2);
+    MatrixXd invCMC_itoy = MatrixXd::Zero(2, 2);
     for(unsigned int ir=0; ir<nbins; ir++){      
       A_itoy(ir,0) = rans[0]->Poisson( A_true(ir, 0)*lumiscale ) / lumiscale;
       A_itoy(ir,1) = rans[0]->Poisson( A_true(ir, 1)*lumiscale ) / lumiscale;
-      double norm_rowi = A_itoy.row(ir).sum();
-      y_itoy(ir) = rans[0]->Poisson( A_true.row(ir).sum() );
-      y0_itoy(ir) = norm_rowi;
-      invV_itoy(ir,ir) = 1./norm_rowi;
-      invC_itoy += (A_itoy.row(ir).transpose()*A_itoy.row(ir))/norm_rowi;
+      y_itoy(ir)   = rans[0]->Poisson( A_true.row(ir).sum() );
+      y5s_itoy(ir) = rans[0]->Poisson( A_true(ir,0)*(1+err_true*5) + A_true(ir,1) );
+      yMC_itoy(ir) = rans[0]->Poisson( A_itoy.row(ir).sum() );
+      ynom_itoy(ir) = A_itoy.row(ir).sum();
+      invV_itoy(ir,ir)   = 1./y_itoy(ir);
+      invV5s_itoy(ir,ir) = 1./y5s_itoy(ir);
+      invVMC_itoy(ir,ir) = 1./yMC_itoy(ir);
+      invC_itoy   += (A_itoy.row(ir).transpose()*A_itoy.row(ir))/y_itoy(ir);
+      invC5s_itoy += (A_itoy.row(ir).transpose()*A_itoy.row(ir))/y5s_itoy(ir);
+      invCMC_itoy += (A_itoy.row(ir).transpose()*A_itoy.row(ir))/yMC_itoy(ir);
     }
 
     MatrixXd C_itoy = invC_itoy.inverse();
-    VectorXd x_itoy = C_itoy*A_itoy.transpose()*invV_itoy*(y_itoy - y0_itoy);
-    mu0 = x_itoy(0);
-    mu1 = x_itoy(1);
-    err0 = TMath::Sqrt(C_itoy(0,0));
-    err1 = TMath::Sqrt(C_itoy(1,1));
+    MatrixXd C5s_itoy = invC5s_itoy.inverse();
+    MatrixXd CMC_itoy = invCMC_itoy.inverse();
+    VectorXd x_itoy   = C_itoy*A_itoy.transpose()*invV_itoy*(y_itoy - ynom_itoy);
+    VectorXd x5s_itoy = C5s_itoy*A_itoy.transpose()*invV5s_itoy*(y5s_itoy - ynom_itoy);
+    VectorXd xMC_itoy = CMC_itoy*A_itoy.transpose()*invVMC_itoy*(yMC_itoy - ynom_itoy);
+    mu_data = x_itoy(0);
+    mu_data5s = x5s_itoy(0);
+    mu_mc = xMC_itoy(0); 
+    err_data = TMath::Sqrt(C_itoy(0,0));
+    err_data5s = TMath::Sqrt(C5s_itoy(0,0));
+    err_mc = TMath::Sqrt(CMC_itoy(0,0));
+
     tree->Fill();
   }
-
-    
+  
   fout->cd();
   h_true_0->Write();
   h_true_1->Write();
