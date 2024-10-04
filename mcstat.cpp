@@ -40,9 +40,11 @@ int main(int argc, char* argv[])
       desc.add_options()
 	("help,h", "Help screen")
 	("nevents",     value<long>()->default_value(2000000), "number of events")
+	("ntoys",       value<long>()->default_value(3000), "number of toys")
 	("tag",         value<std::string>()->default_value("closure"), "run type")
 	("do_fit",      bool_switch()->default_value(false), "do_fit")
 	("nbins",       value<int>()->default_value(200), "nbins")
+	("nsigmas",     value<int>()->default_value(5), "nsigmas")
 	("frac",       value<float>()->default_value(0.5), "frac")
 	("asym",       value<float>()->default_value(0.015), "asym")
 	("lumiscale",       value<float>()->default_value(1.0), "lumiscale")
@@ -63,9 +65,11 @@ int main(int argc, char* argv[])
     }
 
   long nevents    = vm["nevents"].as<long>();
+  long ntoys    = vm["ntoys"].as<long>();
   std::string tag = vm["tag"].as<std::string>();
   int seed        = vm["seed"].as<int>();
   int nbins       = vm["nbins"].as<int>();
+  int nsigmas     = vm["nsigmas"].as<int>();
   float frac      = vm["frac"].as<float>();
   float asym      = vm["asym"].as<float>();
   float lumiscale    = vm["lumiscale"].as<float>();
@@ -81,11 +85,17 @@ int main(int argc, char* argv[])
   double mu_data, err_data;
   double mu_data5s, err_data5s;
   double mu_mc, err_mc;
+  double mu_data_BB, err_data_BB;
+  double mu_data5s_BB, err_data5s_BB;
   double mu_true, err_true;
   tree->Branch("mu_data",  &mu_data, "mu_data/D");
   tree->Branch("err_data", &err_data, "err_data/D");
   tree->Branch("mu_data5s",  &mu_data5s, "mu_data5s/D");
   tree->Branch("err_data5s", &err_data5s, "err_data5s/D");
+  tree->Branch("mu_data_BB",  &mu_data_BB, "mu_data_BB/D");
+  tree->Branch("err_data_BB", &err_data_BB, "err_data_BB/D");
+  tree->Branch("mu_data5s_BB",  &mu_data5s_BB, "mu_data5s_BB/D");
+  tree->Branch("err_data5s_BB", &err_data5s_BB, "err_data5s_BB/D");
   tree->Branch("mu_mc",  &mu_mc, "mu_mc/D");
   tree->Branch("err_mc", &err_mc, "err_mc/D");
   tree->Branch("mu_true",  &mu_true, "mu_true/D");
@@ -109,6 +119,7 @@ int main(int argc, char* argv[])
   
   TH1D* h_true_tot = (TH1D*)h_true_0->Clone("h_true_tot");
   h_true_tot->Add(h_true_1, 1.0);
+  double proc_ratio = h_true_0->Integral()/h_true_1->Integral();
   
   cout << "h_true_0: integral = " << h_true_0->Integral() << endl;
   cout << "h_true_1: integral = " << h_true_1->Integral() << endl;
@@ -141,50 +152,98 @@ int main(int argc, char* argv[])
   */
 
   MatrixXd A_itoy = MatrixXd::Zero(nbins, 2);
-  MatrixXd invV_itoy = MatrixXd::Zero(nbins, nbins);
-  MatrixXd invV5s_itoy = MatrixXd::Zero(nbins, nbins);
-  MatrixXd invVMC_itoy = MatrixXd::Zero(nbins, nbins);
+  MatrixXd invV_itoy      = MatrixXd::Zero(nbins, nbins);
+  MatrixXd invV5s_itoy    = MatrixXd::Zero(nbins, nbins);
+  MatrixXd invV_BB_itoy   = MatrixXd::Zero(nbins, nbins);
+  MatrixXd invV5s_BB_itoy = MatrixXd::Zero(nbins, nbins);
+  MatrixXd invVMC_itoy    = MatrixXd::Zero(nbins, nbins);
   VectorXd y_itoy(nbins);
   VectorXd y5s_itoy(nbins);
   VectorXd yMC_itoy(nbins);
   VectorXd ynom_itoy(nbins);
   
-  unsigned int ntoys = 3000;
-  for(unsigned int itoy=0; itoy<ntoys; itoy++){
+  double prob_data = 0.;
+  double prob_data5s = 0.;
+  double prob_data_BB = 0.;
+  double prob_data5s_BB = 0.;
+  double prob_mc = 0.;
 
-    MatrixXd invC_itoy = MatrixXd::Zero(2, 2);
-    MatrixXd invC5s_itoy = MatrixXd::Zero(2, 2);
-    MatrixXd invCMC_itoy = MatrixXd::Zero(2, 2);
+  for(unsigned int itoy=0; itoy<ntoys; itoy++){
+    if(itoy%10000==0) cout << "Doing toy " << itoy << " / " << ntoys << endl;
+      
+    MatrixXd invC_itoy      = MatrixXd::Zero(2, 2);
+    MatrixXd invC5s_itoy    = MatrixXd::Zero(2, 2);
+    MatrixXd invCMC_itoy    = MatrixXd::Zero(2, 2);
+    MatrixXd invC_BB_itoy   = MatrixXd::Zero(2, 2);
+    MatrixXd invC5s_BB_itoy = MatrixXd::Zero(2, 2);
+    MatrixXd invCMC_BB_itoy = MatrixXd::Zero(2, 2);
+    
     for(unsigned int ir=0; ir<nbins; ir++){      
       A_itoy(ir,0) = rans[0]->Poisson( A_true(ir, 0)*lumiscale ) / lumiscale;
       A_itoy(ir,1) = rans[0]->Poisson( A_true(ir, 1)*lumiscale ) / lumiscale;
-      y_itoy(ir)   = rans[0]->Poisson( A_true.row(ir).sum() );
-      y5s_itoy(ir) = rans[0]->Poisson( A_true(ir,0)*(1+err_true*5) + A_true(ir,1) );
-      yMC_itoy(ir) = rans[0]->Poisson( A_itoy.row(ir).sum() );
+
+      // "MC" template drawn from true nominal, including lumi scale
       ynom_itoy(ir) = A_itoy.row(ir).sum();
-      invV_itoy(ir,ir)   = 1./y_itoy(ir);
-      invV5s_itoy(ir,ir) = 1./y5s_itoy(ir);
-      invVMC_itoy(ir,ir) = 1./yMC_itoy(ir);
-      invC_itoy   += (A_itoy.row(ir).transpose()*A_itoy.row(ir))/y_itoy(ir);
-      invC5s_itoy += (A_itoy.row(ir).transpose()*A_itoy.row(ir))/y5s_itoy(ir);
-      invCMC_itoy += (A_itoy.row(ir).transpose()*A_itoy.row(ir))/yMC_itoy(ir);
+      
+      // toy data drawn from true nominal 
+      y_itoy(ir)   = rans[0]->Poisson( A_true.row(ir).sum() );
+
+      // toy data drawn from true 5sigma 
+      y5s_itoy(ir) = rans[0]->Poisson( A_true(ir,0)*(1+err_true*nsigmas) + A_true(ir,1)  );
+
+      // toy data drawn from "MC" 
+      yMC_itoy(ir) = rans[0]->Poisson( A_itoy.row(ir).sum() );
+
+      invV_itoy(ir,ir)      = 1./y_itoy(ir);
+      invV5s_itoy(ir,ir)    = 1./y5s_itoy(ir);
+      invV_BB_itoy(ir,ir)   = 1./(y_itoy(ir)   + ynom_itoy(ir)/lumiscale);
+      invV5s_BB_itoy(ir,ir) = 1./(y5s_itoy(ir) + ynom_itoy(ir)/lumiscale);
+      invVMC_itoy(ir,ir)    = 1./yMC_itoy(ir);
+
+      // this is a common piece
+      MatrixXd K_ir_itoy = A_itoy.row(ir).transpose()*A_itoy.row(ir);      
+      invC_itoy      += K_ir_itoy/y_itoy(ir);
+      invC5s_itoy    += K_ir_itoy/y5s_itoy(ir);
+      invCMC_itoy    += K_ir_itoy/yMC_itoy(ir);
+      invC_BB_itoy   += K_ir_itoy/(y_itoy(ir)   + ynom_itoy(ir)/lumiscale );
+      invC5s_BB_itoy += K_ir_itoy/(y5s_itoy(ir) + ynom_itoy(ir)/lumiscale );
     }
 
-    MatrixXd C_itoy = invC_itoy.inverse();
-    MatrixXd C5s_itoy = invC5s_itoy.inverse();
-    MatrixXd CMC_itoy = invCMC_itoy.inverse();
-    VectorXd x_itoy   = C_itoy*A_itoy.transpose()*invV_itoy*(y_itoy - ynom_itoy);
-    VectorXd x5s_itoy = C5s_itoy*A_itoy.transpose()*invV5s_itoy*(y5s_itoy - ynom_itoy);
-    VectorXd xMC_itoy = CMC_itoy*A_itoy.transpose()*invVMC_itoy*(yMC_itoy - ynom_itoy);
-    mu_data = x_itoy(0);
-    mu_data5s = x5s_itoy(0);
+    MatrixXd C_itoy      = invC_itoy.inverse();
+    MatrixXd C5s_itoy    = invC5s_itoy.inverse();
+    MatrixXd C_BB_itoy   = invC_BB_itoy.inverse();
+    MatrixXd C5s_BB_itoy = invC5s_BB_itoy.inverse();
+    MatrixXd CMC_itoy    = invCMC_itoy.inverse();
+    VectorXd x_itoy      = C_itoy*A_itoy.transpose()*invV_itoy*(y_itoy - ynom_itoy);
+    VectorXd x5s_itoy    = C5s_itoy*A_itoy.transpose()*invV5s_itoy*(y5s_itoy - ynom_itoy);
+    VectorXd xMC_itoy    = CMC_itoy*A_itoy.transpose()*invVMC_itoy*(yMC_itoy - ynom_itoy);
+    VectorXd x_BB_itoy   = C_BB_itoy*A_itoy.transpose()*invV_BB_itoy*(y_itoy - ynom_itoy);
+    VectorXd x5s_BB_itoy = C5s_BB_itoy*A_itoy.transpose()*invV5s_BB_itoy*(y5s_itoy - ynom_itoy);
+    mu_data      = x_itoy(0);
+    mu_data5s    = x5s_itoy(0);
+    mu_data_BB   = x_BB_itoy(0);
+    mu_data5s_BB = x5s_BB_itoy(0);
     mu_mc = xMC_itoy(0); 
-    err_data = TMath::Sqrt(C_itoy(0,0));
-    err_data5s = TMath::Sqrt(C5s_itoy(0,0));
-    err_mc = TMath::Sqrt(CMC_itoy(0,0));
+    err_data      = TMath::Sqrt(C_itoy(0,0));
+    err_data5s    = TMath::Sqrt(C5s_itoy(0,0));
+    err_data_BB   = TMath::Sqrt(C_BB_itoy(0,0));
+    err_data5s_BB = TMath::Sqrt(C5s_BB_itoy(0,0));
+    err_mc        = TMath::Sqrt(CMC_itoy(0,0));
 
+    if( TMath::Abs(mu_data-mu_true)/err_data <= 1.0 ) prob_data += 1./ntoys;
+    if( TMath::Abs(mu_data5s-(mu_true + err_true*nsigmas))/err_data5s <= 1.0 ) prob_data5s += 1./ntoys;
+    if( TMath::Abs(mu_data_BB-mu_true)/err_data_BB <= 1.0 ) prob_data_BB += 1./ntoys;
+    if( TMath::Abs(mu_data5s_BB-(mu_true + err_true*nsigmas))/err_data5s_BB <= 1.0 ) prob_data5s_BB += 1./ntoys;
+    if( TMath::Abs(mu_mc-mu_true)/err_mc <= 1.0 ) prob_mc += 1./ntoys;
+    
     tree->Fill();
   }
+
+  cout << "Data:       " << prob_data << " +/- " << TMath::Sqrt(prob_data*(1-prob_data)/ntoys) << endl;
+  cout << "Data 5s:    " << prob_data5s << " +/- " << TMath::Sqrt(prob_data5s*(1-prob_data5s)/ntoys) << endl;
+  cout << "Data BB:    " << prob_data_BB << " +/- " << TMath::Sqrt(prob_data_BB*(1-prob_data_BB)/ntoys) << endl;
+  cout << "Data 5s BB: " << prob_data5s_BB << " +/- " << TMath::Sqrt(prob_data5s_BB*(1-prob_data5s_BB)/ntoys) << endl;
+  cout << "MC:         " << prob_mc << " +/- " << TMath::Sqrt(prob_mc*(1-prob_mc)/ntoys) << endl;
   
   fout->cd();
   h_true_0->Write();
