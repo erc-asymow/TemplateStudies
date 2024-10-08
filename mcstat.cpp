@@ -137,7 +137,7 @@ int main(int argc, char* argv[])
   }
 
   MatrixXd C_true = ( A_true.transpose()*invV_true*A_true ).inverse();
-  cout << "True errors on mu_[0,1] = [" << TMath::Sqrt(C_true(0,0)) << "," << TMath::Sqrt(C_true(1,1)) << "]" << endl;
+  //cout << "True errors on mu_[0,1] = [" << TMath::Sqrt(C_true(0,0)) << "," << TMath::Sqrt(C_true(1,1)) << "]" << endl;
 
   mu_true = 0.0;
   err_true = TMath::Sqrt(C_true(0,0));
@@ -239,11 +239,31 @@ int main(int argc, char* argv[])
     tree->Fill();
   }
 
-  cout << "Data:       " << prob_data << " +/- " << TMath::Sqrt(prob_data*(1-prob_data)/ntoys) << endl;
-  cout << "Data 5s:    " << prob_data5s << " +/- " << TMath::Sqrt(prob_data5s*(1-prob_data5s)/ntoys) << endl;
-  cout << "Data BB:    " << prob_data_BB << " +/- " << TMath::Sqrt(prob_data_BB*(1-prob_data_BB)/ntoys) << endl;
-  cout << "Data 5s BB: " << prob_data5s_BB << " +/- " << TMath::Sqrt(prob_data5s_BB*(1-prob_data5s_BB)/ntoys) << endl;
-  cout << "MC:         " << prob_mc << " +/- " << TMath::Sqrt(prob_mc*(1-prob_mc)/ntoys) << endl;
+  cout << "Asympt. err:" << 1.0 - TMath::Prob(1.0, 1) << " (err=" << TMath::Sqrt(C_true(0,0)) << ")" << endl;
+  
+  TH1D* haux = new TH1D("haux","", 500, 0., 0.5);
+
+  tree->Draw("err_mc>>haux");  
+  cout << "MC:         " << prob_mc << " +/- " << TMath::Sqrt(prob_mc*(1-prob_mc)/ntoys) <<  " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  haux->Reset();
+
+  tree->Draw("err_data>>haux");  
+  cout << "Data:       " << prob_data << " +/- " << TMath::Sqrt(prob_data*(1-prob_data)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  haux->Reset();
+
+  tree->Draw("err_data_BB>>haux");  
+  cout << "Data BB:    " << prob_data_BB << " +/- " << TMath::Sqrt(prob_data_BB*(1-prob_data_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  haux->Reset();
+
+  tree->Draw("err_data5s>>haux");  
+  cout << "Data 5s:    " << prob_data5s << " +/- " << TMath::Sqrt(prob_data5s*(1-prob_data5s)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  haux->Reset();
+
+  tree->Draw("err_data5s_BB>>haux");  
+  cout << "Data 5s BB: " << prob_data5s_BB << " +/- " << TMath::Sqrt(prob_data5s_BB*(1-prob_data5s_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  haux->Reset();
+    
+  delete haux;
   
   fout->cd();
   h_true_0->Write();
