@@ -14,6 +14,13 @@
 #include <ROOT/RVec.hxx>
 #include <iostream>
 #include <boost/program_options.hpp>
+#include "Minuit2/FunctionMinimum.h"
+#include "Minuit2/MnMinimize.h"
+#include "Minuit2/MnMigrad.h"
+#include "Minuit2/MnHesse.h"
+#include "Minuit2/MnPrint.h"
+#include "Minuit2/MnUserParameterState.h"
+#include "Minuit2/FCNGradientBase.h"
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
@@ -23,10 +30,118 @@ using Eigen::VectorXd;
 
 using namespace std;
 using namespace ROOT;
+using namespace ROOT::Minuit2;
 
 using namespace boost::program_options;
 
 
+class Likelihood : public FCNBase {
+
+public:
+  
+  Likelihood(const int& debug, const int& nbins, const double& lumiscale, const bool& BBlite )
+    : errorDef_(1.0), debug_(debug), nbins_(nbins), lumiscale_(lumiscale), bblite_(BBlite) {
+    npars_ = BBlite ? (2 + nbins) : (2 + 2*nbins);
+    ndof_ = nbins - 2;
+    data_.reserve( nbins );
+    mc0_.reserve( nbins );
+    mc1_.reserve( nbins );
+    mc0err_.reserve( nbins );
+    mc1err_.reserve( nbins );
+    for(unsigned int ibin = 0; ibin<data_.size(); ibin++) data_.push_back(0.);
+    for(unsigned int ibin = 0; ibin<data_.size(); ibin++) mc0_.push_back(0.);
+    for(unsigned int ibin = 0; ibin<data_.size(); ibin++) mc1_.push_back(0.);
+    for(unsigned int ibin = 0; ibin<data_.size(); ibin++) mc0err_.push_back(0.);
+    for(unsigned int ibin = 0; ibin<data_.size(); ibin++) mc1err_.push_back(0.);
+  }
+
+  unsigned int get_n_dof(){ return ndof_;}
+  
+  void set_data(const unsigned int& ibin, const double& val){
+    data_[ibin] = val; 
+  }
+  void set_mc0(const unsigned int& ibin, const double& val){
+    mc0_[ibin] = val; 
+  }
+  void set_mc1(const unsigned int& ibin, const double& val){
+    mc1_[ibin] = val; 
+  }
+  void set_mc0err(const unsigned int& ibin, const double& val){
+    mc0err_[ibin] = val; 
+  }
+  void set_mc1err(const unsigned int& ibin, const double& val){
+    mc1err_[ibin] = val; 
+  }
+  
+  virtual double Up() const {return errorDef_;}
+  virtual void SetErrorDef(double def) {errorDef_ = def;}
+
+  virtual double operator()(const vector<double>&) const;
+  //virtual vector<double> Gradient(const vector<double>& ) const;
+  //virtual bool CheckGradient() const {return true;} 
+
+private:
+
+  vector<double> data_;
+  vector<double> mc0_;
+  vector<double> mc1_;
+  vector<double> mc0err_;
+  vector<double> mc1err_;
+  double lumiscale_;
+  unsigned int nbins_;
+  unsigned int npars_;
+  unsigned int ndof_;
+  bool bblite_;
+  int debug_;
+  double errorDef_;
+};
+
+// par[0] = mu0, par[1] = mu1, par[2,..] = BB 
+double Likelihood::operator()(const vector<double>& par) const {  
+  double val  = 0.0;
+  //double val0 = 0.0;
+  if(bblite_){
+    //cout << par[0] << ", " << par[1] << endl;
+    for(unsigned int ibin=0; ibin<nbins_; ibin++){
+      double mc_tot = (mc0_[ibin]+mc1_[ibin]);
+      double mc_tot_err = TMath::Sqrt( mc0err_[ibin]*mc0err_[ibin] + mc1err_[ibin]*mc1err_[ibin] );
+      double rel_err_mc = mc_tot_err/mc_tot;
+      double exp_data_i = ((1+par[0])*mc0_[ibin] + (1+par[1])*mc1_[ibin])*par[2+ibin];
+      double pois  = -exp_data_i + data_[ibin]*TMath::Log(exp_data_i);
+      double pois0 = -mc_tot + data_[ibin]*TMath::Log(mc_tot) ;
+      double prior = (par[2+ibin]-1.0)*(par[2+ibin]-1.0)/(rel_err_mc*rel_err_mc);
+      //val  += -2.0*(pois - pois0);
+
+      val  += (data_[ibin] - exp_data_i)*(data_[ibin] - exp_data_i)/data_[ibin];
+      val  += prior;      
+      //cout << "Bin" << ibin << ": " << -2.0*(pois - pois0) <<  ", " << par[2+ibin]-1 << " / " << rel_err_mc  <<  ", prior: " << prior << " --> " << val << endl;
+    }
+  }
+  else{
+    for(unsigned int ibin=0; ibin<nbins_; ibin++){
+      double mc_tot = (mc0_[ibin]+mc1_[ibin]);
+      double bb0_exp = mc0_[ibin]*lumiscale_;
+      double bb1_exp = mc1_[ibin]*lumiscale_;
+      double exp_data_i = (1+par[0])*par[2+ibin] + (1+par[1])*par[2+nbins_+ibin];
+      exp_data_i /= lumiscale_;
+      double pois   = -exp_data_i + data_[ibin]*TMath::Log(exp_data_i);
+      double pois0  = -mc_tot     + data_[ibin]*TMath::Log(mc_tot) ;
+      double prior0 = -par[2+ibin]        + bb0_exp*TMath::Log(par[2+ibin]);
+      prior0 -= (-bb0_exp + bb0_exp*TMath::Log(bb0_exp) );
+      double prior1 = -par[2+nbins_+ibin] + bb1_exp*TMath::Log(par[2+nbins_+ibin]);
+      prior1 -= (-bb1_exp + bb1_exp*TMath::Log(bb1_exp) );
+      val += -2.0*(pois - pois0) ;
+      val += -2.0*prior0;
+      val += -2.0*prior1;
+    }
+  }
+  //cout << val << endl;
+  //val0 *= -2.0;
+  return val;
+}
+
+
+  
 int main(int argc, char* argv[])
 {
 
@@ -168,6 +283,19 @@ int main(int argc, char* argv[])
   double prob_data5s_BB = 0.;
   double prob_mc = 0.;
 
+  unsigned int maxfcn(numeric_limits<unsigned int>::max());
+  double tolerance(0.001);
+  int verbosity = int(nevents<2);
+  int npars_lite = 2 + nbins;
+  int npars_full = 2 + 2*nbins;
+  ROOT::Minuit2::MnPrint::SetGlobalLevel(verbosity);
+  MatrixXd Vmin_lite    = MatrixXd::Zero(npars_lite,npars_lite);    
+  VectorXd xmin_lite    = VectorXd::Zero(npars_lite);
+  VectorXd xmin_liteErr = VectorXd::Zero(npars_lite);
+  MatrixXd Vmin_full    = MatrixXd::Zero(npars_full,npars_full);    
+  VectorXd xmin_full    = VectorXd::Zero(npars_full);
+  VectorXd xmin_fullErr = VectorXd::Zero(npars_full);
+    
   for(unsigned int itoy=0; itoy<ntoys; itoy++){
     if(itoy%10000==0) cout << "Doing toy " << itoy << " / " << ntoys << endl;
       
@@ -177,17 +305,22 @@ int main(int argc, char* argv[])
     MatrixXd invC_BB_itoy   = MatrixXd::Zero(2, 2);
     MatrixXd invC5s_BB_itoy = MatrixXd::Zero(2, 2);
     MatrixXd invCMC_BB_itoy = MatrixXd::Zero(2, 2);
+
+    Likelihood* likelihood_lite = new Likelihood(0, nbins, lumiscale, true);
+    likelihood_lite->SetErrorDef(1.0);
+    Likelihood* likelihood_full = new Likelihood(0, nbins, lumiscale, false);
+    likelihood_full->SetErrorDef(1.0);
     
     for(unsigned int ir=0; ir<nbins; ir++){      
       A_itoy(ir,0) = rans[0]->Poisson( A_true(ir, 0)*lumiscale ) / lumiscale;
       A_itoy(ir,1) = rans[0]->Poisson( A_true(ir, 1)*lumiscale ) / lumiscale;
-
+      
       // "MC" template drawn from true nominal, including lumi scale
       ynom_itoy(ir) = A_itoy.row(ir).sum();
       
       // toy data drawn from true nominal 
       y_itoy(ir)   = rans[0]->Poisson( A_true.row(ir).sum() );
-
+      
       // toy data drawn from true 5sigma 
       y5s_itoy(ir) = rans[0]->Poisson( A_true(ir,0)*(1+err_true*nsigmas) + A_true(ir,1)  );
 
@@ -207,6 +340,16 @@ int main(int argc, char* argv[])
       invCMC_itoy    += K_ir_itoy/yMC_itoy(ir);
       invC_BB_itoy   += K_ir_itoy/(y_itoy(ir)   + ynom_itoy(ir)/lumiscale );
       invC5s_BB_itoy += K_ir_itoy/(y5s_itoy(ir) + ynom_itoy(ir)/lumiscale );
+
+      // numerical
+      likelihood_lite->set_mc0(ir, A_itoy(ir,0));
+      likelihood_lite->set_mc1(ir, A_itoy(ir,1));
+      likelihood_lite->set_mc0err(ir, TMath::Sqrt(A_itoy(ir,0)/lumiscale));
+      likelihood_lite->set_mc1err(ir, TMath::Sqrt(A_itoy(ir,1)/lumiscale));
+      likelihood_lite->set_data(ir, y_itoy(ir) );
+      likelihood_full->set_mc0(ir, A_itoy(ir,0));
+      likelihood_full->set_mc1(ir, A_itoy(ir,1));
+      likelihood_full->set_data(ir, y_itoy(ir) );
     }
 
     MatrixXd C_itoy      = invC_itoy.inverse();
@@ -230,37 +373,141 @@ int main(int argc, char* argv[])
     err_data5s_BB = TMath::Sqrt(C5s_BB_itoy(0,0));
     err_mc        = TMath::Sqrt(CMC_itoy(0,0));
 
+    MnUserParameters upar_lite;
+    upar_lite.Add("mu0", x_BB_itoy(0), TMath::Sqrt(C_BB_itoy(0,0)), x_BB_itoy(0) - 5.0*TMath::Sqrt(C_BB_itoy(0,0)), x_BB_itoy(0) + 5.0*TMath::Sqrt(C_BB_itoy(0,0)) );
+    // upar_lite.Add("mu0", 0.0, TMath::Sqrt(C_BB_itoy(0,0)), -10.0*TMath::Sqrt(C_BB_itoy(0,0)), 10.0*TMath::Sqrt(C_BB_itoy(0,0)) );
+    upar_lite.Add("mu1", x_BB_itoy(1), TMath::Sqrt(C_BB_itoy(1,1)), x_BB_itoy(1) - 5.0*TMath::Sqrt(C_BB_itoy(1,1)), x_BB_itoy(1) + 5.0*TMath::Sqrt(C_BB_itoy(1,1)) );
+    for (int i=0; i<nbins; i++){
+      double exp_error = TMath::Sqrt( lumiscale/(A_itoy(i,0)+A_itoy(i,1)) );
+      upar_lite.Add(Form("BBLite%d",i), 1.0, exp_error, 1.0-5*exp_error, 1.0+5*exp_error );
+    }
+    
+    MnMigrad migrad_lite(*likelihood_lite, upar_lite, 1);
+
+    cout << "\tMigrad..." << endl;
+    FunctionMinimum min_lite = migrad_lite(maxfcn, tolerance);
+    double edm_lite = double(min_lite.Edm());
+    double fmin_lite = double(min_lite.Fval());
+    cout << "\tHesse..." << endl;
+    MnHesse hesse_lite(1);
+    hesse_lite(*likelihood_lite, min_lite);
+       
+    for(unsigned int i = 0 ; i<npars_lite; i++){    
+      for(unsigned int j = 0 ; j<npars_lite; j++){
+	Vmin_lite(i,j) = i>j ?
+	  min_lite.UserState().Covariance().Data()[j+ i*(i+1)/2] :
+	  min_lite.UserState().Covariance().Data()[i+ j*(j+1)/2];;
+      }
+    }
+    for(unsigned int i = 0 ; i<npars_lite; i++){
+      xmin_lite(i)    = min_lite.UserState().Value(i) ;
+      xmin_liteErr(i) = min_lite.UserState().Error(i) ;
+    }
+
+    cout << ">>>>> Lite:" << endl;
+    cout << "Edm: " << min_lite.Edm() << std::endl;
+    cout << "Val: " << min_lite.Fval() << std::endl;
+    cout << "min is valid: " << min_lite.IsValid() << std::endl;
+    cout << "HesseFailed: " << min_lite.HesseFailed() << std::endl;
+    cout << "HasCovariance: " << min_lite.HasCovariance() << std::endl;
+    cout << "HasValidCovariance: " << min_lite.HasValidCovariance() << std::endl;
+    cout << "HasValidParameters: " << min_lite.HasValidParameters() << std::endl;
+    cout << "IsAboveMaxEdm: " << min_lite.IsAboveMaxEdm() << std::endl;
+    cout << "HasReachedCallLimit: " << min_lite.HasReachedCallLimit() << std::endl;
+    cout << "HasAccurateCovar: " << min_lite.HasAccurateCovar() << std::endl;
+    cout << "HasPosDefCovar : " << min_lite.HasPosDefCovar() << std::endl;
+    cout << "HasMadePosDefCovar : " << min_lite.HasMadePosDefCovar() << std::endl;    
+
+    MnUserParameters upar_full;
+    upar_full.Add("mu0", x_BB_itoy(0), TMath::Sqrt(C_BB_itoy(0,0)), x_BB_itoy(0) - 5.0*TMath::Sqrt(C_BB_itoy(0,0)), x_BB_itoy(0) + 5.0*TMath::Sqrt(C_BB_itoy(0,0)) );
+    upar_full.Add("mu1", x_BB_itoy(1), TMath::Sqrt(C_BB_itoy(1,1)), x_BB_itoy(1) - 5.0*TMath::Sqrt(C_BB_itoy(1,1)), x_BB_itoy(1) + 5.0*TMath::Sqrt(C_BB_itoy(1,1)) );
+    for (int i=0; i<nbins; i++){
+      double exp_val   = lumiscale*A_itoy(i,0);
+      double exp_err   = TMath::Sqrt(exp_val);
+      upar_full.Add(Form("BB0Full%d",i), exp_val, exp_err, exp_val - 5*exp_err, exp_val + 5*exp_err );
+    }
+    for (int i=0; i<nbins; i++){
+      double exp_val   = lumiscale*A_itoy(i,1);
+      double exp_err   = TMath::Sqrt(exp_val);
+      upar_full.Add(Form("BB1Full%d",i), exp_val, exp_err, exp_val - 5*exp_err, exp_val + 5*exp_err );
+    }
+
+    /*
+    MnMigrad migrad_full(*likelihood_full, upar_full, 1);
+
+    cout << "\tMigrad..." << endl;
+    FunctionMinimum min_full = migrad_full(maxfcn, tolerance);
+    double edm_full = double(min_full.Edm());
+    double fmin_full = double(min_full.Fval());
+    cout << "\tHesse..." << endl;
+    MnHesse hesse_full(1);
+    hesse_full(*likelihood_full, min_full);
+       
+    for(unsigned int i = 0 ; i<npars_full; i++){    
+      for(unsigned int j = 0 ; j<npars_full; j++){
+	Vmin_full(i,j) = i>j ?
+	  min_full.UserState().Covariance().Data()[j+ i*(i+1)/2] :
+	  min_full.UserState().Covariance().Data()[i+ j*(j+1)/2];;
+      }
+    }
+    for(unsigned int i = 0 ; i<npars_full; i++){
+      xmin_full(i)    = min_full.UserState().Value(i) ;
+      xmin_fullErr(i) = min_full.UserState().Error(i) ;
+    }
+
+    cout << ">>>>> Full:" << endl;
+    cout << "Edm: " << min_full.Edm() << std::endl;
+    cout << "Val: " << min_full.Fval() << std::endl;
+    cout << "min is valid: " << min_full.IsValid() << std::endl;
+    cout << "HesseFailed: " << min_full.HesseFailed() << std::endl;
+    cout << "HasCovariance: " << min_full.HasCovariance() << std::endl;
+    cout << "HasValidCovariance: " << min_full.HasValidCovariance() << std::endl;
+    cout << "HasValidParameters: " << min_full.HasValidParameters() << std::endl;
+    cout << "IsAboveMaxEdm: " << min_full.IsAboveMaxEdm() << std::endl;
+    cout << "HasReachedCallLimit: " << min_full.HasReachedCallLimit() << std::endl;
+    cout << "HasAccurateCovar: " << min_full.HasAccurateCovar() << std::endl;
+    cout << "HasPosDefCovar : " << min_full.HasPosDefCovar() << std::endl;
+    cout << "HasMadePosDefCovar : " << min_full.HasMadePosDefCovar() << std::endl;    
+    */
+
     if( TMath::Abs(mu_data-mu_true)/err_data <= 1.0 ) prob_data += 1./ntoys;
     if( TMath::Abs(mu_data5s-(mu_true + err_true*nsigmas))/err_data5s <= 1.0 ) prob_data5s += 1./ntoys;
     if( TMath::Abs(mu_data_BB-mu_true)/err_data_BB <= 1.0 ) prob_data_BB += 1./ntoys;
     if( TMath::Abs(mu_data5s_BB-(mu_true + err_true*nsigmas))/err_data5s_BB <= 1.0 ) prob_data5s_BB += 1./ntoys;
     if( TMath::Abs(mu_mc-mu_true)/err_mc <= 1.0 ) prob_mc += 1./ntoys;
+
+    cout << xmin_full(0) << " +/- " << xmin_fullErr(0) << endl;
+    cout << xmin_lite(0) << " +/- " << xmin_liteErr(0) << endl;
+    cout << mu_data_BB << " +/- " << err_data_BB << endl;
+    
+    delete likelihood_lite;
+    delete likelihood_full;
     
     tree->Fill();
   }
 
-  cout << "Asympt. err:" << 1.0 - TMath::Prob(1.0, 1) << " (err=" << TMath::Sqrt(C_true(0,0)) << ")" << endl;
+  cout << "Asympt. err: " << 1.0 - TMath::Prob(1.0, 1) << " (err=" << TMath::Sqrt(C_true(0,0)) << ")" << endl;
   
   TH1D* haux = new TH1D("haux","", 500, 0., 0.5);
 
   tree->Draw("err_mc>>haux");  
-  cout << "MC:         " << prob_mc << " +/- " << TMath::Sqrt(prob_mc*(1-prob_mc)/ntoys) <<  " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  cout << "MC:          " << prob_mc << " +/- " << TMath::Sqrt(prob_mc*(1-prob_mc)/ntoys) <<  " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
   haux->Reset();
 
   tree->Draw("err_data>>haux");  
-  cout << "Data:       " << prob_data << " +/- " << TMath::Sqrt(prob_data*(1-prob_data)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  cout << "Data:        " << prob_data << " +/- " << TMath::Sqrt(prob_data*(1-prob_data)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
   haux->Reset();
 
   tree->Draw("err_data_BB>>haux");  
-  cout << "Data BB:    " << prob_data_BB << " +/- " << TMath::Sqrt(prob_data_BB*(1-prob_data_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  cout << "Data BB:     " << prob_data_BB << " +/- " << TMath::Sqrt(prob_data_BB*(1-prob_data_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
   haux->Reset();
 
   tree->Draw("err_data5s>>haux");  
-  cout << "Data 5s:    " << prob_data5s << " +/- " << TMath::Sqrt(prob_data5s*(1-prob_data5s)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  cout << "Data 5s:     " << prob_data5s << " +/- " << TMath::Sqrt(prob_data5s*(1-prob_data5s)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
   haux->Reset();
 
   tree->Draw("err_data5s_BB>>haux");  
-  cout << "Data 5s BB: " << prob_data5s_BB << " +/- " << TMath::Sqrt(prob_data5s_BB*(1-prob_data5s_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  cout << "Data 5s BB:  " << prob_data5s_BB << " +/- " << TMath::Sqrt(prob_data5s_BB*(1-prob_data5s_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
   haux->Reset();
     
   delete haux;
