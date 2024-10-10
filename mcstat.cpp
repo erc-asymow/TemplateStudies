@@ -192,7 +192,7 @@ int main(int argc, char* argv[])
 	("nevents",     value<long>()->default_value(2000000), "number of events")
 	("ntoys",       value<long>()->default_value(3000), "number of toys")
 	("tag",         value<std::string>()->default_value("closure"), "run type")
-	("do_fit",      bool_switch()->default_value(false), "do_fit")
+	("doFC",      bool_switch()->default_value(false), "doFC")
 	("verbose",      bool_switch()->default_value(false), "verbose")
 	("nbins",       value<int>()->default_value(200), "nbins")
 	("nsigmas",     value<int>()->default_value(5), "nsigmas")
@@ -224,7 +224,7 @@ int main(int argc, char* argv[])
   float frac      = vm["frac"].as<float>();
   float asym      = vm["asym"].as<float>();
   float lumiscale    = vm["lumiscale"].as<float>();
-  bool do_fit     = vm["do_fit"].as<bool>();
+  bool doFC     = vm["doFC"].as<bool>();
   bool verbose     = vm["verbose"].as<bool>();
 
   std::vector<TRandom3*> rans = {};
@@ -364,7 +364,66 @@ int main(int argc, char* argv[])
   MatrixXd Vmin_full5s    = MatrixXd::Zero(npars_full,npars_full);    
   VectorXd xmin_full5s    = VectorXd::Zero(npars_full);
   VectorXd xmin_full5sErr = VectorXd::Zero(npars_full);
-    
+
+  if(doFC){
+    int ntoysFC = 1;
+    for(unsigned int itoy=0; itoy<ntoysFC; itoy++){
+      if(itoy%10000==0) cout << "Doing FC toy " << itoy << " / " << ntoysFC << endl;
+
+      Likelihood* likelihoodFC_full = new Likelihood(0, nbins, lumiscale, false);
+      likelihoodFC_full->SetErrorDef(0.5);
+      for(unsigned int ir=0; ir<nbins; ir++){      
+	A_itoy(ir,0) = rans[1]->Poisson( A_true(ir, 0)*lumiscale ) / lumiscale;
+	A_itoy(ir,1) = rans[1]->Poisson( A_true(ir, 1)*lumiscale ) / lumiscale;
+	ynom_itoy(ir) = A_itoy.row(ir).sum();
+	y_itoy(ir)   = rans[1]->Poisson( A_true.row(ir).sum() );
+	likelihoodFC_full->set_mc0(ir, A_itoy(ir,0));
+	likelihoodFC_full->set_mc1(ir, A_itoy(ir,1));
+	likelihoodFC_full->set_mc0err(ir, TMath::Sqrt(A_itoy(ir,0)/lumiscale));
+	likelihoodFC_full->set_mc1err(ir, TMath::Sqrt(A_itoy(ir,1)/lumiscale));
+	likelihoodFC_full->set_data(ir, y_itoy(ir) );
+      }
+
+      MnUserParameters uparFC_full;
+      uparFC_full.Add("mu0", 0.0, 0.01);
+      uparFC_full.Add("mu1", 0.0, 0.01);      
+      MnMigrad migradFC_full(*likelihoodFC_full, uparFC_full, 1);
+      FunctionMinimum minFC_full = migradFC_full(maxfcn, tolerance);
+      double mu0 = minFC_full.UserState().Value(0);
+      double mu1 = minFC_full.UserState().Value(1);
+
+      MatrixXd invsqrtV  = MatrixXd::Zero(nbins, nbins);
+      for(unsigned int i=0; i<nbins; i++){
+	invsqrtV(i,i) = 1./TMath::Sqrt(A_itoy.row(i).sum());
+      }
+      MatrixXd invVj = MatrixXd::Zero(2*nbins, 2*nbins);
+      for(unsigned int i=0; i<2*nbins; i++){
+	invVj(i,i) = i%2==0 ? 1./A_itoy(i%nbins,0) : 1./A_itoy(i%nbins,1);
+      }
+      MatrixXd X = MatrixXd::Zero(nbins, 2*nbins);
+      for(unsigned int i=0; i<nbins; i++){
+	for(unsigned int j=0; j<2*nbins; j++){
+	  if(j==2*i || j==(2*i+1)) X(i,j) = (j==2*i) ? mu0 : mu1;
+	}
+      }
+      VectorXd jhat = VectorXd::Zero(2*nbins);
+      for(unsigned int i=0; i<2*nbins; i++){
+	jhat(i) = i%2==0 ? A_itoy(i%nbins,0) : A_itoy(i%nbins,1);
+      }
+      VectorXd b = invsqrtV*(y_itoy - ynom_itoy);
+      MatrixXd D = invsqrtV*X;
+      MatrixXd B = D.transpose()*D + invVj;
+      VectorXd g = -(D.transpose()*b + invVj*jhat );
+      VectorXd jtilde = B.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(-g);
+      for(unsigned int i=0; i<2*nbins; i++){
+	cout << (jtilde(i) - jhat(i))/TMath::Sqrt(jhat(i)) << endl;
+      }
+      delete likelihoodFC_full;
+      
+    }
+  }
+
+  
   for(unsigned int itoy=0; itoy<ntoys; itoy++){
     if(itoy%10000==0) cout << "Doing toy " << itoy << " / " << ntoys << endl;
       
