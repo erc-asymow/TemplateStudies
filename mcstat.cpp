@@ -18,6 +18,7 @@
 #include "Minuit2/MnMinimize.h"
 #include "Minuit2/MnMigrad.h"
 #include "Minuit2/MnHesse.h"
+#include "Minuit2/MnMinos.h"
 #include "Minuit2/MnPrint.h"
 #include "Minuit2/MnUserParameterState.h"
 #include "Minuit2/FCNGradientBase.h"
@@ -236,8 +237,10 @@ int main(int argc, char* argv[])
   double mu_data, err_data;
   double mu_poisdata_BB, err_poisdata_BB;
   double mu_poisdata_BBfull, err_poisdata_BBfull;
+  double errPLRLow_poisdata_BBfull,errPLRUp_poisdata_BBfull;
   double mu_poisdata5s_BB, err_poisdata5s_BB;
   double mu_poisdata5s_BBfull, err_poisdata5s_BBfull;
+  double errPLRLow_poisdata5s_BBfull, errPLRUp_poisdata5s_BBfull;
   double mu_data5s, err_data5s;
   double mu_mc, err_mc;
   double mu_data_BB, err_data_BB;
@@ -249,10 +252,14 @@ int main(int argc, char* argv[])
   tree->Branch("err_poisdata_BB", &err_poisdata_BB, "err_poisdata_BB/D");
   tree->Branch("mu_poisdata_BBfull",  &mu_poisdata_BBfull, "mu_poisdata_BBfull/D");
   tree->Branch("err_poisdata_BBfull", &err_poisdata_BBfull, "err_poisdata_BBfull/D");
+  tree->Branch("errPLRLow_poisdata_BBfull", &errPLRLow_poisdata_BBfull, "errPLRLow_poisdata_BBfull/D");
+  tree->Branch("errPLRUp_poisdata_BBfull", &errPLRUp_poisdata_BBfull, "errPLRUp_poisdata_BBfull/D");
   tree->Branch("mu_poisdata5s_BB",  &mu_poisdata5s_BB, "mu_poisdata5s_BB/D");
   tree->Branch("err_poisdata5s_BB", &err_poisdata5s_BB, "err_poisdata5s_BB/D");
   tree->Branch("mu_poisdata5s_BBfull",  &mu_poisdata5s_BBfull, "mu_poisdata5s_BBfull/D");
   tree->Branch("err_poisdata5s_BBfull", &err_poisdata5s_BBfull, "err_poisdata5s_BBfull/D");
+  tree->Branch("errPLRLow_poisdata5s_BBfull", &errPLRLow_poisdata5s_BBfull, "errPLRLow_poisdata5s_BBfull/D");
+  tree->Branch("errPLRUp_poisdata5s_BBfull", &errPLRUp_poisdata5s_BBfull, "errPLRUp_poisdata5s_BBfull/D");
   tree->Branch("mu_data5s",  &mu_data5s, "mu_data5s/D");
   tree->Branch("err_data5s", &err_data5s, "err_data5s/D");
   tree->Branch("mu_data_BB",  &mu_data_BB, "mu_data_BB/D");
@@ -329,10 +336,12 @@ int main(int argc, char* argv[])
   double prob_data_BB = 0.;
   double prob_poisdata_BB = 0.;
   double prob_poisdata_BBfull = 0.;
+  double prob_poisdata_BBfullPLR = 0.;
   double prob_data5s = 0.;
   double prob_data5s_BB = 0.;
   double prob_poisdata5s_BB = 0.;
   double prob_poisdata5s_BBfull = 0.;
+  double prob_poisdata5s_BBfullPLR = 0.;
   double prob_mc = 0.;
 
   unsigned int maxfcn(numeric_limits<unsigned int>::max());
@@ -482,6 +491,7 @@ int main(int argc, char* argv[])
       xmin_liteErr(i) = min_lite.UserState().Error(i) ;
       //xmin_liteErr(i) = TMath::Sqrt(Vmin_lite(i,i)) ;
     }
+    
     if(verbose) cout << "\tMigrad..." << endl;
     FunctionMinimum min_lite5s = migrad_lite5s(maxfcn, tolerance);
     double edm_lite5s = double(min_lite5s.Edm());
@@ -500,8 +510,7 @@ int main(int argc, char* argv[])
       xmin_lite5s(i)    = min_lite5s.UserState().Value(i) ;
       xmin_lite5sErr(i) = min_lite5s.UserState().Error(i) ;
       //xmin_lite5sErr(i) = TMath::Sqrt(Vmin_lite5s(i,i)) ;
-    }
-
+    }    
     
     if(verbose){
       cout << ">>>>> Lite:" << endl;
@@ -556,6 +565,12 @@ int main(int argc, char* argv[])
       xmin_full(i)    = min_full.UserState().Value(i) ;
       xmin_fullErr(i) = min_full.UserState().Error(i) ;
     }
+
+    MnMinos minos_full(*likelihood_full, min_full, 1);
+    std::pair< double, double >  minos_err_full = minos_full(0);
+    errPLRLow_poisdata_BBfull =  minos_err_full.first;
+    errPLRUp_poisdata_BBfull  =  minos_err_full.second;
+
     if(verbose) cout << "\tMigrad..." << endl;
     FunctionMinimum min_full5s = migrad_full5s(maxfcn, tolerance);
     double edm_full5s = double(min_full5s.Edm());
@@ -574,6 +589,11 @@ int main(int argc, char* argv[])
       xmin_full5s(i)    = min_full5s.UserState().Value(i) ;
       xmin_full5sErr(i) = min_full5s.UserState().Error(i) ;
     }
+
+    MnMinos minos_full5s(*likelihood_full5s, min_full5s, 1);
+    std::pair< double, double >  minos_err_full5s = minos_full5s(0);
+    errPLRLow_poisdata5s_BBfull =  minos_err_full5s.first;
+    errPLRUp_poisdata5s_BBfull  =  minos_err_full5s.second;
 
     
     if(verbose){
@@ -601,16 +621,29 @@ int main(int argc, char* argv[])
     mu_poisdata5s_BBfull  = xmin_full5s(0);
     err_poisdata5s_BBfull = xmin_full5sErr(0);
     
-    if( TMath::Abs(mu_data-mu_true)/err_data <= 1.0 ) prob_data += 1./ntoys;
-    if( TMath::Abs(mu_data5s-(mu_true + err_true*nsigmas))/err_data5s <= 1.0 ) prob_data5s += 1./ntoys;
-    if( TMath::Abs(mu_data_BB-mu_true)/err_data_BB <= 1.0 ) prob_data_BB += 1./ntoys;
-    if( TMath::Abs(mu_data5s_BB-(mu_true + err_true*nsigmas))/err_data5s_BB <= 1.0 ) prob_data5s_BB += 1./ntoys;
-    if( TMath::Abs(mu_mc-mu_true)/err_mc <= 1.0 ) prob_mc += 1./ntoys;
-    if( TMath::Abs(mu_poisdata_BB-mu_true)/err_poisdata_BB <= 1.0 ) prob_poisdata_BB += 1./ntoys;
-    if( TMath::Abs(mu_poisdata_BBfull-mu_true)/err_poisdata_BBfull <= 1.0 ) prob_poisdata_BBfull += 1./ntoys;
-    if( TMath::Abs(mu_poisdata5s_BB-(mu_true + err_true*nsigmas))/err_poisdata5s_BB <= 1.0 ) prob_poisdata5s_BB += 1./ntoys;
-    if( TMath::Abs(mu_poisdata5s_BBfull-(mu_true + err_true*nsigmas))/err_poisdata5s_BBfull <= 1.0 ) prob_poisdata5s_BBfull += 1./ntoys;
-
+    if( TMath::Abs(mu_data-mu_true)/err_data <= 1.0 )
+      prob_data += 1./ntoys;
+    if( TMath::Abs(mu_data5s-(mu_true + err_true*nsigmas))/err_data5s <= 1.0 )
+      prob_data5s += 1./ntoys;
+    if( TMath::Abs(mu_data_BB-mu_true)/err_data_BB <= 1.0 )
+      prob_data_BB += 1./ntoys;
+    if( TMath::Abs(mu_data5s_BB-(mu_true + err_true*nsigmas))/err_data5s_BB <= 1.0 )
+      prob_data5s_BB += 1./ntoys;
+    if( TMath::Abs(mu_mc-mu_true)/err_mc <= 1.0 )
+      prob_mc += 1./ntoys;
+    if( TMath::Abs(mu_poisdata_BB-mu_true)/err_poisdata_BB <= 1.0 )
+      prob_poisdata_BB += 1./ntoys;
+    if( TMath::Abs(mu_poisdata_BBfull-mu_true)/err_poisdata_BBfull <= 1.0 )
+      prob_poisdata_BBfull += 1./ntoys;
+    if( TMath::Abs(mu_poisdata5s_BB-(mu_true + err_true*nsigmas))/err_poisdata5s_BB <= 1.0 )
+      prob_poisdata5s_BB += 1./ntoys;
+    if( TMath::Abs(mu_poisdata5s_BBfull-(mu_true + err_true*nsigmas))/err_poisdata5s_BBfull <= 1.0 )
+      prob_poisdata5s_BBfull += 1./ntoys;
+    if( mu_poisdata_BBfull >= (mu_true + errPLRLow_poisdata_BBfull) && mu_poisdata_BBfull <= (mu_true + errPLRUp_poisdata_BBfull)  )
+      prob_poisdata_BBfullPLR += 1./ntoys;
+    if( mu_poisdata5s_BBfull >= (mu_true + err_true*nsigmas + errPLRLow_poisdata5s_BBfull) && mu_poisdata5s_BBfull <= (mu_true + err_true*nsigmas + errPLRUp_poisdata5s_BBfull) )
+      prob_poisdata5s_BBfullPLR += 1./ntoys;
+    
     if(verbose){
       cout << "Gaus:          " << mu_data << " +/- " << err_data << endl;
       cout << "Gaus + bblite: " << mu_data_BB << " +/- " << err_data_BB << endl;
@@ -639,13 +672,13 @@ int main(int argc, char* argv[])
   cout << "Data 5s:            " << prob_data5s << " +/- " << TMath::Sqrt(prob_data5s*(1-prob_data5s)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
   haux->Reset();
 
-  tree->Draw("err_data_BB>>haux");  
-  cout << "Data BB:            " << prob_data_BB << " +/- " << TMath::Sqrt(prob_data_BB*(1-prob_data_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
-  haux->Reset();
+  //tree->Draw("err_data_BB>>haux");  
+  //cout << "Data BB:            " << prob_data_BB << " +/- " << TMath::Sqrt(prob_data_BB*(1-prob_data_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  //haux->Reset();
 
-  tree->Draw("err_data5s_BB>>haux");  
-  cout << "Data 5s BB:         " << prob_data5s_BB << " +/- " << TMath::Sqrt(prob_data5s_BB*(1-prob_data5s_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
-  haux->Reset();
+  //tree->Draw("err_data5s_BB>>haux");  
+  //cout << "Data 5s BB:         " << prob_data5s_BB << " +/- " << TMath::Sqrt(prob_data5s_BB*(1-prob_data5s_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  //haux->Reset();
 
   tree->Draw("err_poisdata_BB>>haux");  
   cout << "Data Pois BB:       " << prob_poisdata_BB << " +/- " << TMath::Sqrt(prob_poisdata_BB*(1-prob_poisdata_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
@@ -661,6 +694,14 @@ int main(int argc, char* argv[])
   
   tree->Draw("err_poisdata5s_BBfull>>haux");  
   cout << "Data5s Pois BBFull: " << prob_poisdata5s_BBfull << " +/- " << TMath::Sqrt(prob_poisdata5s_BBfull*(1-prob_poisdata5s_BBfull)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  haux->Reset();
+
+  tree->Draw("errPLRUp_poisdata_BBfull>>haux");  
+  cout << "Data PLR BBFull:    " << prob_poisdata_BBfullPLR << " +/- " << TMath::Sqrt(prob_poisdata_BBfullPLR*(1-prob_poisdata_BBfullPLR)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  haux->Reset();
+  
+  tree->Draw("errPLRUp_poisdata5s_BBfull>>haux");  
+  cout << "Data5s PLR BBFull:  " << prob_poisdata5s_BBfullPLR << " +/- " << TMath::Sqrt(prob_poisdata5s_BBfullPLR*(1-prob_poisdata5s_BBfullPLR)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
   haux->Reset();
 
   delete haux;
