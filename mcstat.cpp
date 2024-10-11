@@ -40,8 +40,8 @@ class Likelihood : public FCNBase {
 
 public:
   
-  Likelihood(const int& debug, const int& nbins, const double& lumiscale, const bool& BBlite )
-    : errorDef_(1.0), debug_(debug), nbins_(nbins), lumiscale_(lumiscale), bblite_(BBlite) {
+  Likelihood(const int& debug, const int& nbins, const double& lumiscale, const bool& BBlite, const bool& doPoisson, const bool& profileMCNP )
+    : errorDef_(1.0), debug_(debug), nbins_(nbins), lumiscale_(lumiscale), bblite_(BBlite), doPoisson_(doPoisson), profileMCNP_(profileMCNP) {
     //npars_ = BBlite ? (2 + nbins) : (2 + 2*nbins);
     npars_ = 2;
     ndof_ = nbins - 2;
@@ -49,7 +49,7 @@ public:
     mc0_.reserve( nbins );
     mc1_.reserve( nbins );
     mc0err_.reserve( nbins );
-    mc1err_.reserve( nbins );
+    mc1err_.reserve( nbins );    
     for(unsigned int ibin = 0; ibin<nbins; ibin++) data_.push_back(0.);
     for(unsigned int ibin = 0; ibin<nbins; ibin++) mc0_.push_back(0.);
     for(unsigned int ibin = 0; ibin<nbins; ibin++) mc1_.push_back(0.);
@@ -58,7 +58,7 @@ public:
   }
 
   unsigned int get_n_dof(){ return ndof_;}
-  
+
   void set_data(const unsigned int& ibin, const double& val){
     data_[ibin] = val; 
   }
@@ -95,6 +95,8 @@ private:
   unsigned int ndof_;
   bool bblite_;
   int debug_;
+  bool profileMCNP_;
+  bool doPoisson_;
   double errorDef_;
 };
 
@@ -102,76 +104,40 @@ private:
 double Likelihood::operator()(const vector<double>& par) const {  
   double val  = 0.0;
   for(unsigned int ibin=0; ibin<nbins_; ibin++){
+    double data_i = data_[ibin];
     double mc_tot = (mc0_[ibin]+mc1_[ibin]);
     double mc_tot_err = TMath::Sqrt( mc0err_[ibin]*mc0err_[ibin] + mc1err_[ibin]*mc1err_[ibin] );
     double rel_err_mc = mc_tot_err/mc_tot;
     double rel_err_mc0 = mc0err_[ibin]/mc0_[ibin];
     double rel_err_mc1 = mc1err_[ibin]/mc1_[ibin];
-    double exp_data_i = //bblite_ ?
-      //((1+par[0])*mc0_[ibin] + (1+par[1])*mc1_[ibin])*(1+par[2+ibin]) :
-      //(1.0 + par[0])*(1.0 + par[2+ibin])*mc0_[ibin] + (1.0 + par[1])*(1.0 + par[2+nbins_+ibin])*mc1_[ibin];
-      ((1+par[0])*mc0_[ibin] + (1+par[1])*mc1_[ibin]) ;
-    double prior  = bblite_ ?  0.5*par[2+ibin]*par[2+ibin]/(rel_err_mc*rel_err_mc) : 0.0;
-    if(false && !bblite_){
-      prior += 0.5*par[2+ibin]*par[2+ibin]/(rel_err_mc0*rel_err_mc0);
-      prior += 0.5*par[2+nbins_+ibin]*par[2+nbins_+ibin]/(rel_err_mc1*rel_err_mc1);
-    }
-    double chi2   = bblite_ ?
-      //0.5*(data_[ibin] - exp_data_i)*(data_[ibin] - exp_data_i)/exp_data_i :
-      0.5*(data_[ibin] - exp_data_i)*(data_[ibin] - exp_data_i)/( data_[ibin] + rel_err_mc*rel_err_mc*exp_data_i*exp_data_i ) :
-      //0.5*(data_[ibin] - exp_data_i)*(data_[ibin] - exp_data_i)/( data_[ibin] + mc0err_[ibin]*mc0err_[ibin]*(1.0 + par[0]*par[0]) + mc1err_[ibin]*mc1err_[ibin]*(1.0 + par[1]*par[1]) ) ;
-      0.5*(data_[ibin] - exp_data_i)*(data_[ibin] - exp_data_i)/( data_[ibin] + mc0err_[ibin]*mc0err_[ibin]*(1.0 + par[0])*(1.0 + par[0]) + mc1err_[ibin]*mc1err_[ibin]*(1.0 + par[1])*(1.0 +par[1]) ) ;
-      //0.5*(data_[ibin] - exp_data_i)*(data_[ibin] - exp_data_i)/( mc0err_[ibin]*mc0err_[ibin] + mc1err_[ibin]*mc1err_[ibin] ) ;
-    val  += chi2;
-    //val  += prior;
-  }
-  
-  /*
-  if(bblite_){
-    //cout << par[0] << ", " << par[1] << endl;
-    for(unsigned int ibin=0; ibin<nbins_; ibin++){
-      double mc_tot = (mc0_[ibin]+mc1_[ibin]);
-      double mc_tot_err = TMath::Sqrt( mc0err_[ibin]*mc0err_[ibin] + mc1err_[ibin]*mc1err_[ibin] );
-      double rel_err_mc = mc_tot_err/mc_tot;
-      double exp_data_i = ((1+par[0])*mc0_[ibin] + (1+par[1])*mc1_[ibin])*(1+par[2+ibin]);
-      double prior = 0.5*par[2+ibin]*par[2+ibin]/(rel_err_mc*rel_err_mc);
-      double chi2  = 0.5*(data_[ibin] - exp_data_i)*(data_[ibin] - exp_data_i)/exp_data_i;
+    if(profileMCNP_){
+      double exp_data_i = bblite_ ?
+	((1+par[0])*mc0_[ibin] + (1+par[1])*mc1_[ibin])*(1+par[2+ibin]) :
+	(1.0 + par[0])*(1.0 + par[2+ibin])*mc0_[ibin] + (1.0 + par[1])*(1.0 + par[2+nbins_+ibin])*mc1_[ibin];
+      double res = data_i - exp_data_i;
+      double res2 = res*res;
+      double prior  = bblite_ ?  0.5*par[2+ibin]*par[2+ibin]/(rel_err_mc*rel_err_mc) : 0.0;
+      if(!bblite_){
+	prior += 0.5*par[2+ibin]*par[2+ibin]/(rel_err_mc0*rel_err_mc0);
+	prior += 0.5*par[2+nbins_+ibin]*par[2+nbins_+ibin]/(rel_err_mc1*rel_err_mc1);
+      }
+      double chi2 = 0.5*res2/data_i;
+      if(doPoisson_){
+	chi2 *= (1.0 - 2./3.*(res/data_i) + 0.5*res2/data_i/data_i /* + ... */ );
+      }
       val  += chi2;
-      val  += prior;      
-      //double exp_data_i = (1+par[0])*mc0_[ibin] + (1+par[1])*mc1_[ibin];
-      //double pois  = exp_data_i  - data_[ibin]*TMath::Log(exp_data_i);
-      //double pois0 = mc_tot - data_[ibin]*TMath::Log(mc_tot) ;
-      //val0  += pois0;
-      //val  += pois;
-      //double chi2 = 0.5*(data_[ibin] - exp_data_i)*(data_[ibin] - exp_data_i)/data_[ibin];
-      //cout << "-lnL += " << -1.0*pois << ",  chi2 += " << chi2 << endl; 
-      //val  += 0.5*(data_[ibin] - exp_data_i)*(data_[ibin] - exp_data_i)/exp_data_i;
-      //cout << "Bin" << ibin << ": " << -2.0*(pois - pois0) <<  " + " << prior << endl;
-      //rel_err_mc  <<  ", prior: " << prior << " --> " << val << endl;
+      val  += prior;
     }
-  }
-  else{
-    for(unsigned int ibin=0; ibin<nbins_; ibin++){
-      double mc_tot = (mc0_[ibin]+mc1_[ibin]);
-      double rel_err_mc0 = mc0err_[ibin]/mc0_[ibin];
-      double rel_err_mc1 = mc1err_[ibin]/mc1_[ibin];
-      double exp_data_i = (1.0+par[0])*(1.0+par[2+ibin])*mc0_[ibin] + (1.0+par[1])*(1.0+par[2+nbins_+ibin])*mc1_[ibin];
-      //double pois   = -exp_data_i + data_[ibin]*TMath::Log(exp_data_i);
-      //double pois0  = -mc_tot     + data_[ibin]*TMath::Log(mc_tot) ;
-      double chi2  = 0.5*(data_[ibin] - exp_data_i)*(data_[ibin] - exp_data_i)/exp_data_i;
-      double prior0 = par[2+ibin]*par[2+ibin]/(rel_err_mc0*rel_err_mc0);
-      double prior1 = par[2+nbins_+ibin]*par[2+nbins_+ibin]/(rel_err_mc1*rel_err_mc1);
-      //cout << -2.0*(pois - pois0) << " + " << prior0 << " + " << prior1 << endl;
-      //val += -2.0*(pois - pois0) ;
-      val += chi2;
-      val += prior0;
-      val += prior1;
+    else{
+      double exp_data_i = (1+par[0])*mc0_[ibin] + (1+par[1])*mc1_[ibin] ;
+      double res  = data_i - exp_data_i;
+      double res2 = res*res;
+      double chi2   = bblite_ ?
+	0.5*res2/( data_i + TMath::Power(rel_err_mc*exp_data_i, 2.0 ) ) :
+	0.5*res2/( data_i + TMath::Power(mc0err_[ibin]*(1.0 + par[0]), 2.0) + TMath::Power(mc1err_[ibin]*(1.0 + par[1]), 2.0) ) ;
+      val  += chi2;
     }
-  }
-  //cout << val << endl;
-  //val0 *= -2.0;
-  */
-  
+  }    
   return val;
 }
 
@@ -194,11 +160,13 @@ int main(int argc, char* argv[])
 	("tag",         value<std::string>()->default_value("closure"), "run type")
 	("doFC",      bool_switch()->default_value(false), "doFC")
 	("verbose",      bool_switch()->default_value(false), "verbose")
+	("profileMCNP",      bool_switch()->default_value(false), "profileMCNP")
+	("doPoisson",      bool_switch()->default_value(false), "doPoisson")
 	("nbins",       value<int>()->default_value(200), "nbins")
 	("nsigmas",     value<int>()->default_value(5), "nsigmas")
 	("frac",       value<float>()->default_value(0.5), "frac")
 	("asym",       value<float>()->default_value(0.015), "asym")
-	("lumiscale",       value<float>()->default_value(1.0), "lumiscale")
+	("lumiscale",   value<float>()->default_value(1.0), "lumiscale")
 	("seed",        value<int>()->default_value(4357), "seed");
 
       store(parse_command_line(argc, argv, desc), vm);
@@ -226,7 +194,9 @@ int main(int argc, char* argv[])
   float lumiscale    = vm["lumiscale"].as<float>();
   bool doFC     = vm["doFC"].as<bool>();
   bool verbose     = vm["verbose"].as<bool>();
-
+  bool profileMCNP = vm["profileMCNP"].as<bool>();
+  bool doPoisson = vm["doPoisson"].as<bool>();
+  
   std::vector<TRandom3*> rans = {};
   for(unsigned int i = 0; i < 10; i++){
     rans.emplace_back( new TRandom3(seed + i*10) );
@@ -328,6 +298,7 @@ int main(int argc, char* argv[])
   MatrixXd invV5s_BB_itoy = MatrixXd::Zero(nbins, nbins);
   MatrixXd invVMC_itoy    = MatrixXd::Zero(nbins, nbins);
   VectorXd y_itoy(nbins);
+  VectorXd yFC_itoy(nbins);
   VectorXd y5s_itoy(nbins);
   VectorXd yMC_itoy(nbins);
   VectorXd ynom_itoy(nbins);
@@ -347,11 +318,12 @@ int main(int argc, char* argv[])
   unsigned int maxfcn(numeric_limits<unsigned int>::max());
   double tolerance(0.001);
   int verbosity = int(nevents<2);
-  //int npars_lite = 2 + nbins;
   int npars_lite = 2 ;
-  //int npars_full = 2 + 2*nbins;
-  int npars_full = 2 ; //+ 2*nbins;
-  //ROOT::Minuit2::MnPrint::SetGlobalLevel(verbosity);
+  if(profileMCNP) npars_lite += nbins;
+  int npars_full = 2 ;
+  if(profileMCNP) npars_full +=	2*nbins;
+
+  ROOT::Minuit2::MnPrint::SetGlobalLevel(verbosity);
   MatrixXd Vmin_lite    = MatrixXd::Zero(npars_lite,npars_lite);    
   VectorXd xmin_lite    = VectorXd::Zero(npars_lite);
   VectorXd xmin_liteErr = VectorXd::Zero(npars_lite);
@@ -370,7 +342,7 @@ int main(int argc, char* argv[])
     for(unsigned int itoy=0; itoy<ntoysFC; itoy++){
       if(itoy%10000==0) cout << "Doing FC toy " << itoy << " / " << ntoysFC << endl;
 
-      Likelihood* likelihoodFC_full = new Likelihood(0, nbins, lumiscale, false);
+      Likelihood* likelihoodFC_full = new Likelihood(0, nbins, lumiscale, false, doPoisson, false);
       likelihoodFC_full->SetErrorDef(0.5);
       for(unsigned int ir=0; ir<nbins; ir++){      
 	A_itoy(ir,0) = rans[1]->Poisson( A_true(ir, 0)*lumiscale ) / lumiscale;
@@ -387,6 +359,8 @@ int main(int argc, char* argv[])
       MnUserParameters uparFC_full;
       uparFC_full.Add("mu0", 0.0, 0.01);
       uparFC_full.Add("mu1", 0.0, 0.01);      
+      uparFC_full.SetValue("mu0", 0.0);
+      uparFC_full.Fix("mu0");
       MnMigrad migradFC_full(*likelihoodFC_full, uparFC_full, 1);
       FunctionMinimum minFC_full = migradFC_full(maxfcn, tolerance);
       double mu0 = minFC_full.UserState().Value(0);
@@ -415,10 +389,44 @@ int main(int argc, char* argv[])
       MatrixXd B = D.transpose()*D + invVj;
       VectorXd g = -(D.transpose()*b + invVj*jhat );
       VectorXd jtilde = B.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(-g);
-      for(unsigned int i=0; i<2*nbins; i++){
-	cout << (jtilde(i) - jhat(i))/TMath::Sqrt(jhat(i)) << endl;
+      //for(unsigned int i=0; i<2*nbins; i++){
+      //cout << (jtilde(i) - jhat(i))/TMath::Sqrt(jhat(i)) << endl;
+      //}
+
+      TH1D* h_teststat_itoy = new TH1D(Form("h_teststat_%d", itoy ), "", 200, 0., 3);
+      int count = 0;
+      for(unsigned int itoyFC=0; itoyFC<1000; itoyFC++){
+	for(unsigned int ir=0; ir<nbins; ir++){      
+	  yFC_itoy(ir) = rans[1]->Poisson( (1.0 + mu0)*jtilde(2*ir) + (1.0 + mu1)*jtilde(2*ir+1) );
+	  //cout << ynom_itoy(ir) << " -->" << (1.0 + mu0)*jtilde(2*ir) + (1.0 + mu1)*jtilde(2*ir+1) << endl;
+	  likelihoodFC_full->set_mc0(ir, (1.0 + mu0)*jtilde(2*ir));
+	  likelihoodFC_full->set_mc1(ir, (1.0 + mu1)*jtilde(2*ir+1));
+	  likelihoodFC_full->set_data(ir, yFC_itoy(ir) );
+	}
+	uparFC_full.Release("mu0");
+	MnMigrad migradFC_full_itoy(*likelihoodFC_full, uparFC_full, 1);
+	FunctionMinimum minFC_full_itoy = migradFC_full_itoy(maxfcn, tolerance);
+	double edm_full_itoy = double(minFC_full_itoy.Fval());
+	uparFC_full.Fix("mu0");
+	uparFC_full.SetValue("mu0", 0.0);
+	MnMigrad migradFC_full_itoyFix(*likelihoodFC_full, uparFC_full, 1);
+	FunctionMinimum minFC_full_itoyFix = migradFC_full_itoyFix(maxfcn, tolerance);
+	double edm_full_itoyFix = double(minFC_full_itoyFix.Fval());
+	//cout << edm_full_itoy <<  " --> " << edm_full_itoyFix << endl;
+	h_teststat_itoy->Fill( 2*(edm_full_itoyFix - edm_full_itoy) );
+	if( 2*(edm_full_itoyFix - edm_full_itoy) < 1.0 ) count++;
       }
+      double q[1];
+      vector<double> probsum = {1.0 - TMath::Prob(1.0, 1)};
+      h_teststat_itoy->GetQuantiles(1, q, probsum.data());
+      cout << q[0] << endl;
+      cout << float(count)/1000 << endl;
+      
+      fout->cd();
+      h_teststat_itoy->Write();
+          
       delete likelihoodFC_full;
+      delete h_teststat_itoy;
       
     }
   }
@@ -434,13 +442,13 @@ int main(int argc, char* argv[])
     MatrixXd invC5s_BB_itoy = MatrixXd::Zero(2, 2);
     MatrixXd invCMC_BB_itoy = MatrixXd::Zero(2, 2);
 
-    Likelihood* likelihood_lite = new Likelihood(0, nbins, lumiscale, true);
+    Likelihood* likelihood_lite = new Likelihood(0, nbins, lumiscale, true, doPoisson, profileMCNP);
     likelihood_lite->SetErrorDef(0.5);
-    Likelihood* likelihood_full = new Likelihood(0, nbins, lumiscale, false);
+    Likelihood* likelihood_full = new Likelihood(0, nbins, lumiscale, false, doPoisson, profileMCNP);
     likelihood_full->SetErrorDef(0.5);
-    Likelihood* likelihood_lite5s = new Likelihood(0, nbins, lumiscale, true);
+    Likelihood* likelihood_lite5s = new Likelihood(0, nbins, lumiscale, true, doPoisson, profileMCNP);
     likelihood_lite5s->SetErrorDef(0.5);
-    Likelihood* likelihood_full5s = new Likelihood(0, nbins, lumiscale, false);
+    Likelihood* likelihood_full5s = new Likelihood(0, nbins, lumiscale, false, doPoisson, profileMCNP);
     likelihood_full5s->SetErrorDef(0.5);
     
     for(unsigned int ir=0; ir<nbins; ir++){      
@@ -522,10 +530,10 @@ int main(int argc, char* argv[])
     //upar_lite.Add("mu1", x_BB_itoy(1), TMath::Sqrt(C_BB_itoy(1,1)), x_BB_itoy(1) - 5.0*TMath::Sqrt(C_BB_itoy(1,1)), x_BB_itoy(1) + 5.0*TMath::Sqrt(C_BB_itoy(1,1)) );
     upar_lite.Add("mu0", 0., 0.01);
     upar_lite.Add("mu1", 0., 0.01);
-    for (int i=0; i<nbins; i++){
-      double exp_error = TMath::Sqrt( 1./(lumiscale*(A_itoy(i,0)+A_itoy(i,1))) );
-      //upar_lite.Add(Form("BBLite%d",i), 0.0, exp_error*0.001, -10*exp_error, 10*exp_error );
-      //upar_lite.Add(Form("BBLite%d",i), 0.0, 0.001);
+    if(profileMCNP){
+      for (int i=0; i<nbins; i++){
+	upar_lite.Add(Form("BBLite%d",i), 0.0, 0.001);
+      }
     }
     
     MnMigrad migrad_lite(*likelihood_lite, upar_lite, 1);
@@ -535,7 +543,7 @@ int main(int argc, char* argv[])
     FunctionMinimum min_lite = migrad_lite(maxfcn, tolerance);
     double edm_lite = double(min_lite.Edm());
     double fmin_lite = double(min_lite.Fval());
-    if(verbose) cout << "\tHesse POST..." << endl;
+    if(verbose) cout << "\tHesse..." << endl;
     MnHesse hesse_lite(1);
     hesse_lite(*likelihood_lite, min_lite);       
     for(unsigned int i = 0 ; i<npars_lite; i++){    
@@ -555,7 +563,7 @@ int main(int argc, char* argv[])
     FunctionMinimum min_lite5s = migrad_lite5s(maxfcn, tolerance);
     double edm_lite5s = double(min_lite5s.Edm());
     double fmin_lite5s = double(min_lite5s.Fval());
-    if(verbose) cout << "\tHesse POST..." << endl;
+    if(verbose) cout << "\tHesse..." << endl;
     MnHesse hesse_lite5s(1);
     hesse_lite5s(*likelihood_lite5s, min_lite5s);       
     for(unsigned int i = 0 ; i<npars_lite; i++){    
@@ -592,15 +600,15 @@ int main(int argc, char* argv[])
     //upar_full.Add("mu1", x_BB_itoy(1), TMath::Sqrt(C_BB_itoy(1,1)), x_BB_itoy(1) - 5.0*TMath::Sqrt(C_BB_itoy(1,1)), x_BB_itoy(1) + 5.0*TMath::Sqrt(C_BB_itoy(1,1)) );
     upar_full.Add("mu0", 0.0, 0.01);
     upar_full.Add("mu1", 0.0, 0.01);
-    for (int i=0; i<nbins; i++){
-      double exp_error = TMath::Sqrt( 1.0/(lumiscale*A_itoy(i,0) ) );
-      //upar_full.Add(Form("BB0Full%d",i), 0.0, exp_error, -5*exp_error, 5*exp_error );
-      //upar_full.Add(Form("BB0Full%d",i), 0.0, 0.001 );
-    }
-    for (int i=0; i<nbins; i++){
-      double exp_error = TMath::Sqrt( 1.0/(lumiscale*A_itoy(i,1) ) );
-      //upar_full.Add(Form("BB1Full%d",i), 0.0, exp_error, -5*exp_error, 5*exp_error );
-      //upar_full.Add(Form("BB1Full%d",i), 0.0, 0.001);
+    if(profileMCNP){
+      for (int i=0; i<nbins; i++){
+	double exp_error = TMath::Sqrt( 1.0/(lumiscale*A_itoy(i,0) ) );
+	upar_full.Add(Form("BB0Full%d",i), 0.0, 0.001 );
+      }
+      for (int i=0; i<nbins; i++){
+	double exp_error = TMath::Sqrt( 1.0/(lumiscale*A_itoy(i,1) ) );
+	upar_full.Add(Form("BB1Full%d",i), 0.0, 0.001);
+      }
     }
     
     MnMigrad migrad_full(*likelihood_full, upar_full, 1);
