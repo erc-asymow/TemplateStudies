@@ -338,7 +338,7 @@ int main(int argc, char* argv[])
   VectorXd xmin_full5sErr = VectorXd::Zero(npars_full);
 
   if(doFC){
-    int ntoysFC = 1;
+    int ntoysFC = ntoys;
     for(unsigned int itoy=0; itoy<ntoysFC; itoy++){
       if(itoy%10000==0) cout << "Doing FC toy " << itoy << " / " << ntoysFC << endl;
 
@@ -372,7 +372,7 @@ int main(int argc, char* argv[])
       }
       MatrixXd invVj = MatrixXd::Zero(2*nbins, 2*nbins);
       for(unsigned int i=0; i<2*nbins; i++){
-	invVj(i,i) = i%2==0 ? 1./A_itoy(i%nbins,0) : 1./A_itoy(i%nbins,1);
+	invVj(i,i) = i%2==0 ? 1./(A_itoy(i%nbins,0)*lumiscale) : 1./(A_itoy(i%nbins,1)*lumiscale);
       }
       MatrixXd X = MatrixXd::Zero(nbins, 2*nbins);
       for(unsigned int i=0; i<nbins; i++){
@@ -382,7 +382,7 @@ int main(int argc, char* argv[])
       }
       VectorXd jhat = VectorXd::Zero(2*nbins);
       for(unsigned int i=0; i<2*nbins; i++){
-	jhat(i) = i%2==0 ? A_itoy(i%nbins,0) : A_itoy(i%nbins,1);
+	jhat(i) = i%2==0 ? A_itoy(i/2,0) : A_itoy(i/2,1);
       }
       VectorXd b = invsqrtV*(y_itoy - ynom_itoy);
       MatrixXd D = invsqrtV*X;
@@ -392,11 +392,25 @@ int main(int argc, char* argv[])
       //for(unsigned int i=0; i<2*nbins; i++){
       //cout << (jtilde(i) - jhat(i))/TMath::Sqrt(jhat(i)) << endl;
       //}
-
+      TH1D* h_jtilde0_itoy = (TH1D*)h_true_0->Clone(Form("h_jtilde0_%d",itoy));
+      TH1D* h_jtilde1_itoy = (TH1D*)h_true_1->Clone(Form("h_jtilde1_%d",itoy));
+      TH1D* h_j0_itoy = (TH1D*)h_true_0->Clone(Form("h_j0_%d",itoy));
+      TH1D* h_j1_itoy = (TH1D*)h_true_1->Clone(Form("h_j1_%d",itoy));
+      h_jtilde0_itoy->Reset();
+      h_jtilde1_itoy->Reset();
+      h_j0_itoy->Reset();
+      h_j1_itoy->Reset();
+      for(unsigned int ir=0; ir<nbins; ir++){
+	h_j0_itoy->SetBinContent(ir+1, A_itoy(ir,0));
+	h_j1_itoy->SetBinContent(ir+1, A_itoy(ir,1));
+	h_jtilde0_itoy->SetBinContent(ir+1, (1.0 + mu0)*jtilde(2*ir) );
+	h_jtilde1_itoy->SetBinContent(ir+1, (1.0 + mu1)*jtilde(2*ir+1) );
+      }
+	
       TH1D* h_teststat_itoy = new TH1D(Form("h_teststat_%d", itoy ), "", 200, 0., 3);
-      int count = 0;
-      for(unsigned int itoyFC=0; itoyFC<1000; itoyFC++){
-	for(unsigned int ir=0; ir<nbins; ir++){      
+      //int count = 0;
+      for(unsigned int itoyFC=0; itoyFC<10000; itoyFC++){
+	for(unsigned int ir=0; ir<nbins; ir++){      	  
 	  yFC_itoy(ir) = rans[1]->Poisson( (1.0 + mu0)*jtilde(2*ir) + (1.0 + mu1)*jtilde(2*ir+1) );
 	  //cout << ynom_itoy(ir) << " -->" << (1.0 + mu0)*jtilde(2*ir) + (1.0 + mu1)*jtilde(2*ir+1) << endl;
 	  likelihoodFC_full->set_mc0(ir, (1.0 + mu0)*jtilde(2*ir));
@@ -414,20 +428,27 @@ int main(int argc, char* argv[])
 	double edm_full_itoyFix = double(minFC_full_itoyFix.Fval());
 	//cout << edm_full_itoy <<  " --> " << edm_full_itoyFix << endl;
 	h_teststat_itoy->Fill( 2*(edm_full_itoyFix - edm_full_itoy) );
-	if( 2*(edm_full_itoyFix - edm_full_itoy) < 1.0 ) count++;
+	//if( 2*(edm_full_itoyFix - edm_full_itoy) < 1.0 ) count++;
       }
       double q[1];
       vector<double> probsum = {1.0 - TMath::Prob(1.0, 1)};
       h_teststat_itoy->GetQuantiles(1, q, probsum.data());
       cout << q[0] << endl;
-      cout << float(count)/1000 << endl;
+      //cout << float(count)/1000 << endl;
       
       fout->cd();
       h_teststat_itoy->Write();
-          
+      //h_jtilde0_itoy->Write();
+      //h_jtilde1_itoy->Write();
+      //h_j0_itoy->Write();
+      //h_j1_itoy->Write();
+      
       delete likelihoodFC_full;
       delete h_teststat_itoy;
-      
+      delete h_jtilde0_itoy;
+      delete h_jtilde1_itoy;
+      delete h_j0_itoy;
+      delete h_j1_itoy;
     }
   }
 
