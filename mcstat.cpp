@@ -8,6 +8,7 @@
 #include "TF2.h"
 #include "TH1D.h"
 #include "TH2D.h"
+#include "TString.h"
 #include "TGraphErrors.h"
 #include <TMatrixD.h>
 #include <TStopwatch.h>
@@ -157,8 +158,11 @@ int main(int argc, char* argv[])
 	("help,h", "Help screen")
 	("nevents",     value<long>()->default_value(2000000), "number of events")
 	("ntoys",       value<long>()->default_value(3000), "number of toys")
+	("ntoysFC",       value<long>()->default_value(3000), "number of toys")
 	("tag",         value<std::string>()->default_value("closure"), "run type")
 	("doFC",      bool_switch()->default_value(false), "doFC")
+	("saveHistos",       bool_switch()->default_value(false), "saveHistos")
+	("FCfixToTrue",      bool_switch()->default_value(false), "FCfixToTrue")
 	("verbose",      bool_switch()->default_value(false), "verbose")
 	("profileMCNP",      bool_switch()->default_value(false), "profileMCNP")
 	("doPoisson",      bool_switch()->default_value(false), "doPoisson")
@@ -185,6 +189,7 @@ int main(int argc, char* argv[])
 
   long nevents    = vm["nevents"].as<long>();
   long ntoys    = vm["ntoys"].as<long>();
+  long ntoysFC    = vm["ntoysFC"].as<long>();
   std::string tag = vm["tag"].as<std::string>();
   int seed        = vm["seed"].as<int>();
   int nbins       = vm["nbins"].as<int>();
@@ -193,6 +198,8 @@ int main(int argc, char* argv[])
   float asym      = vm["asym"].as<float>();
   float lumiscale    = vm["lumiscale"].as<float>();
   bool doFC     = vm["doFC"].as<bool>();
+  bool saveHistos     = vm["saveHistos"].as<bool>();
+  bool FCfixToTrue     = vm["FCfixToTrue"].as<bool>();
   bool verbose     = vm["verbose"].as<bool>();
   bool profileMCNP = vm["profileMCNP"].as<bool>();
   bool doPoisson = vm["doPoisson"].as<bool>();
@@ -308,11 +315,13 @@ int main(int argc, char* argv[])
   double prob_poisdata_BB = 0.;
   double prob_poisdata_BBfull = 0.;
   double prob_poisdata_BBfullPLR = 0.;
+  double prob_poisdata_BBfullFC = 0.;
   double prob_data5s = 0.;
   double prob_data5s_BB = 0.;
   double prob_poisdata5s_BB = 0.;
   double prob_poisdata5s_BBfull = 0.;
   double prob_poisdata5s_BBfullPLR = 0.;
+  double prob_poisdata5s_BBfullFC = 0.;
   double prob_mc = 0.;
 
   unsigned int maxfcn(numeric_limits<unsigned int>::max());
@@ -337,118 +346,166 @@ int main(int argc, char* argv[])
   VectorXd xmin_full5s    = VectorXd::Zero(npars_full);
   VectorXd xmin_full5sErr = VectorXd::Zero(npars_full);
 
+  //int ntoysFC = ntoys;    
   if(doFC){
-    int ntoysFC = ntoys;
-    for(unsigned int itoy=0; itoy<ntoysFC; itoy++){
-      if(itoy%10000==0) cout << "Doing FC toy " << itoy << " / " << ntoysFC << endl;
 
-      Likelihood* likelihoodFC_full = new Likelihood(0, nbins, lumiscale, false, doPoisson, false);
-      likelihoodFC_full->SetErrorDef(0.5);
-      for(unsigned int ir=0; ir<nbins; ir++){      
-	A_itoy(ir,0) = rans[1]->Poisson( A_true(ir, 0)*lumiscale ) / lumiscale;
-	A_itoy(ir,1) = rans[1]->Poisson( A_true(ir, 1)*lumiscale ) / lumiscale;
-	ynom_itoy(ir) = A_itoy.row(ir).sum();
-	y_itoy(ir)   = rans[1]->Poisson( A_true.row(ir).sum() );
-	likelihoodFC_full->set_mc0(ir, A_itoy(ir,0));
-	likelihoodFC_full->set_mc1(ir, A_itoy(ir,1));
-	likelihoodFC_full->set_mc0err(ir, TMath::Sqrt(A_itoy(ir,0)/lumiscale));
-	likelihoodFC_full->set_mc1err(ir, TMath::Sqrt(A_itoy(ir,1)/lumiscale));
-	likelihoodFC_full->set_data(ir, y_itoy(ir) );
-      }
+    // idata=0: data nominal, idata=1: data 5s
+    for(int idata=0; idata<1; idata++){
 
-      MnUserParameters uparFC_full;
-      uparFC_full.Add("mu0", 0.0, 0.01);
-      uparFC_full.Add("mu1", 0.0, 0.01);      
-      uparFC_full.SetValue("mu0", 0.0);
-      uparFC_full.Fix("mu0");
-      MnMigrad migradFC_full(*likelihoodFC_full, uparFC_full, 1);
-      FunctionMinimum minFC_full = migradFC_full(maxfcn, tolerance);
-      double mu0 = minFC_full.UserState().Value(0);
-      double mu1 = minFC_full.UserState().Value(1);
+      for(unsigned int itoy=0; itoy<ntoysFC; itoy++){
 
-      MatrixXd invsqrtV  = MatrixXd::Zero(nbins, nbins);
-      for(unsigned int i=0; i<nbins; i++){
-	invsqrtV(i,i) = 1./TMath::Sqrt(A_itoy.row(i).sum());
-      }
-      MatrixXd invVj = MatrixXd::Zero(2*nbins, 2*nbins);
-      for(unsigned int i=0; i<2*nbins; i++){
-	invVj(i,i) = i%2==0 ? 1./(A_itoy(i%nbins,0)*lumiscale) : 1./(A_itoy(i%nbins,1)*lumiscale);
-      }
-      MatrixXd X = MatrixXd::Zero(nbins, 2*nbins);
-      for(unsigned int i=0; i<nbins; i++){
-	for(unsigned int j=0; j<2*nbins; j++){
-	  if(j==2*i || j==(2*i+1)) X(i,j) = (j==2*i) ? mu0 : mu1;
+	if(itoy%10000==0) cout << "Doing FC toy " << itoy << " / " << ntoysFC << endl;
+
+	Likelihood* likelihoodFC_full = new Likelihood(0, nbins, lumiscale, false, doPoisson, false);
+	likelihoodFC_full->SetErrorDef(0.5);
+	for(unsigned int ir=0; ir<nbins; ir++){      
+	  A_itoy(ir,0) = rans[1]->Poisson( A_true(ir, 0)*lumiscale ) / lumiscale;
+	  A_itoy(ir,1) = rans[1]->Poisson( A_true(ir, 1)*lumiscale ) / lumiscale;
+	  ynom_itoy(ir) = A_itoy.row(ir).sum();
+	  if(idata==0)
+	    y_itoy(ir)   = rans[1]->Poisson( A_true(ir,0) + A_true(ir,1) );
+	  else
+	    y_itoy(ir)   = rans[1]->Poisson( A_true(ir,0)*(1+err_true*nsigmas) + A_true(ir,1) );
+	  likelihoodFC_full->set_mc0(ir, A_itoy(ir,0));
+	  likelihoodFC_full->set_mc1(ir, A_itoy(ir,1));
+	  likelihoodFC_full->set_mc0err(ir, TMath::Sqrt(A_itoy(ir,0)/lumiscale));
+	  likelihoodFC_full->set_mc1err(ir, TMath::Sqrt(A_itoy(ir,1)/lumiscale));
+	  likelihoodFC_full->set_data(ir, y_itoy(ir) );
 	}
-      }
-      VectorXd jhat = VectorXd::Zero(2*nbins);
-      for(unsigned int i=0; i<2*nbins; i++){
-	jhat(i) = i%2==0 ? A_itoy(i/2,0) : A_itoy(i/2,1);
-      }
-      VectorXd b = invsqrtV*(y_itoy - ynom_itoy);
-      MatrixXd D = invsqrtV*X;
-      MatrixXd B = D.transpose()*D + invVj;
-      VectorXd g = -(D.transpose()*b + invVj*jhat );
-      VectorXd jtilde = B.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(-g);
-      //for(unsigned int i=0; i<2*nbins; i++){
-      //cout << (jtilde(i) - jhat(i))/TMath::Sqrt(jhat(i)) << endl;
-      //}
-      TH1D* h_jtilde0_itoy = (TH1D*)h_true_0->Clone(Form("h_jtilde0_%d",itoy));
-      TH1D* h_jtilde1_itoy = (TH1D*)h_true_1->Clone(Form("h_jtilde1_%d",itoy));
-      TH1D* h_j0_itoy = (TH1D*)h_true_0->Clone(Form("h_j0_%d",itoy));
-      TH1D* h_j1_itoy = (TH1D*)h_true_1->Clone(Form("h_j1_%d",itoy));
-      h_jtilde0_itoy->Reset();
-      h_jtilde1_itoy->Reset();
-      h_j0_itoy->Reset();
-      h_j1_itoy->Reset();
-      for(unsigned int ir=0; ir<nbins; ir++){
-	h_j0_itoy->SetBinContent(ir+1, A_itoy(ir,0));
-	h_j1_itoy->SetBinContent(ir+1, A_itoy(ir,1));
-	h_jtilde0_itoy->SetBinContent(ir+1, (1.0 + mu0)*jtilde(2*ir) );
-	h_jtilde1_itoy->SetBinContent(ir+1, (1.0 + mu1)*jtilde(2*ir+1) );
-      }
 	
-      TH1D* h_teststat_itoy = new TH1D(Form("h_teststat_%d", itoy ), "", 200, 0., 3);
-      //int count = 0;
-      for(unsigned int itoyFC=0; itoyFC<10000; itoyFC++){
-	for(unsigned int ir=0; ir<nbins; ir++){      	  
-	  yFC_itoy(ir) = rans[1]->Poisson( (1.0 + mu0)*jtilde(2*ir) + (1.0 + mu1)*jtilde(2*ir+1) );
-	  //cout << ynom_itoy(ir) << " -->" << (1.0 + mu0)*jtilde(2*ir) + (1.0 + mu1)*jtilde(2*ir+1) << endl;
-	  likelihoodFC_full->set_mc0(ir, (1.0 + mu0)*jtilde(2*ir));
-	  likelihoodFC_full->set_mc1(ir, (1.0 + mu1)*jtilde(2*ir+1));
-	  likelihoodFC_full->set_data(ir, yFC_itoy(ir) );
-	}
-	uparFC_full.Release("mu0");
-	MnMigrad migradFC_full_itoy(*likelihoodFC_full, uparFC_full, 1);
-	FunctionMinimum minFC_full_itoy = migradFC_full_itoy(maxfcn, tolerance);
-	double edm_full_itoy = double(minFC_full_itoy.Fval());
+	MnUserParameters uparFC_full;
+	uparFC_full.Add("mu0", 0.0, 0.01);
+	uparFC_full.Add("mu1", 0.0, 0.01);      
+	
+	MnMigrad migradFC_full(*likelihoodFC_full, uparFC_full, 1);
+	FunctionMinimum minFC_full = migradFC_full(maxfcn, tolerance);
+	double mu0 = minFC_full.UserState().Value(0);
+	double mu1 = minFC_full.UserState().Value(1);
+	double fval_full = double(minFC_full.Fval());      
+
+	uparFC_full.SetValue("mu0", 0.0 );
 	uparFC_full.Fix("mu0");
-	uparFC_full.SetValue("mu0", 0.0);
-	MnMigrad migradFC_full_itoyFix(*likelihoodFC_full, uparFC_full, 1);
-	FunctionMinimum minFC_full_itoyFix = migradFC_full_itoyFix(maxfcn, tolerance);
-	double edm_full_itoyFix = double(minFC_full_itoyFix.Fval());
-	//cout << edm_full_itoy <<  " --> " << edm_full_itoyFix << endl;
-	h_teststat_itoy->Fill( 2*(edm_full_itoyFix - edm_full_itoy) );
-	//if( 2*(edm_full_itoyFix - edm_full_itoy) < 1.0 ) count++;
+	MnMigrad migradFC_fullFix(*likelihoodFC_full, uparFC_full, 1);
+	FunctionMinimum minFC_fullFix = migradFC_fullFix(maxfcn, tolerance);	
+	//double mu0Fix = minFC_fullFix.UserState().Value(0);
+	//double mu1Fix = minFC_fullFix.UserState().Value(1);
+	double mu0Fix = FCfixToTrue ? minFC_fullFix.UserState().Value(0) : minFC_full.UserState().Value(0);
+	double mu1Fix = FCfixToTrue ? minFC_fullFix.UserState().Value(1) : minFC_full.UserState().Value(1);
+	
+	double fval_fullFix = double(minFC_fullFix.Fval());
+	double test_stat = 2*(fval_fullFix-fval_full);
+	uparFC_full.Release("mu0");
+
+	//cout << "Toy: fval " << fval_full <<  " --> " << fval_fullFix << endl;
+	
+	MatrixXd invsqrtV  = MatrixXd::Zero(nbins, nbins);
+	for(unsigned int i=0; i<nbins; i++){
+	  invsqrtV(i,i) = 1./TMath::Sqrt(A_itoy.row(i).sum());
+	}
+	MatrixXd invVj = MatrixXd::Zero(2*nbins, 2*nbins);
+	for(unsigned int i=0; i<2*nbins; i++){
+	  invVj(i,i) = i%2==0 ? 1./(A_itoy(i%nbins,0)*lumiscale) : 1./(A_itoy(i%nbins,1)*lumiscale);
+	}
+	MatrixXd X = MatrixXd::Zero(nbins, 2*nbins);
+	for(unsigned int i=0; i<nbins; i++){
+	  for(unsigned int j=0; j<2*nbins; j++){
+	    if(j==2*i || j==(2*i+1)) X(i,j) = (j==2*i) ? mu0Fix : mu1Fix;
+	  }
+	}
+	VectorXd jhat = VectorXd::Zero(2*nbins);
+	for(unsigned int i=0; i<2*nbins; i++){
+	  jhat(i) = i%2==0 ? A_itoy(i/2,0) : A_itoy(i/2,1);
+	}
+	VectorXd b = invsqrtV*(y_itoy - ynom_itoy);
+	MatrixXd D = invsqrtV*X;
+	MatrixXd B = D.transpose()*D + invVj;
+	VectorXd g = -(D.transpose()*b + invVj*jhat );
+	VectorXd jtilde = B.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(-g);
+	//for(unsigned int i=0; i<2*nbins; i++){
+	//cout << (jtilde(i) - jhat(i))/TMath::Sqrt(jhat(i)) << endl;
+	//}
+	TH1D* h_jtilde0_itoy = (TH1D*)h_true_0->Clone(Form("h_data%d_jtilde0_%d",idata,itoy));
+	TH1D* h_jtilde1_itoy = (TH1D*)h_true_1->Clone(Form("h_data%d_jtilde1_%d",idata,itoy));
+	TH1D* h_j0_itoy      = (TH1D*)h_true_0->Clone(Form("h_data%d_j0_%d",idata,itoy));
+	TH1D* h_j1_itoy      = (TH1D*)h_true_1->Clone(Form("h_data%d_j1_%d",idata,itoy));
+	h_jtilde0_itoy->Reset();
+	h_jtilde1_itoy->Reset();
+	h_j0_itoy->Reset();
+	h_j1_itoy->Reset();
+	for(unsigned int ir=0; ir<nbins; ir++){
+	  h_j0_itoy->SetBinContent(ir+1, A_itoy(ir,0));
+	  h_j1_itoy->SetBinContent(ir+1, A_itoy(ir,1));
+	  h_jtilde0_itoy->SetBinContent(ir+1, (1.0 + mu0Fix)*jtilde(2*ir) );
+	  h_jtilde1_itoy->SetBinContent(ir+1, (1.0 + mu1Fix)*jtilde(2*ir+1) );
+	}
+
+	TString hname = "";
+	if(idata==0)
+	  hname = Form("h_data_teststat_%d", itoy );
+	else
+	  hname = Form("h_data5s_teststat_%d", itoy );
+	TH1D* h_teststat_itoy = new TH1D( hname, "", 200, 0., 20);
+
+	//int count = 0;
+	for(unsigned int itoyFC=0; itoyFC<1000; itoyFC++){
+	  for(unsigned int ir=0; ir<nbins; ir++){      	  
+	    yFC_itoy(ir) = rans[1]->Poisson( (1.0 + mu0Fix)*jtilde(2*ir) + (1.0 + mu1Fix)*jtilde(2*ir+1) );
+	    //cout << ynom_itoy(ir) << " -->" << (1.0 + mu0)*jtilde(2*ir) + (1.0 + mu1)*jtilde(2*ir+1) << endl;
+	    // ???
+	    likelihoodFC_full->set_mc0(ir, (1.0 + mu0Fix)*jtilde(2*ir));
+	    likelihoodFC_full->set_mc1(ir, (1.0 + mu1Fix)*jtilde(2*ir+1));
+	    likelihoodFC_full->set_data(ir, yFC_itoy(ir) );
+	    //cout << y_itoy(ir) << " --> " << yFC_itoy(ir) << endl;
+	  }
+	  uparFC_full.Release("mu0");
+	  uparFC_full.SetValue("mu0", 0.0);
+	  uparFC_full.SetValue("mu1", 0.0);
+	  MnMigrad migradFC_full_itoy(*likelihoodFC_full, uparFC_full, 1);
+	  FunctionMinimum minFC_full_itoy = migradFC_full_itoy(maxfcn, tolerance);
+	  double fval_full_itoy = double(minFC_full_itoy.Fval());
+	  uparFC_full.Fix("mu0");
+	  uparFC_full.SetValue("mu0", 0.0 );
+	  uparFC_full.SetValue("mu1", 0.0);
+	  MnMigrad migradFC_full_itoyFix(*likelihoodFC_full, uparFC_full, 1);
+	  FunctionMinimum minFC_full_itoyFix = migradFC_full_itoyFix(maxfcn, tolerance);
+	  double fval_full_itoyFix = double(minFC_full_itoyFix.Fval());
+	  //cout << "\t FC Tot fval " << fval_full_itoy <<  " --> " << fval_full_itoyFix << endl;
+	  //cout << 2*(fval_full_itoyFix - fval_full_itoy) << endl;
+	  h_teststat_itoy->Fill( 2*(fval_full_itoyFix - fval_full_itoy) );
+	  //if( 2*(fval_full_itoyFix - fval_full_itoy) < 1.0 ) count++;
+	  uparFC_full.Release("mu0");
+	}
+	double q[1];
+	vector<double> probsum = {1.0 - TMath::Prob(1.0, 1)};
+	if(h_teststat_itoy->Integral()>0)
+	  h_teststat_itoy->GetQuantiles(1, q, probsum.data());
+	else
+	  q[0] = numeric_limits<double>::max(); 
+	cout << "t0: " << test_stat << " < " << q[0] << " ? " << endl;
+	if( test_stat<=q[0] ){
+	  if(idata==0)
+	    prob_poisdata_BBfullFC += 1./ntoysFC;
+	  else
+	    prob_poisdata5s_BBfullFC += 1./ntoysFC;
+	}
+	//cout << float(count)/1000 << endl;
+	
+	fout->cd();
+	if(saveHistos && itoy<10){
+	  h_teststat_itoy->Write();
+	  //h_jtilde0_itoy->Write();
+	  //h_jtilde1_itoy->Write();
+	  //h_j0_itoy->Write();
+	  //h_j1_itoy->Write();
+	}
+	
+	delete likelihoodFC_full;
+	delete h_teststat_itoy;
+	delete h_jtilde0_itoy;
+	delete h_jtilde1_itoy;
+	delete h_j0_itoy;
+	delete h_j1_itoy;
       }
-      double q[1];
-      vector<double> probsum = {1.0 - TMath::Prob(1.0, 1)};
-      h_teststat_itoy->GetQuantiles(1, q, probsum.data());
-      cout << q[0] << endl;
-      //cout << float(count)/1000 << endl;
-      
-      fout->cd();
-      h_teststat_itoy->Write();
-      //h_jtilde0_itoy->Write();
-      //h_jtilde1_itoy->Write();
-      //h_j0_itoy->Write();
-      //h_j1_itoy->Write();
-      
-      delete likelihoodFC_full;
-      delete h_teststat_itoy;
-      delete h_jtilde0_itoy;
-      delete h_jtilde1_itoy;
-      delete h_j0_itoy;
-      delete h_j1_itoy;
     }
   }
 
@@ -792,6 +849,9 @@ int main(int argc, char* argv[])
   cout << "Data5s PLR BBFull:  " << prob_poisdata5s_BBfullPLR << " +/- " << TMath::Sqrt(prob_poisdata5s_BBfullPLR*(1-prob_poisdata5s_BBfullPLR)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
   haux->Reset();
 
+  cout << "Data FC BBFull:     " << prob_poisdata_BBfullFC << " +/- " << TMath::Sqrt(prob_poisdata_BBfullFC*(1-prob_poisdata_BBfullFC)/ntoysFC) << endl;
+  cout << "Data5s FC BBFull:   " << prob_poisdata5s_BBfullFC << " +/- " << TMath::Sqrt(prob_poisdata5s_BBfullFC*(1-prob_poisdata5s_BBfullFC)/ntoysFC) << endl;
+    
   delete haux;
   
   fout->cd();
