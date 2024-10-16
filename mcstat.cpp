@@ -161,6 +161,7 @@ int main(int argc, char* argv[])
 	("ntoysFC",       value<long>()->default_value(3000), "number of toys")
 	("tag",         value<std::string>()->default_value("closure"), "run type")
 	("doFC",      bool_switch()->default_value(false), "doFC")
+	("doFCcheat",      bool_switch()->default_value(false), "doFCcheat")
 	("saveHistos",       bool_switch()->default_value(false), "saveHistos")
 	("FCfixToTrue",      bool_switch()->default_value(false), "FCfixToTrue")
 	("verbose",      bool_switch()->default_value(false), "verbose")
@@ -198,6 +199,7 @@ int main(int argc, char* argv[])
   float asym      = vm["asym"].as<float>();
   float lumiscale    = vm["lumiscale"].as<float>();
   bool doFC     = vm["doFC"].as<bool>();
+  bool doFCcheat = vm["doFCcheat"].as<bool>();
   bool saveHistos     = vm["saveHistos"].as<bool>();
   bool FCfixToTrue     = vm["FCfixToTrue"].as<bool>();
   bool verbose     = vm["verbose"].as<bool>();
@@ -350,7 +352,7 @@ int main(int argc, char* argv[])
   if(doFC){
 
     // idata=0: data nominal, idata=1: data 5s
-    for(int idata=0; idata<1; idata++){
+    for(int idata=0; idata<2; idata++){
 
       for(unsigned int itoy=0; itoy<ntoysFC; itoy++){
 
@@ -383,7 +385,7 @@ int main(int argc, char* argv[])
 	double mu1 = minFC_full.UserState().Value(1);
 	double fval_full = double(minFC_full.Fval());      
 
-	uparFC_full.SetValue("mu0", 0.0 );
+	uparFC_full.SetValue("mu0", idata==0 ? 0.0 : err_true*nsigmas );
 	uparFC_full.Fix("mu0");
 	MnMigrad migradFC_fullFix(*likelihoodFC_full, uparFC_full, 1);
 	FunctionMinimum minFC_fullFix = migradFC_fullFix(maxfcn, tolerance);	
@@ -391,52 +393,64 @@ int main(int argc, char* argv[])
 	//double mu1Fix = minFC_fullFix.UserState().Value(1);
 	double mu0Fix = FCfixToTrue ? minFC_fullFix.UserState().Value(0) : minFC_full.UserState().Value(0);
 	double mu1Fix = FCfixToTrue ? minFC_fullFix.UserState().Value(1) : minFC_full.UserState().Value(1);
+	//cout << "Toy: mu0  " << minFC_full.UserState().Value(0) << endl;
+	//cout << "Toy: mu1  " << minFC_full.UserState().Value(1) << endl;
+	//cout << "Toy: mu0 fix " << mu0Fix << endl;
+	//cout << "Toy: mu1 fix " << mu1Fix << endl;
 	
 	double fval_fullFix = double(minFC_fullFix.Fval());
 	double test_stat = 2*(fval_fullFix-fval_full);
 	uparFC_full.Release("mu0");
 
 	//cout << "Toy: fval " << fval_full <<  " --> " << fval_fullFix << endl;
+
+	VectorXd jtilde = VectorXd::Zero(2*nbins);
+	VectorXd jhat   = VectorXd::Zero(2*nbins);
 	
-	MatrixXd invsqrtV  = MatrixXd::Zero(nbins, nbins);
+	MatrixXd invsqrtV  = MatrixXd::Zero(1,1);
+	MatrixXd invVj = MatrixXd::Zero(2,2);
+	VectorXd jhati = VectorXd::Zero(2);
+	VectorXd y = VectorXd::Zero(1);
+	MatrixXd X = MatrixXd::Zero(1, 2);
 	for(unsigned int i=0; i<nbins; i++){
-	  invsqrtV(i,i) = 1./TMath::Sqrt(A_itoy.row(i).sum());
+	  invsqrtV(0,0) = 1./TMath::Sqrt(y_itoy(i));
+	  invVj(0,0) = 1./(A_itoy(i,0)*lumiscale);
+	  invVj(1,1) = 1./(A_itoy(i,1)*lumiscale);       
+	  jhati(0) = A_itoy(i,0);
+	  jhati(1) = A_itoy(i,1);
+	  jhat(2*i) = jhati(0);
+	  jhat(2*i+1) = jhati(1);
+	  y(0) = y_itoy(i);
+	  VectorXd b = invsqrtV*y;
+	  X(0,0) = 1.0 + mu0Fix;
+	  X(0,1) = 1.0 + mu1Fix;
+	  MatrixXd D = invsqrtV*X;
+	  MatrixXd B = D.transpose()*D + invVj;
+	  VectorXd g = -(D.transpose()*b + invVj*jhati );
+	  VectorXd jtildei = B.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(-g);
+	  jtilde(2*i)   = jtildei(0);
+	  jtilde(2*i+1) = jtildei(1);
+	  //cout << "Bin " << i << endl;
+	  //cout << "\tj0: " << jtildei(0) << " --> " << jhati(0) << " (" << (jtildei(0) - jhati(0))/TMath::Sqrt(A_itoy(i,0)*lumiscale) << ")" << endl;
+	  //cout << "\tj1: " << jtildei(1) << " --> " << jhati(1) << " (" << (jtildei(1) - jhati(1))/TMath::Sqrt(A_itoy(i,1)*lumiscale) << ")" << endl;
 	}
-	MatrixXd invVj = MatrixXd::Zero(2*nbins, 2*nbins);
-	for(unsigned int i=0; i<2*nbins; i++){
-	  invVj(i,i) = i%2==0 ? 1./(A_itoy(i%nbins,0)*lumiscale) : 1./(A_itoy(i%nbins,1)*lumiscale);
-	}
-	MatrixXd X = MatrixXd::Zero(nbins, 2*nbins);
-	for(unsigned int i=0; i<nbins; i++){
-	  for(unsigned int j=0; j<2*nbins; j++){
-	    if(j==2*i || j==(2*i+1)) X(i,j) = (j==2*i) ? mu0Fix : mu1Fix;
-	  }
-	}
-	VectorXd jhat = VectorXd::Zero(2*nbins);
-	for(unsigned int i=0; i<2*nbins; i++){
-	  jhat(i) = i%2==0 ? A_itoy(i/2,0) : A_itoy(i/2,1);
-	}
-	VectorXd b = invsqrtV*(y_itoy - ynom_itoy);
-	MatrixXd D = invsqrtV*X;
-	MatrixXd B = D.transpose()*D + invVj;
-	VectorXd g = -(D.transpose()*b + invVj*jhat );
-	VectorXd jtilde = B.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(-g);
-	//for(unsigned int i=0; i<2*nbins; i++){
-	//cout << (jtilde(i) - jhat(i))/TMath::Sqrt(jhat(i)) << endl;
-	//}
+	
 	TH1D* h_jtilde0_itoy = (TH1D*)h_true_0->Clone(Form("h_data%d_jtilde0_%d",idata,itoy));
 	TH1D* h_jtilde1_itoy = (TH1D*)h_true_1->Clone(Form("h_data%d_jtilde1_%d",idata,itoy));
 	TH1D* h_j0_itoy      = (TH1D*)h_true_0->Clone(Form("h_data%d_j0_%d",idata,itoy));
 	TH1D* h_j1_itoy      = (TH1D*)h_true_1->Clone(Form("h_data%d_j1_%d",idata,itoy));
+	TH1D* h_obs_itoy     = (TH1D*)h_true_0->Clone(Form("h_data%d_obs_%d",idata,itoy));
 	h_jtilde0_itoy->Reset();
 	h_jtilde1_itoy->Reset();
 	h_j0_itoy->Reset();
 	h_j1_itoy->Reset();
+	h_obs_itoy->Reset();
 	for(unsigned int ir=0; ir<nbins; ir++){
-	  h_j0_itoy->SetBinContent(ir+1, A_itoy(ir,0));
-	  h_j1_itoy->SetBinContent(ir+1, A_itoy(ir,1));
+	  h_j0_itoy->SetBinContent(ir+1, jhat(2*ir)  );
+	  h_j1_itoy->SetBinContent(ir+1, jhat(2*ir+1));
 	  h_jtilde0_itoy->SetBinContent(ir+1, (1.0 + mu0Fix)*jtilde(2*ir) );
 	  h_jtilde1_itoy->SetBinContent(ir+1, (1.0 + mu1Fix)*jtilde(2*ir+1) );
+	  h_obs_itoy->SetBinContent(ir+1, y_itoy(ir));
 	}
 
 	TString hname = "";
@@ -449,11 +463,14 @@ int main(int argc, char* argv[])
 	//int count = 0;
 	for(unsigned int itoyFC=0; itoyFC<1000; itoyFC++){
 	  for(unsigned int ir=0; ir<nbins; ir++){      	  
-	    yFC_itoy(ir) = rans[1]->Poisson( (1.0 + mu0Fix)*jtilde(2*ir) + (1.0 + mu1Fix)*jtilde(2*ir+1) );
+	    if(doFCcheat)
+	      yFC_itoy(ir) = rans[1]->Poisson(  A_true(ir,0) + A_true(ir,1) );
+	    else
+	      yFC_itoy(ir) = rans[1]->Poisson( (1.0 + mu0Fix)*jtilde(2*ir) + (1.0 + mu1Fix)*jtilde(2*ir+1) );
 	    //cout << ynom_itoy(ir) << " -->" << (1.0 + mu0)*jtilde(2*ir) + (1.0 + mu1)*jtilde(2*ir+1) << endl;
 	    // ???
-	    likelihoodFC_full->set_mc0(ir, (1.0 + mu0Fix)*jtilde(2*ir));
-	    likelihoodFC_full->set_mc1(ir, (1.0 + mu1Fix)*jtilde(2*ir+1));
+	    //likelihoodFC_full->set_mc0(ir, (1.0 + mu0Fix)*jtilde(2*ir));
+	    //likelihoodFC_full->set_mc1(ir, (1.0 + mu1Fix)*jtilde(2*ir+1));
 	    likelihoodFC_full->set_data(ir, yFC_itoy(ir) );
 	    //cout << y_itoy(ir) << " --> " << yFC_itoy(ir) << endl;
 	  }
@@ -464,7 +481,7 @@ int main(int argc, char* argv[])
 	  FunctionMinimum minFC_full_itoy = migradFC_full_itoy(maxfcn, tolerance);
 	  double fval_full_itoy = double(minFC_full_itoy.Fval());
 	  uparFC_full.Fix("mu0");
-	  uparFC_full.SetValue("mu0", 0.0 );
+	  uparFC_full.SetValue("mu0", mu0Fix );
 	  uparFC_full.SetValue("mu1", 0.0);
 	  MnMigrad migradFC_full_itoyFix(*likelihoodFC_full, uparFC_full, 1);
 	  FunctionMinimum minFC_full_itoyFix = migradFC_full_itoyFix(maxfcn, tolerance);
@@ -493,10 +510,11 @@ int main(int argc, char* argv[])
 	fout->cd();
 	if(saveHistos && itoy<10){
 	  h_teststat_itoy->Write();
-	  //h_jtilde0_itoy->Write();
-	  //h_jtilde1_itoy->Write();
-	  //h_j0_itoy->Write();
-	  //h_j1_itoy->Write();
+	  h_jtilde0_itoy->Write();
+	  h_jtilde1_itoy->Write();
+	  h_j0_itoy->Write();
+	  h_j1_itoy->Write();
+	  h_obs_itoy->Write();
 	}
 	
 	delete likelihoodFC_full;
