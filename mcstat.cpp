@@ -464,7 +464,7 @@ int main(int argc, char* argv[])
 	for(unsigned int itoyFC=0; itoyFC<1000; itoyFC++){
 	  for(unsigned int ir=0; ir<nbins; ir++){      	  
 	    if(doFCcheat)
-	      yFC_itoy(ir) = rans[1]->Poisson(  A_true(ir,0) + A_true(ir,1) );
+	      yFC_itoy(ir) = rans[1]->Poisson(  ( 1 + (idata==1)*err_true*nsigmas )*A_true(ir,0) + A_true(ir,1) );
 	    else
 	      yFC_itoy(ir) = rans[1]->Poisson( (1.0 + mu0Fix)*jtilde(2*ir) + (1.0 + mu1Fix)*jtilde(2*ir+1) );
 	    //cout << ynom_itoy(ir) << " -->" << (1.0 + mu0)*jtilde(2*ir) + (1.0 + mu1)*jtilde(2*ir+1) << endl;
@@ -823,16 +823,16 @@ int main(int argc, char* argv[])
   TH1D* haux = new TH1D("haux","", 500, 0., 0.5);
 
   tree->Draw("err_mc>>haux");  
-  cout << "Asympt. err:        " << TMath::Sqrt(C_true(0,0)) << ", coverage = " << 1.0 - TMath::Prob(1.0, 1)  << endl;
-  cout << "MC:                 " << prob_mc << " +/- " << TMath::Sqrt(prob_mc*(1-prob_mc)/ntoys) <<  " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  cout << "Asympt. err:         " << TMath::Sqrt(C_true(0,0)) << ", coverage = " << 1.0 - TMath::Prob(1.0, 1)  << endl;
+  cout << "MC:                  " << prob_mc << " +/- " << TMath::Sqrt(prob_mc*(1-prob_mc)/ntoys) <<  " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
   haux->Reset();
 
   tree->Draw("err_data>>haux");  
-  cout << "Data:               " << prob_data << " +/- " << TMath::Sqrt(prob_data*(1-prob_data)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  cout << "Data:                " << prob_data << " +/- " << TMath::Sqrt(prob_data*(1-prob_data)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
   haux->Reset();
 
   tree->Draw("err_data5s>>haux");  
-  cout << "Data 5s:            " << prob_data5s << " +/- " << TMath::Sqrt(prob_data5s*(1-prob_data5s)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  cout << "Data 5s:             " << prob_data5s << " +/- " << TMath::Sqrt(prob_data5s*(1-prob_data5s)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
   haux->Reset();
 
   //tree->Draw("err_data_BB>>haux");  
@@ -844,31 +844,31 @@ int main(int argc, char* argv[])
   //haux->Reset();
 
   tree->Draw("err_poisdata_BB>>haux");  
-  cout << "Data Pois BB:       " << prob_poisdata_BB << " +/- " << TMath::Sqrt(prob_poisdata_BB*(1-prob_poisdata_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  cout << "Data Pois BB:        " << prob_poisdata_BB << " +/- " << TMath::Sqrt(prob_poisdata_BB*(1-prob_poisdata_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
   haux->Reset();
 
   tree->Draw("err_poisdata5s_BB>>haux");  
-  cout << "Data5s Pois BB:     " << prob_poisdata5s_BB << " +/- " << TMath::Sqrt(prob_poisdata5s_BB*(1-prob_poisdata5s_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  cout << "Data5s Pois BB:      " << prob_poisdata5s_BB << " +/- " << TMath::Sqrt(prob_poisdata5s_BB*(1-prob_poisdata5s_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
   haux->Reset();
 
   tree->Draw("err_poisdata_BBfull>>haux");  
-  cout << "Data Pois BBFull:   " << prob_poisdata_BBfull << " +/- " << TMath::Sqrt(prob_poisdata_BBfull*(1-prob_poisdata_BBfull)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  cout << "Data Pois BBFull:    " << prob_poisdata_BBfull << " +/- " << TMath::Sqrt(prob_poisdata_BBfull*(1-prob_poisdata_BBfull)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
   haux->Reset();
   
   tree->Draw("err_poisdata5s_BBfull>>haux");  
-  cout << "Data5s Pois BBFull: " << prob_poisdata5s_BBfull << " +/- " << TMath::Sqrt(prob_poisdata5s_BBfull*(1-prob_poisdata5s_BBfull)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  cout << "Data5s Pois BBFull:  " << prob_poisdata5s_BBfull << " +/- " << TMath::Sqrt(prob_poisdata5s_BBfull*(1-prob_poisdata5s_BBfull)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
   haux->Reset();
 
   tree->Draw("errPLRUp_poisdata_BBfull>>haux");  
-  cout << "Data PLR BBFull:    " << prob_poisdata_BBfullPLR << " +/- " << TMath::Sqrt(prob_poisdata_BBfullPLR*(1-prob_poisdata_BBfullPLR)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  cout << "Data PLR BBFull:     " << prob_poisdata_BBfullPLR << " +/- " << TMath::Sqrt(prob_poisdata_BBfullPLR*(1-prob_poisdata_BBfullPLR)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
   haux->Reset();
   
   tree->Draw("errPLRUp_poisdata5s_BBfull>>haux");  
-  cout << "Data5s PLR BBFull:  " << prob_poisdata5s_BBfullPLR << " +/- " << TMath::Sqrt(prob_poisdata5s_BBfullPLR*(1-prob_poisdata5s_BBfullPLR)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  cout << "Data5s PLR BBFull:   " << prob_poisdata5s_BBfullPLR << " +/- " << TMath::Sqrt(prob_poisdata5s_BBfullPLR*(1-prob_poisdata5s_BBfullPLR)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
   haux->Reset();
 
-  cout << "Data FC BBFull:     " << prob_poisdata_BBfullFC << " +/- " << TMath::Sqrt(prob_poisdata_BBfullFC*(1-prob_poisdata_BBfullFC)/ntoysFC) << endl;
-  cout << "Data5s FC BBFull:   " << prob_poisdata5s_BBfullFC << " +/- " << TMath::Sqrt(prob_poisdata5s_BBfullFC*(1-prob_poisdata5s_BBfullFC)/ntoysFC) << endl;
+  cout << "Data FC BBFull" << (doFCcheat ? "cheat:  " : " :      ")  << prob_poisdata_BBfullFC << " +/- " << TMath::Sqrt(prob_poisdata_BBfullFC*(1-prob_poisdata_BBfullFC)/ntoysFC) << endl;
+  cout << "Data5s FC BBFull" << (doFCcheat ? "cheat:  " : " :      ") << prob_poisdata5s_BBfullFC << " +/- " << TMath::Sqrt(prob_poisdata5s_BBfullFC*(1-prob_poisdata5s_BBfullFC)/ntoysFC) << endl;
     
   delete haux;
   
