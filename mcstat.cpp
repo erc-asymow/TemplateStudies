@@ -162,6 +162,7 @@ int main(int argc, char* argv[])
 	("tag",         value<std::string>()->default_value("closure"), "run type")
 	("doFC",      bool_switch()->default_value(false), "doFC")
 	("doFCcheat",      bool_switch()->default_value(false), "doFCcheat")
+	("doBarlett",      bool_switch()->default_value(false), "doBarlett")
 	("saveHistos",       bool_switch()->default_value(false), "saveHistos")
 	("FCfixToTrue",      bool_switch()->default_value(false), "FCfixToTrue")
 	("verbose",      bool_switch()->default_value(false), "verbose")
@@ -200,6 +201,7 @@ int main(int argc, char* argv[])
   float lumiscale    = vm["lumiscale"].as<float>();
   bool doFC     = vm["doFC"].as<bool>();
   bool doFCcheat = vm["doFCcheat"].as<bool>();
+  bool doBarlett = vm["doBarlett"].as<bool>();
   bool saveHistos     = vm["saveHistos"].as<bool>();
   bool FCfixToTrue     = vm["FCfixToTrue"].as<bool>();
   bool verbose     = vm["verbose"].as<bool>();
@@ -213,6 +215,7 @@ int main(int argc, char* argv[])
 
   TFile* fout = TFile::Open(("root/mcstat_"+tag+".root").c_str(), "RECREATE");
   TTree* tree = new TTree("tree", "");
+  TTree* treeFC = new TTree("treeFC", "");
   double mu_data, err_data;
   double mu_poisdata_BB, err_poisdata_BB;
   double mu_poisdata_BBfull, err_poisdata_BBfull;
@@ -220,6 +223,8 @@ int main(int argc, char* argv[])
   double mu_poisdata5s_BB, err_poisdata5s_BB;
   double mu_poisdata5s_BBfull, err_poisdata5s_BBfull;
   double errPLRLow_poisdata5s_BBfull, errPLRUp_poisdata5s_BBfull;
+  double errFCLow_poisdata_BBfull, errFCUp_poisdata_BBfull;
+  double errFCLow_poisdata5s_BBfull, errFCUp_poisdata5s_BBfull;
   double mu_data5s, err_data5s;
   double mu_mc, err_mc;
   double mu_data_BB, err_data_BB;
@@ -233,12 +238,16 @@ int main(int argc, char* argv[])
   tree->Branch("err_poisdata_BBfull", &err_poisdata_BBfull, "err_poisdata_BBfull/D");
   tree->Branch("errPLRLow_poisdata_BBfull", &errPLRLow_poisdata_BBfull, "errPLRLow_poisdata_BBfull/D");
   tree->Branch("errPLRUp_poisdata_BBfull", &errPLRUp_poisdata_BBfull, "errPLRUp_poisdata_BBfull/D");
+  treeFC->Branch("errFCLow_poisdata_BBfull", &errFCLow_poisdata_BBfull, "errFCLow_poisdata_BBfull/D");
+  treeFC->Branch("errFCUp_poisdata_BBfull", &errFCUp_poisdata_BBfull, "errFCUp_poisdata_BBfull/D");
   tree->Branch("mu_poisdata5s_BB",  &mu_poisdata5s_BB, "mu_poisdata5s_BB/D");
   tree->Branch("err_poisdata5s_BB", &err_poisdata5s_BB, "err_poisdata5s_BB/D");
   tree->Branch("mu_poisdata5s_BBfull",  &mu_poisdata5s_BBfull, "mu_poisdata5s_BBfull/D");
   tree->Branch("err_poisdata5s_BBfull", &err_poisdata5s_BBfull, "err_poisdata5s_BBfull/D");
   tree->Branch("errPLRLow_poisdata5s_BBfull", &errPLRLow_poisdata5s_BBfull, "errPLRLow_poisdata5s_BBfull/D");
   tree->Branch("errPLRUp_poisdata5s_BBfull", &errPLRUp_poisdata5s_BBfull, "errPLRUp_poisdata5s_BBfull/D");
+  treeFC->Branch("errFCLow_poisdata5s_BBfull", &errFCLow_poisdata5s_BBfull, "errFCLow_poisdata5s_BBfull/D");
+  treeFC->Branch("errFCUp_poisdata5s_BBfull", &errFCUp_poisdata5s_BBfull, "errFCUp_poisdata5s_BBfull/D");
   tree->Branch("mu_data5s",  &mu_data5s, "mu_data5s/D");
   tree->Branch("err_data5s", &err_data5s, "err_data5s/D");
   tree->Branch("mu_data_BB",  &mu_data_BB, "mu_data_BB/D");
@@ -287,7 +296,21 @@ int main(int argc, char* argv[])
 
   MatrixXd C_true = ( A_true.transpose()*invV_true*A_true ).inverse();
   //cout << "True errors on mu_[0,1] = [" << TMath::Sqrt(C_true(0,0)) << "," << TMath::Sqrt(C_true(1,1)) << "]" << endl;
+  double rho_true = C_true(0,1)/TMath::Sqrt(C_true(0,0)*C_true(1,1));
+  double condition_true = 0.;
+  cout << "Correlation: " << rho_true << endl;
+  Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver(C_true);
+  if (eigensolver.info() != Eigen::Success){
+    cout << "Could not eigendecompose U" << endl;
+  }
+  else{    
+    auto eigenvals = eigensolver.eigenvalues();
+    auto eigenvecs = eigensolver.eigenvectors();
+    condition_true = eigenvals(1)/eigenvals(0);
+    cout << "Condition number of V: " << eigenvals(1) << "/" << eigenvals(0) << " = " << condition_true << endl;
+  }
 
+  
   mu_true = 0.0;
   err_true = TMath::Sqrt(C_true(0,0));
   
@@ -351,23 +374,24 @@ int main(int argc, char* argv[])
   //int ntoysFC = ntoys;    
   if(doFC){
 
-    // idata=0: data nominal, idata=1: data 5s
-    for(int idata=0; idata<2; idata++){
+    for(unsigned int itoy=0; itoy<ntoysFC; itoy++){
 
-      for(unsigned int itoy=0; itoy<ntoysFC; itoy++){
+      if(itoy%10000==0) cout << "Doing FC toy " << itoy << " / " << ntoysFC << endl;
 
-	if(itoy%10000==0) cout << "Doing FC toy " << itoy << " / " << ntoysFC << endl;
+      // idata=0: data nominal, idata=1: data 5s
+      for(int idata=0; idata<2; idata++){       
 
-	Likelihood* likelihoodFC_full = new Likelihood(0, nbins, lumiscale, false, doPoisson, false);
+ 	Likelihood* likelihoodFC_full = new Likelihood(0, nbins, lumiscale, false, doPoisson, false);
 	likelihoodFC_full->SetErrorDef(0.5);
+
 	for(unsigned int ir=0; ir<nbins; ir++){      
-	  A_itoy(ir,0) = rans[1]->Poisson( A_true(ir, 0)*lumiscale ) / lumiscale;
-	  A_itoy(ir,1) = rans[1]->Poisson( A_true(ir, 1)*lumiscale ) / lumiscale;
+	  A_itoy(ir,0) = rans[1+idata]->Poisson( A_true(ir, 0)*lumiscale ) / lumiscale;
+	  A_itoy(ir,1) = rans[1+idata]->Poisson( A_true(ir, 1)*lumiscale ) / lumiscale;
 	  ynom_itoy(ir) = A_itoy.row(ir).sum();
 	  if(idata==0)
-	    y_itoy(ir)   = rans[1]->Poisson( A_true(ir,0) + A_true(ir,1) );
+	    y_itoy(ir)   = rans[1+idata]->Poisson( A_true(ir,0) + A_true(ir,1) );
 	  else
-	    y_itoy(ir)   = rans[1]->Poisson( A_true(ir,0)*(1+err_true*nsigmas) + A_true(ir,1) );
+	    y_itoy(ir)   = rans[1+idata]->Poisson( A_true(ir,0)*(1+err_true*nsigmas) + A_true(ir,1) );
 	  likelihoodFC_full->set_mc0(ir, A_itoy(ir,0));
 	  likelihoodFC_full->set_mc1(ir, A_itoy(ir,1));
 	  likelihoodFC_full->set_mc0err(ir, TMath::Sqrt(A_itoy(ir,0)/lumiscale));
@@ -384,13 +408,13 @@ int main(int argc, char* argv[])
 	double mu0 = minFC_full.UserState().Value(0);
 	double mu1 = minFC_full.UserState().Value(1);
 	double fval_full = double(minFC_full.Fval());      
+	double mu0Hat = minFC_full.UserState().Value(0);
+	double mu1Hat = minFC_full.UserState().Value(1);
 
 	uparFC_full.SetValue("mu0", idata==0 ? 0.0 : err_true*nsigmas );
 	uparFC_full.Fix("mu0");
 	MnMigrad migradFC_fullFix(*likelihoodFC_full, uparFC_full, 1);
 	FunctionMinimum minFC_fullFix = migradFC_fullFix(maxfcn, tolerance);	
-	//double mu0Fix = minFC_fullFix.UserState().Value(0);
-	//double mu1Fix = minFC_fullFix.UserState().Value(1);
 	double mu0Fix = FCfixToTrue ? minFC_fullFix.UserState().Value(0) : minFC_full.UserState().Value(0);
 	double mu1Fix = FCfixToTrue ? minFC_fullFix.UserState().Value(1) : minFC_full.UserState().Value(1);
 	//cout << "Toy: mu0  " << minFC_full.UserState().Value(0) << endl;
@@ -464,15 +488,10 @@ int main(int argc, char* argv[])
 	for(unsigned int itoyFC=0; itoyFC<1000; itoyFC++){
 	  for(unsigned int ir=0; ir<nbins; ir++){      	  
 	    if(doFCcheat)
-	      yFC_itoy(ir) = rans[1]->Poisson(  ( 1 + (idata==1)*err_true*nsigmas )*A_true(ir,0) + A_true(ir,1) );
+	      yFC_itoy(ir) = rans[1+idata]->Poisson(  ( 1 + (idata==1)*err_true*nsigmas )*A_true(ir,0) + A_true(ir,1) );
 	    else
-	      yFC_itoy(ir) = rans[1]->Poisson( (1.0 + mu0Fix)*jtilde(2*ir) + (1.0 + mu1Fix)*jtilde(2*ir+1) );
-	    //cout << ynom_itoy(ir) << " -->" << (1.0 + mu0)*jtilde(2*ir) + (1.0 + mu1)*jtilde(2*ir+1) << endl;
-	    // ???
-	    //likelihoodFC_full->set_mc0(ir, (1.0 + mu0Fix)*jtilde(2*ir));
-	    //likelihoodFC_full->set_mc1(ir, (1.0 + mu1Fix)*jtilde(2*ir+1));
+	      yFC_itoy(ir) = rans[1+idata]->Poisson( (1.0 + mu0Fix)*jtilde(2*ir) + (1.0 + mu1Fix)*jtilde(2*ir+1) );
 	    likelihoodFC_full->set_data(ir, yFC_itoy(ir) );
-	    //cout << y_itoy(ir) << " --> " << yFC_itoy(ir) << endl;
 	  }
 	  uparFC_full.Release("mu0");
 	  uparFC_full.SetValue("mu0", 0.0);
@@ -492,20 +511,65 @@ int main(int argc, char* argv[])
 	  //if( 2*(fval_full_itoyFix - fval_full_itoy) < 1.0 ) count++;
 	  uparFC_full.Release("mu0");
 	}
+
+	// restore initial data
+	for(unsigned int ir=0; ir<nbins; ir++){
+	  likelihoodFC_full->set_data(ir, y_itoy(ir) );  
+	}
+	
 	double q[1];
+	double scale = 1.0;
 	vector<double> probsum = {1.0 - TMath::Prob(1.0, 1)};
-	if(h_teststat_itoy->Integral()>0)
+	if(h_teststat_itoy->Integral()>0){
 	  h_teststat_itoy->GetQuantiles(1, q, probsum.data());
-	else
-	  q[0] = numeric_limits<double>::max(); 
-	cout << "t0: " << test_stat << " < " << q[0] << " ? " << endl;
-	if( test_stat<=q[0] ){
+	  if(doBarlett){
+	    scale = h_teststat_itoy->GetMean();
+	    q[0] = 1.0*scale;
+	  }
+	  likelihoodFC_full->SetErrorDef(0.5*q[0]);
+	  uparFC_full.Release("mu0");
+	  uparFC_full.SetValue("mu0", 0.0);
+	  uparFC_full.SetValue("mu1", 0.0);
+	  MnMigrad migradFC_full_minos(*likelihoodFC_full, uparFC_full, 1);
+	  FunctionMinimum minFC_full_minos = migradFC_full_minos(maxfcn, tolerance);
+	  MnMinos minos_FCfull(*likelihoodFC_full, minFC_full_minos, 1);	
+	  std::pair< double, double >  minos_err_FCfull = minos_FCfull(0);
+	  if(idata==0){
+	    errFCLow_poisdata_BBfull =  minos_err_FCfull.first;
+	    errFCUp_poisdata_BBfull  =  minos_err_FCfull.second;
+	  }
+	  else{
+	    errFCLow_poisdata5s_BBfull =  minos_err_FCfull.first;
+	    errFCUp_poisdata5s_BBfull  =  minos_err_FCfull.second;
+	  }
+	}
+	else{
+	  q[0] = numeric_limits<double>::max();
+	  errFCLow_poisdata_BBfull = -99.;
+	  errFCUp_poisdata_BBfull = -99.;
+	  errFCLow_poisdata5s_BBfull = -99.;
+	  errFCUp_poisdata5s_BBfull = -99.;
+	}
+
+	if( idata==0 ){
+	  cout << "t0: " << test_stat << " < " << q[0] << " ? " << "t<q0 vs eL<0<eT: " << (test_stat<=q[0]) << ":" <<  ( 0.0 >= mu0Hat+errFCLow_poisdata_BBfull && 0.0 <= mu0Hat+errFCUp_poisdata_BBfull  )  << endl;
+	  if(  0.0 >= mu0Hat+errFCLow_poisdata_BBfull && 0.0 <= mu0Hat+errFCUp_poisdata_BBfull  )
+	    prob_poisdata_BBfullFC += 1./ntoysFC;
+	}
+	else{
+	  if( err_true*nsigmas >= mu0Hat+errFCLow_poisdata5s_BBfull && err_true*nsigmas <= mu0Hat+errFCUp_poisdata5s_BBfull)
+	    prob_poisdata5s_BBfullFC += 1./ntoysFC;
+	}
+
+	/*
+	if( test_stat<=q[0] ){	  
 	  if(idata==0)
 	    prob_poisdata_BBfullFC += 1./ntoysFC;
 	  else
 	    prob_poisdata5s_BBfullFC += 1./ntoysFC;
 	}
-	//cout << float(count)/1000 << endl;
+	*/
+
 	
 	fout->cd();
 	if(saveHistos && itoy<10){
@@ -523,7 +587,8 @@ int main(int argc, char* argv[])
 	delete h_jtilde1_itoy;
 	delete h_j0_itoy;
 	delete h_j1_itoy;
-      }
+      }      
+      treeFC->Fill();
     }
   }
 
@@ -867,8 +932,13 @@ int main(int argc, char* argv[])
   cout << "Data5s PLR BBFull:   " << prob_poisdata5s_BBfullPLR << " +/- " << TMath::Sqrt(prob_poisdata5s_BBfullPLR*(1-prob_poisdata5s_BBfullPLR)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
   haux->Reset();
 
-  cout << "Data FC BBFull" << (doFCcheat ? "cheat:  " : " :      ")  << prob_poisdata_BBfullFC << " +/- " << TMath::Sqrt(prob_poisdata_BBfullFC*(1-prob_poisdata_BBfullFC)/ntoysFC) << endl;
-  cout << "Data5s FC BBFull" << (doFCcheat ? "cheat:  " : " :      ") << prob_poisdata5s_BBfullFC << " +/- " << TMath::Sqrt(prob_poisdata5s_BBfullFC*(1-prob_poisdata5s_BBfullFC)/ntoysFC) << endl;
+  treeFC->Draw("errFCUp_poisdata_BBfull>>haux");  
+  cout << "Data FC BBFull" << (doFCcheat ? "cheat:  " : " :     ")  << prob_poisdata_BBfullFC << " +/- " << TMath::Sqrt(prob_poisdata_BBfullFC*(1-prob_poisdata_BBfullFC)/ntoysFC) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  haux->Reset();
+
+  treeFC->Draw("errFCUp_poisdata5s_BBfull>>haux");  
+  cout << "Data5s FC BBFull" << (doFCcheat ? "cheat:  " : " :   ") << prob_poisdata5s_BBfullFC << " +/- " << TMath::Sqrt(prob_poisdata5s_BBfullFC*(1-prob_poisdata5s_BBfullFC)/ntoysFC) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  haux->Reset();
     
   delete haux;
   
@@ -876,6 +946,7 @@ int main(int argc, char* argv[])
   h_true_0->Write();
   h_true_1->Write();
   tree->Write();
+  treeFC->Write();
   
   sw.Stop();
 
