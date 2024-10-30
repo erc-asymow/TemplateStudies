@@ -148,7 +148,13 @@ double Likelihood::operator()(const vector<double>& par) const {
   return val;
 }
 
-
+double get_quantile(TH1D* h){
+  double q[1];
+  vector<double> probsum = {0.5};
+  if(h->Integral()>0)
+    h->GetQuantiles(1, q, probsum.data());
+  return q[0];
+}
   
 int main(int argc, char* argv[])
 {
@@ -393,7 +399,7 @@ int main(int argc, char* argv[])
 
     for(unsigned int itoy=0; itoy<ntoysFC; itoy++){
 
-      if(itoy%10000==0) cout << "Doing FC toy " << itoy << " / " << ntoysFC << endl;
+      if(itoy%100==0) cout << "Doing FC toy " << itoy << " / " << ntoysFC << endl;
 
       // idata=0: data nominal, idata=1: data 5s
       for(int idata=0; idata<2; idata++){       
@@ -587,7 +593,7 @@ int main(int argc, char* argv[])
 	  errFCUp_poisdata5s_BBfull = -99.;
 	}
 
-	if( idata==0 ){
+	if( idata==0 && ntoysFC<=100 ){
 	  cout << "t0: " << test_stat << " < " << q[0] << " ? " << "t<q0 vs eL<0<eT: " << (test_stat<=q[0]) << ":" <<  ( 0.0 >= mu0Hat+errFCLow_poisdata_BBfull && 0.0 <= mu0Hat+errFCUp_poisdata_BBfull  )  << endl;
 	  if(  0.0 >= mu0Hat+errFCLow_poisdata_BBfull && 0.0 <= mu0Hat+errFCUp_poisdata_BBfull  )
 	    prob_poisdata_BBfullFC += 1./ntoysFC;
@@ -934,56 +940,56 @@ int main(int argc, char* argv[])
   TH1D* haux = new TH1D("haux","", 500, 0., 0.5);
 
   tree->Draw("err_mc>>haux");  
-  cout << "Asympt. err:         " << TMath::Sqrt(C_true(0,0)) << ", coverage = " << 1.0 - TMath::Prob(1.0, 1)  << endl;
-  cout << "MC:                  " << prob_mc << " +/- " << TMath::Sqrt(prob_mc*(1-prob_mc)/ntoys) <<  " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  cout << "Asympt. err:            " << TMath::Sqrt(C_true(0,0)) << ", coverage = " << 1.0 - TMath::Prob(1.0, 1)  << endl;
+  cout << "MC:                     " << prob_mc << " +/- " << TMath::Sqrt(prob_mc*(1-prob_mc)/ntoys) <<  " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
 
   tree->Draw("err_data>>haux");  
-  cout << "Data:                " << prob_data << " +/- " << TMath::Sqrt(prob_data*(1-prob_data)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  cout << "Data:                   " << prob_data << " +/- " << TMath::Sqrt(prob_data*(1-prob_data)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
 
   tree->Draw("err_data5s>>haux");  
-  cout << "Data 5s:             " << prob_data5s << " +/- " << TMath::Sqrt(prob_data5s*(1-prob_data5s)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  cout << "Data 5s:                " << prob_data5s << " +/- " << TMath::Sqrt(prob_data5s*(1-prob_data5s)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
 
-  //tree->Draw("err_data_BB>>haux");  
-  //cout << "Data BB:            " << prob_data_BB << " +/- " << TMath::Sqrt(prob_data_BB*(1-prob_data_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
-  //haux->Reset();
+  tree->Draw("err_data_BB>>haux");  
+  cout << "Data BB:                " << prob_data_BB << " +/- " << TMath::Sqrt(prob_data_BB*(1-prob_data_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
+  haux->Reset();
 
-  //tree->Draw("err_data5s_BB>>haux");  
-  //cout << "Data 5s BB:         " << prob_data5s_BB << " +/- " << TMath::Sqrt(prob_data5s_BB*(1-prob_data5s_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
-  //haux->Reset();
+  tree->Draw("err_data5s_BB>>haux");  
+  cout << "Data 5s BB:             " << prob_data5s_BB << " +/- " << TMath::Sqrt(prob_data5s_BB*(1-prob_data5s_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
+  haux->Reset();
 
   tree->Draw("err_poisdata_BB>>haux");  
-  cout << "Data Pois BB:        " << prob_poisdata_BB << " +/- " << TMath::Sqrt(prob_poisdata_BB*(1-prob_poisdata_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  cout << "Data Pois BB:           " << prob_poisdata_BB << " +/- " << TMath::Sqrt(prob_poisdata_BB*(1-prob_poisdata_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
 
   tree->Draw("err_poisdata5s_BB>>haux");  
-  cout << "Data5s Pois BB:      " << prob_poisdata5s_BB << " +/- " << TMath::Sqrt(prob_poisdata5s_BB*(1-prob_poisdata5s_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  cout << "Data5s Pois BB:         " << prob_poisdata5s_BB << " +/- " << TMath::Sqrt(prob_poisdata5s_BB*(1-prob_poisdata5s_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
 
   tree->Draw("err_poisdata_BBfull>>haux");  
-  cout << "Data Pois BBFull:    " << prob_poisdata_BBfull << " +/- " << TMath::Sqrt(prob_poisdata_BBfull*(1-prob_poisdata_BBfull)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  cout << "Data Pois BBFull:       " << prob_poisdata_BBfull << " +/- " << TMath::Sqrt(prob_poisdata_BBfull*(1-prob_poisdata_BBfull)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
   
   tree->Draw("err_poisdata5s_BBfull>>haux");  
-  cout << "Data5s Pois BBFull:  " << prob_poisdata5s_BBfull << " +/- " << TMath::Sqrt(prob_poisdata5s_BBfull*(1-prob_poisdata5s_BBfull)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  cout << "Data5s Pois BBFull:     " << prob_poisdata5s_BBfull << " +/- " << TMath::Sqrt(prob_poisdata5s_BBfull*(1-prob_poisdata5s_BBfull)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
 
   tree->Draw("errPLRUp_poisdata_BBfull>>haux");  
-  cout << "Data PLR BBFull:     " << prob_poisdata_BBfullPLR << " +/- " << TMath::Sqrt(prob_poisdata_BBfullPLR*(1-prob_poisdata_BBfullPLR)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  cout << "Data PLR BBFull:        " << prob_poisdata_BBfullPLR << " +/- " << TMath::Sqrt(prob_poisdata_BBfullPLR*(1-prob_poisdata_BBfullPLR)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
   
   tree->Draw("errPLRUp_poisdata5s_BBfull>>haux");  
-  cout << "Data5s PLR BBFull:   " << prob_poisdata5s_BBfullPLR << " +/- " << TMath::Sqrt(prob_poisdata5s_BBfullPLR*(1-prob_poisdata5s_BBfullPLR)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  cout << "Data5s PLR BBFull:      " << prob_poisdata5s_BBfullPLR << " +/- " << TMath::Sqrt(prob_poisdata5s_BBfullPLR*(1-prob_poisdata5s_BBfullPLR)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
 
   treeFC->Draw("errFCUp_poisdata_BBfull>>haux");  
-  cout << "Data FC BBFull" << (doFCcheat ? "cheat:  " : " :     ")  << prob_poisdata_BBfullFC << " +/- " << TMath::Sqrt(prob_poisdata_BBfullFC*(1-prob_poisdata_BBfullFC)/ntoysFC) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  cout << "Data FC BBFull" << (doFCcheat ? "cheat:    " : " :        ")  << prob_poisdata_BBfullFC << " +/- " << TMath::Sqrt(prob_poisdata_BBfullFC*(1-prob_poisdata_BBfullFC)/ntoysFC) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
 
   treeFC->Draw("errFCUp_poisdata5s_BBfull>>haux");  
-  cout << "Data5s FC BBFull" << (doFCcheat ? "cheat:  " : " :   ") << prob_poisdata5s_BBfullFC << " +/- " << TMath::Sqrt(prob_poisdata5s_BBfullFC*(1-prob_poisdata5s_BBfullFC)/ntoysFC) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ")" << endl;
+  cout << "Data5s FC BBFull" << (doFCcheat ? "cheat:  " : " :      ") << prob_poisdata5s_BBfullFC << " +/- " << TMath::Sqrt(prob_poisdata5s_BBfullFC*(1-prob_poisdata5s_BBfullFC)/ntoysFC) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
     
   delete haux;
