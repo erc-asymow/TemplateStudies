@@ -41,8 +41,8 @@ class Likelihood : public FCNBase {
 
 public:
   
-  Likelihood(const int& debug, const int& nbins, const double& lumiscale, const bool& BBlite, const bool& doPoisson, const bool& profileMCNP )
-    : errorDef_(1.0), debug_(debug), nbins_(nbins), lumiscale_(lumiscale), bblite_(BBlite), doPoisson_(doPoisson), profileMCNP_(profileMCNP) {
+  Likelihood(const int& debug, const int& nbins, const bool& BBlite, const bool& doPoisson, const bool& profileMCNP, const bool& decorrelate )
+    : errorDef_(1.0), debug_(debug), nbins_(nbins),  bblite_(BBlite), doPoisson_(doPoisson), profileMCNP_(profileMCNP), decorrelate_(decorrelate) {
     //npars_ = BBlite ? (2 + nbins) : (2 + 2*nbins);
     npars_ = 2;
     ndof_ = nbins - 2;
@@ -90,7 +90,6 @@ private:
   vector<double> mc1_;
   vector<double> mc0err_;
   vector<double> mc1err_;
-  double lumiscale_;
   unsigned int nbins_;
   unsigned int npars_;
   unsigned int ndof_;
@@ -98,12 +97,19 @@ private:
   int debug_;
   bool profileMCNP_;
   bool doPoisson_;
+  bool decorrelate_;
   double errorDef_;
 };
 
 // par[0] = mu0, par[1] = mu1, par[2,..] = BB 
 double Likelihood::operator()(const vector<double>& par) const {  
   double val  = 0.0;
+  double par0 = par[0];
+  double par1 = par[1];
+  if(decorrelate_){
+    par0 =  par[0] + par[1];
+    par1 = -par[0] + par[1];
+  }
   for(unsigned int ibin=0; ibin<nbins_; ibin++){
     double data_i = data_[ibin];
     double mc_tot = (mc0_[ibin]+mc1_[ibin]);
@@ -113,8 +119,8 @@ double Likelihood::operator()(const vector<double>& par) const {
     double rel_err_mc1 = mc1err_[ibin]/mc1_[ibin];
     if(profileMCNP_){
       double exp_data_i = bblite_ ?
-	((1+par[0])*mc0_[ibin] + (1+par[1])*mc1_[ibin])*(1+par[2+ibin]) :
-	(1.0 + par[0])*(1.0 + par[2+ibin])*mc0_[ibin] + (1.0 + par[1])*(1.0 + par[2+nbins_+ibin])*mc1_[ibin];
+	((1+par0)*mc0_[ibin] + (1+par1)*mc1_[ibin])*(1+par[2+ibin]) :
+	(1.0 + par0)*(1.0 + par[2+ibin])*mc0_[ibin] + (1.0 + par1)*(1.0 + par[2+nbins_+ibin])*mc1_[ibin];
       double res = data_i - exp_data_i;
       double res2 = res*res;
       double prior  = bblite_ ?  0.5*par[2+ibin]*par[2+ibin]/(rel_err_mc*rel_err_mc) : 0.0;
@@ -130,12 +136,12 @@ double Likelihood::operator()(const vector<double>& par) const {
       val  += prior;
     }
     else{
-      double exp_data_i = (1+par[0])*mc0_[ibin] + (1+par[1])*mc1_[ibin] ;
+      double exp_data_i = (1+par0)*mc0_[ibin] + (1+par1)*mc1_[ibin] ;
       double res  = data_i - exp_data_i;
       double res2 = res*res;
       double chi2   = bblite_ ?
 	0.5*res2/( data_i + TMath::Power(rel_err_mc*exp_data_i, 2.0 ) ) :
-	0.5*res2/( data_i + TMath::Power(mc0err_[ibin]*(1.0 + par[0]), 2.0) + TMath::Power(mc1err_[ibin]*(1.0 + par[1]), 2.0) ) ;
+	0.5*res2/( data_i + TMath::Power(mc0err_[ibin]*(1.0 + par0), 2.0) + TMath::Power(mc1err_[ibin]*(1.0 + par1), 2.0) ) ;
       val  += chi2;
     }
   }    
@@ -168,6 +174,7 @@ int main(int argc, char* argv[])
 	("verbose",      bool_switch()->default_value(false), "verbose")
 	("profileMCNP",      bool_switch()->default_value(false), "profileMCNP")
 	("doPoisson",      bool_switch()->default_value(false), "doPoisson")
+	("decorrelate",    bool_switch()->default_value(false), "decorrelate")
 	("nbins",       value<int>()->default_value(200), "nbins")
 	("nsigmas",     value<int>()->default_value(5), "nsigmas")
 	("frac",       value<float>()->default_value(0.5), "frac")
@@ -202,10 +209,11 @@ int main(int argc, char* argv[])
   bool doFC     = vm["doFC"].as<bool>();
   bool doFCcheat = vm["doFCcheat"].as<bool>();
   bool doBarlett = vm["doBarlett"].as<bool>();
-  bool saveHistos     = vm["saveHistos"].as<bool>();
-  bool FCfixToTrue     = vm["FCfixToTrue"].as<bool>();
+  bool saveHistos  = vm["saveHistos"].as<bool>();
+  bool FCfixToTrue = vm["FCfixToTrue"].as<bool>();
   bool verbose     = vm["verbose"].as<bool>();
   bool profileMCNP = vm["profileMCNP"].as<bool>();
+  bool decorrelate = vm["decorrelate"].as<bool>();
   bool doPoisson = vm["doPoisson"].as<bool>();
   
   std::vector<TRandom3*> rans = {};
@@ -285,20 +293,28 @@ int main(int argc, char* argv[])
 
   MatrixXd A_true = MatrixXd::Zero(nbins, 2);
   MatrixXd invV_true = MatrixXd::Zero(nbins, nbins);
+  MatrixXd J_true = MatrixXd::Zero(nbins, 2);
 
   for(unsigned int ir=0; ir<nbins; ir++){
     A_true(ir, 0) = h_true_0->GetBinContent(ir+1);
     A_true(ir, 1) = h_true_1->GetBinContent(ir+1);
+    J_true(ir, 0) = A_true(ir, 0);
+    J_true(ir, 1) = A_true(ir, 1);
+    if(decorrelate){
+      J_true(ir, 0) = A_true(ir, 0) - A_true(ir, 1);
+      J_true(ir, 1) = A_true(ir, 0) + A_true(ir, 1);
+    }
   }
   for(unsigned int ir=0; ir<nbins; ir++){
     invV_true(ir,ir) = 1./h_true_tot->GetBinContent(ir+1);
   }
 
-  MatrixXd C_true = ( A_true.transpose()*invV_true*A_true ).inverse();
+  // A_true --> J_true
+  MatrixXd C_true = ( J_true.transpose()*invV_true*J_true ).inverse();
   //cout << "True errors on mu_[0,1] = [" << TMath::Sqrt(C_true(0,0)) << "," << TMath::Sqrt(C_true(1,1)) << "]" << endl;
   double rho_true = C_true(0,1)/TMath::Sqrt(C_true(0,0)*C_true(1,1));
   double condition_true = 0.;
-  cout << "Correlation: " << rho_true << endl;
+  cout << "Correlation: " << rho_true << ", err: " << TMath::Sqrt(C_true(0,0)) << endl;
   Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver(C_true);
   if (eigensolver.info() != Eigen::Success){
     cout << "Could not eigendecompose U" << endl;
@@ -324,6 +340,7 @@ int main(int argc, char* argv[])
   */
 
   MatrixXd A_itoy = MatrixXd::Zero(nbins, 2);
+  MatrixXd J_itoy = MatrixXd::Zero(nbins, 2);
   MatrixXd invV_itoy      = MatrixXd::Zero(nbins, nbins);
   MatrixXd invV5s_itoy    = MatrixXd::Zero(nbins, nbins);
   MatrixXd invV_BB_itoy   = MatrixXd::Zero(nbins, nbins);
@@ -381,7 +398,7 @@ int main(int argc, char* argv[])
       // idata=0: data nominal, idata=1: data 5s
       for(int idata=0; idata<2; idata++){       
 
- 	Likelihood* likelihoodFC_full = new Likelihood(0, nbins, lumiscale, false, doPoisson, false);
+ 	Likelihood* likelihoodFC_full = new Likelihood(0, nbins, false, doPoisson, false, decorrelate);
 	likelihoodFC_full->SetErrorDef(0.5);
 
 	for(unsigned int ir=0; ir<nbins; ir++){      
@@ -390,8 +407,11 @@ int main(int argc, char* argv[])
 	  ynom_itoy(ir) = A_itoy.row(ir).sum();
 	  if(idata==0)
 	    y_itoy(ir)   = rans[1+idata]->Poisson( A_true(ir,0) + A_true(ir,1) );
-	  else
-	    y_itoy(ir)   = rans[1+idata]->Poisson( A_true(ir,0)*(1+err_true*nsigmas) + A_true(ir,1) );
+	  else{
+	    y_itoy(ir)   = rans[1+idata]->Poisson( A_true(ir,0)*(1.0 + err_true*nsigmas) + A_true(ir,1) );
+	    if(decorrelate)
+	      y_itoy(ir)   = rans[1+idata]->Poisson( A_true(ir,0)*(1.0 + err_true*nsigmas) + A_true(ir,1)*(1.0 - err_true*nsigmas) );
+	  }
 	  likelihoodFC_full->set_mc0(ir, A_itoy(ir,0));
 	  likelihoodFC_full->set_mc1(ir, A_itoy(ir,1));
 	  likelihoodFC_full->set_mc0err(ir, TMath::Sqrt(A_itoy(ir,0)/lumiscale));
@@ -417,6 +437,7 @@ int main(int argc, char* argv[])
 	FunctionMinimum minFC_fullFix = migradFC_fullFix(maxfcn, tolerance);	
 	double mu0Fix = FCfixToTrue ? minFC_fullFix.UserState().Value(0) : minFC_full.UserState().Value(0);
 	double mu1Fix = FCfixToTrue ? minFC_fullFix.UserState().Value(1) : minFC_full.UserState().Value(1);
+
 	//cout << "Toy: mu0  " << minFC_full.UserState().Value(0) << endl;
 	//cout << "Toy: mu1  " << minFC_full.UserState().Value(1) << endl;
 	//cout << "Toy: mu0 fix " << mu0Fix << endl;
@@ -448,6 +469,10 @@ int main(int argc, char* argv[])
 	  VectorXd b = invsqrtV*y;
 	  X(0,0) = 1.0 + mu0Fix;
 	  X(0,1) = 1.0 + mu1Fix;
+	  if(decorrelate){
+	    X(0,0) = 1.0 + mu0Fix + mu1Fix;
+	    X(0,1) = 1.0 - mu0Fix + mu1Fix;
+	  }
 	  MatrixXd D = invsqrtV*X;
 	  MatrixXd B = D.transpose()*D + invVj;
 	  VectorXd g = -(D.transpose()*b + invVj*jhati );
@@ -473,7 +498,12 @@ int main(int argc, char* argv[])
 	  h_j0_itoy->SetBinContent(ir+1, jhat(2*ir)  );
 	  h_j1_itoy->SetBinContent(ir+1, jhat(2*ir+1));
 	  h_jtilde0_itoy->SetBinContent(ir+1, (1.0 + mu0Fix)*jtilde(2*ir) );
-	  h_jtilde1_itoy->SetBinContent(ir+1, (1.0 + mu1Fix)*jtilde(2*ir+1) );
+	  h_jtilde1_itoy->SetBinContent(ir+1, (1.0 + mu1Fix)*jtilde(2*ir+1) );	  
+	  if(decorrelate){
+	    h_jtilde0_itoy->SetBinContent(ir+1, (1.0 + mu0Fix + mu1Fix)*jtilde(2*ir) );
+	    h_jtilde1_itoy->SetBinContent(ir+1, (1.0 - mu0Fix + mu1Fix)*jtilde(2*ir+1) );
+	  }
+	  // <--
 	  h_obs_itoy->SetBinContent(ir+1, y_itoy(ir));
 	}
 
@@ -487,10 +517,16 @@ int main(int argc, char* argv[])
 	//int count = 0;
 	for(unsigned int itoyFC=0; itoyFC<1000; itoyFC++){
 	  for(unsigned int ir=0; ir<nbins; ir++){      	  
-	    if(doFCcheat)
-	      yFC_itoy(ir) = rans[1+idata]->Poisson(  ( 1 + (idata==1)*err_true*nsigmas )*A_true(ir,0) + A_true(ir,1) );
-	    else
+	    if(doFCcheat){
+	      yFC_itoy(ir) = rans[1+idata]->Poisson(  ( 1.0 + (idata==1)*err_true*nsigmas)*A_true(ir,0) + A_true(ir,1) );
+	      if(decorrelate)
+		yFC_itoy(ir) = rans[1+idata]->Poisson(  ( 1.0 + (idata==1)*err_true*nsigmas  )*A_true(ir,0) + (1.0 - (idata==1)*err_true*nsigmas )*A_true(ir,1) );
+	    }
+	    else{
 	      yFC_itoy(ir) = rans[1+idata]->Poisson( (1.0 + mu0Fix)*jtilde(2*ir) + (1.0 + mu1Fix)*jtilde(2*ir+1) );
+	      if(decorrelate)
+		yFC_itoy(ir) = rans[1+idata]->Poisson( (1.0 + mu0Fix + mu1Fix)*jtilde(2*ir) + (1.0 - mu0Fix + mu1Fix)*jtilde(2*ir+1) );
+	    }
 	    likelihoodFC_full->set_data(ir, yFC_itoy(ir) );
 	  }
 	  uparFC_full.Release("mu0");
@@ -603,18 +639,24 @@ int main(int argc, char* argv[])
     MatrixXd invC5s_BB_itoy = MatrixXd::Zero(2, 2);
     MatrixXd invCMC_BB_itoy = MatrixXd::Zero(2, 2);
 
-    Likelihood* likelihood_lite = new Likelihood(0, nbins, lumiscale, true, doPoisson, profileMCNP);
+    Likelihood* likelihood_lite = new Likelihood(0, nbins, true, doPoisson, profileMCNP, decorrelate);
     likelihood_lite->SetErrorDef(0.5);
-    Likelihood* likelihood_full = new Likelihood(0, nbins, lumiscale, false, doPoisson, profileMCNP);
+    Likelihood* likelihood_full = new Likelihood(0, nbins, false, doPoisson, profileMCNP, decorrelate);
     likelihood_full->SetErrorDef(0.5);
-    Likelihood* likelihood_lite5s = new Likelihood(0, nbins, lumiscale, true, doPoisson, profileMCNP);
+    Likelihood* likelihood_lite5s = new Likelihood(0, nbins, true, doPoisson, profileMCNP, decorrelate);
     likelihood_lite5s->SetErrorDef(0.5);
-    Likelihood* likelihood_full5s = new Likelihood(0, nbins, lumiscale, false, doPoisson, profileMCNP);
+    Likelihood* likelihood_full5s = new Likelihood(0, nbins, false, doPoisson, profileMCNP, decorrelate);
     likelihood_full5s->SetErrorDef(0.5);
     
     for(unsigned int ir=0; ir<nbins; ir++){      
       A_itoy(ir,0) = rans[0]->Poisson( A_true(ir, 0)*lumiscale ) / lumiscale;
       A_itoy(ir,1) = rans[0]->Poisson( A_true(ir, 1)*lumiscale ) / lumiscale;
+      J_itoy(ir,0) = A_itoy(ir,0);
+      J_itoy(ir,1) = A_itoy(ir,1);
+      if(decorrelate){
+	J_itoy(ir,0) = A_itoy(ir,0) - A_itoy(ir,1);
+	J_itoy(ir,1) = A_itoy(ir,0) + A_itoy(ir,1);
+      }
       
       // "MC" template drawn from true nominal, including lumi scale
       ynom_itoy(ir) = A_itoy.row(ir).sum();
@@ -623,8 +665,10 @@ int main(int argc, char* argv[])
       y_itoy(ir)   = rans[0]->Poisson( A_true.row(ir).sum() );
       
       // toy data drawn from true 5sigma 
-      y5s_itoy(ir) = rans[0]->Poisson( A_true(ir,0)*(1+err_true*nsigmas) + A_true(ir,1)  );
-
+      y5s_itoy(ir) = rans[0]->Poisson( A_true(ir,0)*(1.0 + err_true*nsigmas) + A_true(ir,1)  );
+      if(decorrelate)
+	y5s_itoy(ir) = rans[0]->Poisson( A_true(ir,0)*(1.0 + err_true*nsigmas) + A_true(ir,1)*(1.0 - err_true*nsigmas)  );
+      
       // toy data drawn from "MC" 
       yMC_itoy(ir) = rans[0]->Poisson( A_itoy.row(ir).sum() );
 
@@ -635,7 +679,7 @@ int main(int argc, char* argv[])
       invVMC_itoy(ir,ir)    = 1./yMC_itoy(ir);
 
       // this is a common piece
-      MatrixXd K_ir_itoy = A_itoy.row(ir).transpose()*A_itoy.row(ir);      
+      MatrixXd K_ir_itoy = J_itoy.row(ir).transpose()*J_itoy.row(ir);      
       invC_itoy      += K_ir_itoy/y_itoy(ir);
       invC5s_itoy    += K_ir_itoy/y5s_itoy(ir);
       invCMC_itoy    += K_ir_itoy/yMC_itoy(ir);
@@ -670,22 +714,24 @@ int main(int argc, char* argv[])
     MatrixXd C_BB_itoy   = invC_BB_itoy.inverse();
     MatrixXd C5s_BB_itoy = invC5s_BB_itoy.inverse();
     MatrixXd CMC_itoy    = invCMC_itoy.inverse();
-    VectorXd x_itoy      = C_itoy*A_itoy.transpose()*invV_itoy*(y_itoy - ynom_itoy);
-    VectorXd x5s_itoy    = C5s_itoy*A_itoy.transpose()*invV5s_itoy*(y5s_itoy - ynom_itoy);
-    VectorXd xMC_itoy    = CMC_itoy*A_itoy.transpose()*invVMC_itoy*(yMC_itoy - ynom_itoy);
-    VectorXd x_BB_itoy   = C_BB_itoy*A_itoy.transpose()*invV_BB_itoy*(y_itoy - ynom_itoy);
-    VectorXd x5s_BB_itoy = C5s_BB_itoy*A_itoy.transpose()*invV5s_BB_itoy*(y5s_itoy - ynom_itoy);
+    VectorXd x_itoy      = C_itoy*J_itoy.transpose()*invV_itoy*(y_itoy - ynom_itoy);
+    VectorXd x5s_itoy    = C5s_itoy*J_itoy.transpose()*invV5s_itoy*(y5s_itoy - ynom_itoy);
+    VectorXd xMC_itoy    = CMC_itoy*J_itoy.transpose()*invVMC_itoy*(yMC_itoy - ynom_itoy);
+    VectorXd x_BB_itoy   = C_BB_itoy*J_itoy.transpose()*invV_BB_itoy*(y_itoy - ynom_itoy);
+    VectorXd x5s_BB_itoy = C5s_BB_itoy*J_itoy.transpose()*invV5s_BB_itoy*(y5s_itoy - ynom_itoy);
     mu_data      = x_itoy(0);
     mu_data5s    = x5s_itoy(0);
     mu_data_BB   = x_BB_itoy(0);
     mu_data5s_BB = x5s_BB_itoy(0);
-    mu_mc = xMC_itoy(0); 
+    mu_mc        = xMC_itoy(0); 
     err_data      = TMath::Sqrt(C_itoy(0,0));
     err_data5s    = TMath::Sqrt(C5s_itoy(0,0));
     err_data_BB   = TMath::Sqrt(C_BB_itoy(0,0));
     err_data5s_BB = TMath::Sqrt(C5s_BB_itoy(0,0));
     err_mc        = TMath::Sqrt(CMC_itoy(0,0));
 
+    //cout << x5s_itoy(0) << " +/- " << err_data5s << " : " << x5s_itoy(1) << " +/- " << TMath::Sqrt(C5s_itoy(1,1)) << endl;
+    
     MnUserParameters upar_lite;
     //upar_lite.Add("mu0", x_BB_itoy(0), TMath::Sqrt(C_BB_itoy(0,0)), x_BB_itoy(0) - 5.0*TMath::Sqrt(C_BB_itoy(0,0)), x_BB_itoy(0) + 5.0*TMath::Sqrt(C_BB_itoy(0,0)) );
     //upar_lite.Add("mu1", x_BB_itoy(1), TMath::Sqrt(C_BB_itoy(1,1)), x_BB_itoy(1) - 5.0*TMath::Sqrt(C_BB_itoy(1,1)), x_BB_itoy(1) + 5.0*TMath::Sqrt(C_BB_itoy(1,1)) );
