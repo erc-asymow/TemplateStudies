@@ -593,8 +593,9 @@ int main(int argc, char* argv[])
 	  errFCUp_poisdata5s_BBfull = -99.;
 	}
 
-	if( idata==0 && ntoysFC<=100 ){
-	  cout << "t0: " << test_stat << " < " << q[0] << " ? " << "t<q0 vs eL<0<eT: " << (test_stat<=q[0]) << ":" <<  ( 0.0 >= mu0Hat+errFCLow_poisdata_BBfull && 0.0 <= mu0Hat+errFCUp_poisdata_BBfull  )  << endl;
+	if( idata==0 ){
+	  if(ntoysFC<=100)
+	    cout << "t0: " << test_stat << " < " << q[0] << " ? " << "t<q0 vs eL<0<eT: " << (test_stat<=q[0]) << ":" <<  ( 0.0 >= mu0Hat+errFCLow_poisdata_BBfull && 0.0 <= mu0Hat+errFCUp_poisdata_BBfull  )  << endl;
 	  if(  0.0 >= mu0Hat+errFCLow_poisdata_BBfull && 0.0 <= mu0Hat+errFCUp_poisdata_BBfull  )
 	    prob_poisdata_BBfullFC += 1./ntoysFC;
 	}
@@ -936,62 +937,196 @@ int main(int argc, char* argv[])
     
     tree->Fill();
   }
+
+  TTree* treesum = new TTree("treesum","");
+
+  int n, nFC;
+  double asym_corr, asym_cond;
+  double asym_err, asym_derr, asym_med, asym_cov;
+  double data_err, data_derr, data_med, data_cov;
+  double data5s_err, data5s_derr, data5s_med, data5s_cov;
+  double dataBB_err, dataBB_derr, dataBB_med, dataBB_cov;
+  double data5sBB_err, data5sBB_derr, data5sBB_med, data5sBB_cov;
+  double dataPoisBB_err, dataPoisBB_derr, dataPoisBB_med, dataPoisBB_cov;
+  double data5sPoisBB_err, data5sPoisBB_derr, data5sPoisBB_med, data5sPoisBB_cov;
+  double dataPoisBBfull_err, dataPoisBBfull_derr, dataPoisBBfull_med, dataPoisBBfull_cov;
+  double data5sPoisBBfull_err, data5sPoisBBfull_derr, data5sPoisBBfull_med, data5sPoisBBfull_cov;
+  double dataPoisBBfullPLR_err, dataPoisBBfullPLR_derr, dataPoisBBfullPLR_med, dataPoisBBfullPLR_cov;
+  double data5sPoisBBfullPLR_err, data5sPoisBBfullPLR_derr, data5sPoisBBfullPLR_med, data5sPoisBBfullPLR_cov;
+  double dataPoisBBfullFC_err, dataPoisBBfullFC_derr, dataPoisBBfullFC_med, dataPoisBBfullFC_cov;
+  double data5sPoisBBfullFC_err, data5sPoisBBfullFC_derr, data5sPoisBBfullFC_med, data5sPoisBBfullFC_cov;
+
+  treesum->Branch("n",  &n,  "n/I");
+  treesum->Branch("nFC",&nFC,  "nFC/I");
+  treesum->Branch("asym_corr",  &asym_corr,  "asym_corr/D");
+  treesum->Branch("asym_cond",  &asym_cond,  "asym_cond/D");
+  treesum->Branch("asym_err",  &asym_err,  "asym_err/D");
+  treesum->Branch("asym_derr", &asym_derr, "asym_derr/D");
+  treesum->Branch("asym_med",  &asym_med,  "asym_med/D");
+  treesum->Branch("asym_cov",  &asym_cov,  "asym_cov/D");
+  treesum->Branch("data_err",  &data_err,  "data_err/D");
+  treesum->Branch("data_derr", &data_derr, "data_derr/D");
+  treesum->Branch("data_med",  &data_med,  "data_med/D");
+  treesum->Branch("data_cov",  &data_cov,  "data_cov/D");
+  treesum->Branch("data5s_err",  &data5s_err,  "data5s_err/D");
+  treesum->Branch("data5s_derr", &data5s_derr, "data5s_derr/D");
+  treesum->Branch("data5s_med",  &data5s_med,  "data5s_med/D");
+  treesum->Branch("data5s_cov",  &data5s_cov,  "data5s_cov/D");
+  treesum->Branch("dataBB_err",  &dataBB_err,  "dataBB_err/D");
+  treesum->Branch("dataBB_derr", &dataBB_derr, "dataBB_derr/D");
+  treesum->Branch("dataBB_med",  &dataBB_med,  "dataBB_med/D");
+  treesum->Branch("dataBB_cov",  &dataBB_cov,  "dataBB_cov/D");
+  treesum->Branch("data5sBB_err",  &data5sBB_err,  "data5sBB_err/D");
+  treesum->Branch("data5sBB_derr", &data5sBB_derr, "data5sBB_derr/D");
+  treesum->Branch("data5sBB_med",  &data5sBB_med,  "data5sBB_med/D");
+  treesum->Branch("data5sBB_cov",  &data5sBB_cov,  "data5sBB_cov/D");
+  treesum->Branch("dataPoisBB_err",  &dataPoisBB_err,  "dataPoisBB_err/D");
+  treesum->Branch("dataPoisBB_derr", &dataPoisBB_derr, "dataPoisBB_derr/D");
+  treesum->Branch("dataPoisBB_med",  &dataPoisBB_med,  "dataPoisBB_med/D");
+  treesum->Branch("dataPoisBB_cov",  &dataPoisBB_cov,  "dataPoisBB_cov/D");
+  treesum->Branch("data5sPoisBB_err",  &data5sPoisBB_err,  "data5sPoisBB_err/D");
+  treesum->Branch("data5sPoisBB_derr", &data5sPoisBB_derr, "data5sPoisBB_derr/D");
+  treesum->Branch("data5sPoisBB_med",  &data5sPoisBB_med,  "data5sPoisBB_med/D");
+  treesum->Branch("data5sPoisBB_cov",  &data5sPoisBB_cov,  "data5sPoisBB_cov/D");
+  treesum->Branch("dataPoisBBfull_err",  &dataPoisBBfull_err,  "dataPoisBBfull_err/D");
+  treesum->Branch("dataPoisBBfull_derr", &dataPoisBBfull_derr, "dataPoisBBfull_derr/D");
+  treesum->Branch("dataPoisBBfull_med",  &dataPoisBBfull_med,  "dataPoisBBfull_med/D");
+  treesum->Branch("dataPoisBBfull_cov",  &dataPoisBBfull_cov,  "dataPoisBBfull_cov/D");
+  treesum->Branch("data5sPoisBBfull_err",  &data5sPoisBBfull_err,  "data5sPoisBBfull_err/D");
+  treesum->Branch("data5sPoisBBfull_derr", &data5sPoisBBfull_derr, "data5sPoisBBfull_derr/D");
+  treesum->Branch("data5sPoisBBfull_med",  &data5sPoisBBfull_med,  "data5sPoisBBfull_med/D");
+  treesum->Branch("data5sPoisBBfull_cov",  &data5sPoisBBfull_cov,  "data5sPoisBBfull_cov/D");
+  treesum->Branch("dataPoisBBfullPLR_err",  &dataPoisBBfullPLR_err,  "dataPoisBBfullPLR_err/D");
+  treesum->Branch("dataPoisBBfullPLR_derr", &dataPoisBBfullPLR_derr, "dataPoisBBfullPLR_derr/D");
+  treesum->Branch("dataPoisBBfullPLR_med",  &dataPoisBBfullPLR_med,  "dataPoisBBfullPLR_med/D");
+  treesum->Branch("dataPoisBBfullPLR_cov",  &dataPoisBBfullPLR_cov,  "dataPoisBBfullPLR_cov/D");
+  treesum->Branch("data5sPoisBBfullPLR_err",  &data5sPoisBBfullPLR_err,  "data5sPoisBBfullPLR_err/D");
+  treesum->Branch("data5sPoisBBfullPLR_derr", &data5sPoisBBfullPLR_derr, "data5sPoisBBfullPLR_derr/D");
+  treesum->Branch("data5sPoisBBfullPLR_med",  &data5sPoisBBfullPLR_med,  "data5sPoisBBfullPLR_med/D");
+  treesum->Branch("data5sPoisBBfullPLR_cov",  &data5sPoisBBfullPLR_cov,  "data5sPoisBBfullPLR_cov/D");
+  treesum->Branch("dataPoisBBfullFC_err",  &dataPoisBBfullFC_err,  "dataPoisBBfullFC_err/D");
+  treesum->Branch("dataPoisBBfullFC_derr", &dataPoisBBfullFC_derr, "dataPoisBBfullFC_derr/D");
+  treesum->Branch("dataPoisBBfullFC_med",  &dataPoisBBfullFC_med,  "dataPoisBBfullFC_med/D");
+  treesum->Branch("dataPoisBBfullFC_cov",  &dataPoisBBfullFC_cov,  "dataPoisBBfullFC_cov/D");
+  treesum->Branch("data5sPoisBBfullFC_err",  &data5sPoisBBfullFC_err,  "data5sPoisBBfullFC_err/D");
+  treesum->Branch("data5sPoisBBfullFC_derr", &data5sPoisBBfullFC_derr, "data5sPoisBBfullFC_derr/D");
+  treesum->Branch("data5sPoisBBfullFC_med",  &data5sPoisBBfullFC_med,  "data5sPoisBBfullFC_med/D");
+  treesum->Branch("data5sPoisBBfullFC_cov",  &data5sPoisBBfullFC_cov,  "data5sPoisBBfullFC_cov/D");
+
+  n = ntoys;
+  nFC = ntoysFC;
+  asym_corr = rho_true;
+  asym_cond = condition_true;
+  asym_err = TMath::Sqrt(C_true(0,0));
+  asym_derr = 0.0;
+  asym_med = asym_err;
+  asym_cov = 1.0 - TMath::Prob(1.0, 1);
   
   TH1D* haux = new TH1D("haux","", 500, 0., 0.5);
 
-  tree->Draw("err_mc>>haux");  
+  tree->Draw("err_mc>>haux");
   cout << "Asympt. err:            " << TMath::Sqrt(C_true(0,0)) << ", coverage = " << 1.0 - TMath::Prob(1.0, 1)  << endl;
   cout << "MC:                     " << prob_mc << " +/- " << TMath::Sqrt(prob_mc*(1-prob_mc)/ntoys) <<  " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
 
   tree->Draw("err_data>>haux");  
+  data_err  = haux->GetMean();
+  data_derr = haux->GetMeanError();
+  data_med  = get_quantile(haux);
+  data_cov  = prob_data;
   cout << "Data:                   " << prob_data << " +/- " << TMath::Sqrt(prob_data*(1-prob_data)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
 
   tree->Draw("err_data5s>>haux");  
+  data5s_err  = haux->GetMean();
+  data5s_derr = haux->GetMeanError();
+  data5s_med  = get_quantile(haux);
+  data5s_cov  = prob_data5s;
   cout << "Data 5s:                " << prob_data5s << " +/- " << TMath::Sqrt(prob_data5s*(1-prob_data5s)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
 
   tree->Draw("err_data_BB>>haux");  
+  dataBB_err  = haux->GetMean();
+  dataBB_derr = haux->GetMeanError();
+  dataBB_med  = get_quantile(haux); 
+  dataBB_cov  = prob_data_BB;
   cout << "Data BB:                " << prob_data_BB << " +/- " << TMath::Sqrt(prob_data_BB*(1-prob_data_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
 
   tree->Draw("err_data5s_BB>>haux");  
+  data5sBB_err  = haux->GetMean();
+  data5sBB_derr = haux->GetMeanError();
+  data5sBB_med  = get_quantile(haux); 
+  data5sBB_cov  = prob_data5s_BB;
   cout << "Data 5s BB:             " << prob_data5s_BB << " +/- " << TMath::Sqrt(prob_data5s_BB*(1-prob_data5s_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
 
   tree->Draw("err_poisdata_BB>>haux");  
+  dataPoisBB_err  = haux->GetMean();
+  dataPoisBB_derr = haux->GetMeanError();
+  dataPoisBB_med  = get_quantile(haux); 
+  dataPoisBB_cov  = prob_poisdata_BB;
   cout << "Data Pois BB:           " << prob_poisdata_BB << " +/- " << TMath::Sqrt(prob_poisdata_BB*(1-prob_poisdata_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
 
   tree->Draw("err_poisdata5s_BB>>haux");  
+  data5sPoisBB_err  = haux->GetMean();
+  data5sPoisBB_derr = haux->GetMeanError();
+  data5sPoisBB_med  = get_quantile(haux); 
+  data5sPoisBB_cov  = prob_poisdata5s_BB;
   cout << "Data5s Pois BB:         " << prob_poisdata5s_BB << " +/- " << TMath::Sqrt(prob_poisdata5s_BB*(1-prob_poisdata5s_BB)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
 
   tree->Draw("err_poisdata_BBfull>>haux");  
+  dataPoisBBfull_err  = haux->GetMean();
+  dataPoisBBfull_derr = haux->GetMeanError();
+  dataPoisBBfull_med  = get_quantile(haux); 
+  dataPoisBBfull_cov  = prob_poisdata_BBfull;
   cout << "Data Pois BBFull:       " << prob_poisdata_BBfull << " +/- " << TMath::Sqrt(prob_poisdata_BBfull*(1-prob_poisdata_BBfull)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
   
   tree->Draw("err_poisdata5s_BBfull>>haux");  
+  data5sPoisBBfull_err  = haux->GetMean();
+  data5sPoisBBfull_derr = haux->GetMeanError();
+  data5sPoisBBfull_med  = get_quantile(haux); 
+  data5sPoisBBfull_cov  = prob_poisdata5s_BBfull;
   cout << "Data5s Pois BBFull:     " << prob_poisdata5s_BBfull << " +/- " << TMath::Sqrt(prob_poisdata5s_BBfull*(1-prob_poisdata5s_BBfull)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
 
   tree->Draw("errPLRUp_poisdata_BBfull>>haux");  
+  dataPoisBBfullPLR_err  = haux->GetMean();
+  dataPoisBBfullPLR_derr = haux->GetMeanError();
+  dataPoisBBfullPLR_med  = get_quantile(haux); 
+  dataPoisBBfullPLR_cov  = prob_poisdata_BBfullPLR;
   cout << "Data PLR BBFull:        " << prob_poisdata_BBfullPLR << " +/- " << TMath::Sqrt(prob_poisdata_BBfullPLR*(1-prob_poisdata_BBfullPLR)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
   
   tree->Draw("errPLRUp_poisdata5s_BBfull>>haux");  
+  data5sPoisBBfullPLR_err  = haux->GetMean();
+  data5sPoisBBfullPLR_derr = haux->GetMeanError();
+  data5sPoisBBfullPLR_med  = get_quantile(haux); 
+  data5sPoisBBfullPLR_cov  = prob_poisdata5s_BBfullPLR;
   cout << "Data5s PLR BBFull:      " << prob_poisdata5s_BBfullPLR << " +/- " << TMath::Sqrt(prob_poisdata5s_BBfullPLR*(1-prob_poisdata5s_BBfullPLR)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
 
   treeFC->Draw("errFCUp_poisdata_BBfull>>haux");  
+  dataPoisBBfullFC_err  = haux->GetMean();
+  dataPoisBBfullFC_derr = haux->GetMeanError();
+  dataPoisBBfullFC_med  = get_quantile(haux); 
+  dataPoisBBfullFC_cov  = prob_poisdata_BBfullFC;
   cout << "Data FC BBFull" << (doFCcheat ? "cheat:    " : " :        ")  << prob_poisdata_BBfullFC << " +/- " << TMath::Sqrt(prob_poisdata_BBfullFC*(1-prob_poisdata_BBfullFC)/ntoysFC) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
 
   treeFC->Draw("errFCUp_poisdata5s_BBfull>>haux");  
+  data5sPoisBBfullFC_err  = haux->GetMean();
+  data5sPoisBBfullFC_derr = haux->GetMeanError();
+  data5sPoisBBfullFC_med  = get_quantile(haux); 
+  data5sPoisBBfullFC_cov  = prob_poisdata5s_BBfullFC;
   cout << "Data5s FC BBFull" << (doFCcheat ? "cheat:  " : " :      ") << prob_poisdata5s_BBfullFC << " +/- " << TMath::Sqrt(prob_poisdata5s_BBfullFC*(1-prob_poisdata5s_BBfullFC)/ntoysFC) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
-    
+
+  treesum->Fill();
+  
   delete haux;
   
   fout->cd();
@@ -999,6 +1134,7 @@ int main(int argc, char* argv[])
   h_true_1->Write();
   tree->Write();
   treeFC->Write();
+  treesum->Write();
   
   sw.Stop();
 
