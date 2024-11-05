@@ -22,7 +22,7 @@ def run_one_opt(options, iopt):
         os.system(options[iopt])
 
 def run_all():
-    options = []
+    options = []    
     # default
     options.append( './mcstat --ntoys=10000 --ntoysFC=4000 --nbins=200 --nevents=2000000  --lumiscale=1 --asym=0.015  --doFC --decorrelate             --tag=1_200_0p015_decorr' )
     options.append( './mcstat --ntoys=10000 --ntoysFC=4000 --nbins=200 --nevents=2000000  --lumiscale=1 --asym=0.015  --doFC --decorrelate --doFCcheat --tag=1_200_0p015_decorr_FCCheat' )
@@ -59,6 +59,17 @@ def run_all():
     options.append( './mcstat --ntoys=10000 --ntoysFC=4000 --nbins=200 --nevents=2000000  --lumiscale=1 --asym=0.015  --doFC             --tag=1_200_0p015_corr' )
     options.append( './mcstat --ntoys=10000 --ntoysFC=4000 --nbins=200 --nevents=2000000  --lumiscale=1 --asym=0.015  --doFC --doFCcheat --tag=1_200_0p015_corr_FCCheat' )
     options.append( './mcstat --ntoys=10000 --ntoysFC=4000 --nbins=200 --nevents=2000000  --lumiscale=1 --asym=0.015  --doFC --doBarlett --tag=1_200_0p015_corr_Barlett' )
+
+    options = []
+    options.append( './mcstat --ntoys=10000 --ntoysFC=1000 --nbins=200 --nevents=2000000  --lumiscale=1  --asym=0.015  --doFC --decorrelate --computeJtildeError --tag=1_200_0p015_decorr_Jtilde' )
+    options.append( './mcstat --ntoys=10000 --ntoysFC=1000 --nbins=200 --nevents=2000000  --lumiscale=1  --asym=0.03   --doFC --decorrelate --computeJtildeError --tag=1_200_0p03_decorr_Jtilde' )
+    options.append( './mcstat --ntoys=10000 --ntoysFC=1000 --nbins=200 --nevents=2000000  --lumiscale=1  --asym=0.06   --doFC --decorrelate --computeJtildeError --tag=1_200_0p06_decorr_Jtilde' )
+    options.append( './mcstat --ntoys=10000 --ntoysFC=1000 --nbins=100 --nevents=2000000  --lumiscale=1  --asym=0.015  --doFC --decorrelate --computeJtildeError --tag=1_100_0p015_decorr_Jtilde' )
+    options.append( './mcstat --ntoys=10000 --ntoysFC=1000 --nbins=20  --nevents=2000000  --lumiscale=1  --asym=0.015  --doFC --decorrelate --computeJtildeError --tag=1_20_0p015_decorr_Jtilde' )
+    options.append( './mcstat --ntoys=10000 --ntoysFC=1000 --nbins=200 --nevents=2000000  --lumiscale=10 --asym=0.015  --doFC --decorrelate --computeJtildeError --tag=10_200_0p015_decorr_Jtilde' )
+    options.append( './mcstat --ntoys=10000 --ntoysFC=1000 --nbins=200 --nevents=2000000  --lumiscale=40 --asym=0.015  --doFC --decorrelate --computeJtildeError --tag=40_200_0p015_decorr_Jtilde' )
+    options.append( './mcstat --ntoys=10000 --ntoysFC=1000 --nbins=200 --nevents=2000000  --lumiscale=1  --asym=0.015  --doFC               --computeJtildeError --tag=1_200_0p015_corr_Jtilde' )
+    
     ps = []        
     counter = 0
     for i,ip in enumerate(options):

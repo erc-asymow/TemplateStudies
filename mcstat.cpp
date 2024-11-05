@@ -48,11 +48,13 @@ public:
     npars_ = 2;
     ndof_ = nbins - 2;
     data_.reserve( nbins );
+    dataErr2_.reserve( nbins );
     mc0_.reserve( nbins );
     mc1_.reserve( nbins );
     mc0err_.reserve( nbins );
     mc1err_.reserve( nbins );
     for(unsigned int ibin = 0; ibin<nbins; ibin++) data_.push_back(0.);
+    for(unsigned int ibin = 0; ibin<nbins; ibin++) dataErr2_.push_back(0.);
     for(unsigned int ibin = 0; ibin<nbins; ibin++) mc0_.push_back(0.);
     for(unsigned int ibin = 0; ibin<nbins; ibin++) mc1_.push_back(0.);
     for(unsigned int ibin = 0; ibin<nbins; ibin++) mc0err_.push_back(0.);
@@ -63,8 +65,18 @@ public:
 
   void set_removeBB(const bool& set){ removeBB_ = set; }
 
+  void restore_dataErr2(){
+    for(unsigned int ibin = 0; ibin<nbins_; ibin++){
+      dataErr2_[ibin] = data_[ibin];
+    }
+  }
+  
   void set_data(const unsigned int& ibin, const double& val){
-    data_[ibin] = val; 
+    data_[ibin] = val;
+    dataErr2_[ibin] = val;
+  }
+  void set_dataErr2(const unsigned int& ibin, const double& val){
+    dataErr2_[ibin] = val; 
   }
   void set_mc0(const unsigned int& ibin, const double& val){
     mc0_[ibin] = val; 
@@ -89,6 +101,7 @@ public:
 private:
 
   vector<double> data_;
+  vector<double> dataErr2_;
   vector<double> mc0_;
   vector<double> mc1_;
   vector<double> mc0err_;
@@ -116,6 +129,7 @@ double Likelihood::operator()(const vector<double>& par) const {
   }
   for(unsigned int ibin=0; ibin<nbins_; ibin++){
     double data_i = data_[ibin];
+    double dataErr2_i = dataErr2_[ibin];
     double mc_tot = (mc0_[ibin]+mc1_[ibin]);
     double mc_tot_err = TMath::Sqrt( mc0err_[ibin]*mc0err_[ibin] + mc1err_[ibin]*mc1err_[ibin] );
     double rel_err_mc = mc_tot_err/mc_tot;
@@ -126,9 +140,9 @@ double Likelihood::operator()(const vector<double>& par) const {
       double exp_data_i = (1+par0)*mc0_[ibin] + (1+par1)*mc1_[ibin];
       double res  = data_i - exp_data_i;
       double res2 = res*res;
-      double chi2 = 0.5*res2/data_i;
+      double chi2 = 0.5*res2/dataErr2_i;
       if(doPoisson_){
-	chi2 *= (1.0 - 2./3.*(res/data_i) + 0.5*res2/data_i/data_i /* + ... */ );
+	chi2 *= (1.0 - 2./3.*(res/dataErr2_i) + 0.5*res2/dataErr2_i/dataErr2_i /* + ... */ );
       }
       val += chi2;
       continue;
@@ -145,9 +159,9 @@ double Likelihood::operator()(const vector<double>& par) const {
 	prior += 0.5*par[2+ibin]*par[2+ibin]/(rel_err_mc0*rel_err_mc0);
 	prior += 0.5*par[2+nbins_+ibin]*par[2+nbins_+ibin]/(rel_err_mc1*rel_err_mc1);
       }
-      double chi2 = 0.5*res2/data_i;
+      double chi2 = 0.5*res2/dataErr2_i;
       if(doPoisson_){
-	chi2 *= (1.0 - 2./3.*(res/data_i) + 0.5*res2/data_i/data_i /* + ... */ );
+	chi2 *= (1.0 - 2./3.*(res/dataErr2_i) + 0.5*res2/dataErr2_i/dataErr2_i /* + ... */ );
       }
       val  += chi2;
       val  += prior;
@@ -157,8 +171,8 @@ double Likelihood::operator()(const vector<double>& par) const {
       double res  = data_i - exp_data_i;
       double res2 = res*res;
       double chi2   = bblite_ ?
-	0.5*res2/( data_i + TMath::Power(rel_err_mc*exp_data_i, 2.0 ) ) :
-	0.5*res2/( data_i + TMath::Power(mc0err_[ibin]*(1.0 + par0), 2.0) + TMath::Power(mc1err_[ibin]*(1.0 + par1), 2.0) ) ;
+	0.5*res2/( dataErr2_i + TMath::Power(rel_err_mc*exp_data_i, 2.0 ) ) :
+	0.5*res2/( dataErr2_i + TMath::Power(mc0err_[ibin]*(1.0 + par0), 2.0) + TMath::Power(mc1err_[ibin]*(1.0 + par1), 2.0) ) ;
       val  += chi2;
     }    
   }    
@@ -198,6 +212,7 @@ int main(int argc, char* argv[])
 	("profileMCNP",      bool_switch()->default_value(false), "profileMCNP")
 	("doPoisson",      bool_switch()->default_value(false), "doPoisson")
 	("decorrelate",    bool_switch()->default_value(false), "decorrelate")
+	("computeJtildeError", bool_switch()->default_value(false), "computeJtildeError")
 	("nbins",       value<int>()->default_value(200), "nbins")
 	("nsigmas",     value<int>()->default_value(5), "nsigmas")
 	("frac",       value<float>()->default_value(0.5), "frac")
@@ -238,6 +253,7 @@ int main(int argc, char* argv[])
   bool profileMCNP = vm["profileMCNP"].as<bool>();
   bool decorrelate = vm["decorrelate"].as<bool>();
   bool doPoisson = vm["doPoisson"].as<bool>();
+  bool computeJtildeError = vm["computeJtildeError"].as<bool>();
   
   std::vector<TRandom3*> rans = {};
   for(unsigned int i = 0; i < 10; i++){
@@ -263,6 +279,7 @@ int main(int argc, char* argv[])
   double mu_data_BB, err_data_BB;
   double mu_data5s_BB, err_data5s_BB;
   double mu_true, err_true;
+  double tstat, tstat5s;
   tree->Branch("mu_data",  &mu_data, "mu_data/D");
   tree->Branch("err_data", &err_data, "err_data/D");
   tree->Branch("mu_poisdata",  &mu_poisdata, "mu_poisdata/D");
@@ -295,7 +312,8 @@ int main(int argc, char* argv[])
   tree->Branch("err_mc", &err_mc, "err_mc/D");
   tree->Branch("mu_true",  &mu_true, "mu_true/D");
   tree->Branch("err_true", &err_true, "err_true/D");
-
+  treeFC->Branch("tstat",  &tstat, "tstat/D");
+  treeFC->Branch("tstat5s",  &tstat5s, "tstat5s/D");
    
   TH1D* h_true_0 = new TH1D("h_true_0", "", nbins, 0.0, 1.0);
   TH1D* h_true_1 = new TH1D("h_true_1", "", nbins, 0.0, 1.0);
@@ -489,12 +507,17 @@ int main(int argc, char* argv[])
 	
 	double fval_fullFix = double(minFC_fullFix.Fval());
 	double test_stat = 2*(fval_fullFix-fval_full);
+	if(idata==0)
+	  tstat = test_stat;
+	else
+	  tstat5s = test_stat;
 	uparFC_full.Release("mu0");
 
 	//cout << "Toy: fval " << fval_full <<  " --> " << fval_fullFix << endl;
 
 	VectorXd jtilde = VectorXd::Zero(2*nbins);
 	VectorXd jhat   = VectorXd::Zero(2*nbins);
+	VectorXd error_on_sum = VectorXd::Zero(nbins);
 	
 	MatrixXd invsqrtV  = MatrixXd::Zero(1,1);
 	MatrixXd invVj = MatrixXd::Zero(2,2);
@@ -523,6 +546,16 @@ int main(int argc, char* argv[])
 	  VectorXd jtildei = B.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(-g);
 	  jtilde(2*i)   = jtildei(0);
 	  jtilde(2*i+1) = jtildei(1);
+
+	  if(computeJtildeError){
+	    MatrixXd Vjtildei = ( X.transpose()*invsqrtV*invsqrtV*X + invVj ).inverse();
+	    VectorXd ei = VectorXd::Zero(2);
+	    ei << X(0,0), X(0,1);
+	    MatrixXd error_on_sumi = ei.transpose()*Vjtildei*ei;
+	    //cout << "Error on sum: " << TMath::Sqrt( 1./invVj(0,0)*X(0,0)*X(0,0)  + 1./invVj(1,1)*X(0,1)*X(0,1) ) << " --> " << TMath::Sqrt(error_on_sumi(0,0)) << endl;
+	    error_on_sum(i) = TMath::Sqrt(error_on_sumi(0,0));
+	  }
+
 	  //cout << "Bin " << i << endl;
 	  //cout << "\tj0: " << jtildei(0) << " --> " << jhati(0) << " (" << (jtildei(0) - jhati(0))/TMath::Sqrt(A_itoy(i,0)*lumiscale) << ")" << endl;
 	  //cout << "\tj1: " << jtildei(1) << " --> " << jhati(1) << " (" << (jtildei(1) - jhati(1))/TMath::Sqrt(A_itoy(i,1)*lumiscale) << ")" << endl;
@@ -590,6 +623,11 @@ int main(int argc, char* argv[])
 	      yFC_itoy(ir) = rans[1+idata]->Poisson( (1.0 + mu0Fix)*jtilde(2*ir) + (1.0 + mu1Fix)*jtilde(2*ir+1) );
 	      if(decorrelate)
 		yFC_itoy(ir) = rans[1+idata]->Poisson( (1.0 + mu0Fix + mu1Fix)*jtilde(2*ir) + (1.0 - mu0Fix + mu1Fix)*jtilde(2*ir+1) );
+
+	      if(computeJtildeError){
+		yFC_itoy(ir) += rans[3+idata]->Gaus(0., error_on_sum(ir));
+	      }
+	      
 	    }
 	    likelihoodFC_full->set_data(ir, yFC_itoy(ir) );
 	  }
@@ -604,7 +642,6 @@ int main(int argc, char* argv[])
 	    uparFC_full.SetValue("mu0", mu0Fix );
 	  else{
 	    uparFC_full.SetValue("mu0", (idata==1)*err_true*nsigmas );
-	    //uparFC_full.SetValue("mu0", mu0Fix );
 	  }
 	  uparFC_full.SetValue("mu1", 0.0);
 	  MnMigrad migradFC_full_itoyFix(*likelihoodFC_full, uparFC_full, 1);
@@ -613,11 +650,11 @@ int main(int argc, char* argv[])
 	  //cout << "\t FC Tot fval " << fval_full_itoy <<  " --> " << fval_full_itoyFix << endl;
 	  //cout << 2*(fval_full_itoyFix - fval_full_itoy) << endl;
 	  h_teststat_itoy->Fill( 2*(fval_full_itoyFix - fval_full_itoy) );
-	  //if( 2*(fval_full_itoyFix - fval_full_itoy) < 1.0 ) count++;
 	  uparFC_full.Release("mu0");
 	}
 
 	// restore initial data
+	//if(computeJtildeError) likelihoodFC_full->restore_dataErr2();
 	for(unsigned int ir=0; ir<nbins; ir++){
 	  likelihoodFC_full->set_data(ir, y_itoy(ir) );  
 	}
