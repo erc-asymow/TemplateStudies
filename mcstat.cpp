@@ -555,7 +555,6 @@ int main(int argc, char* argv[])
 	    //cout << "Error on sum: " << TMath::Sqrt( 1./invVj(0,0)*X(0,0)*X(0,0)  + 1./invVj(1,1)*X(0,1)*X(0,1) ) << " --> " << TMath::Sqrt(error_on_sumi(0,0)) << endl;
 	    error_on_sum(i) = TMath::Sqrt(error_on_sumi(0,0));
 	  }
-
 	  //cout << "Bin " << i << endl;
 	  //cout << "\tj0: " << jtildei(0) << " --> " << jhati(0) << " (" << (jtildei(0) - jhati(0))/TMath::Sqrt(A_itoy(i,0)*lumiscale) << ")" << endl;
 	  //cout << "\tj1: " << jtildei(1) << " --> " << jhati(1) << " (" << (jtildei(1) - jhati(1))/TMath::Sqrt(A_itoy(i,1)*lumiscale) << ")" << endl;
@@ -581,7 +580,7 @@ int main(int argc, char* argv[])
 	  }
 	}
 
-	
+	// debug histograms containing the pre and post-fit distributions of templates
 	TH1D* h_jtilde0_itoy = (TH1D*)h_true_0->Clone(Form("h_data%d_jtilde0_%d",idata,itoy));
 	TH1D* h_jtilde1_itoy = (TH1D*)h_true_1->Clone(Form("h_data%d_jtilde1_%d",idata,itoy));
 	TH1D* h_j0_itoy      = (TH1D*)h_true_0->Clone(Form("h_data%d_j0_%d",idata,itoy));
@@ -604,26 +603,32 @@ int main(int argc, char* argv[])
 	  h_obs_itoy->SetBinContent(ir+1, y_itoy(ir));
 	}
 
+	// histogram containing the sampling distribution of the test-statistic
 	TString hname = "";
 	if(idata==0)
 	  hname = Form("h_data_teststat_%d", itoy );
 	else
-	  hname = Form("h_data5s_teststat_%d", itoy );
+	  hname = Form("h_data5s_teststat_%d", itoy );	
 	TH1D* h_teststat_itoy = new TH1D( hname, "", 200, 0., 20);
 
-	//int count = 0;
 	for(unsigned int itoyFC=0; itoyFC<TMath::Max(ntoysFC, long(1000)); itoyFC++){
+
+	  // fill the data for the FC toys
 	  for(unsigned int ir=0; ir<nbins; ir++){      	  
+
+	    // cheat means that we draw the data from the ideal case
 	    if(doFCcheat){
 	      yFC_itoy(ir) = rans[1+idata]->Poisson(  ( 1.0 + (idata==1)*err_true*nsigmas)*A_true(ir,0) + A_true(ir,1) );
 	      if(decorrelate)
 		yFC_itoy(ir) = rans[1+idata]->Poisson(  ( 1.0 + (idata==1)*err_true*nsigmas  )*A_true(ir,0) + (1.0 - (idata==1)*err_true*nsigmas )*A_true(ir,1) );
 	    }
+	    // otherwise, we draw from the best fit to the data
 	    else{
 	      yFC_itoy(ir) = rans[1+idata]->Poisson( (1.0 + mu0Fix)*jtilde(2*ir) + (1.0 + mu1Fix)*jtilde(2*ir+1) );
 	      if(decorrelate)
 		yFC_itoy(ir) = rans[1+idata]->Poisson( (1.0 + mu0Fix + mu1Fix)*jtilde(2*ir) + (1.0 - mu0Fix + mu1Fix)*jtilde(2*ir+1) );
 
+	      // Optionally, add extra noise to the data corresponding to the error on the postfit MC
 	      if(computeJtildeError){
 		yFC_itoy(ir) += rans[3+idata]->Gaus(0., error_on_sum(ir));
 	      }
@@ -631,6 +636,8 @@ int main(int argc, char* argv[])
 	    }
 	    likelihoodFC_full->set_data(ir, yFC_itoy(ir) );
 	  }
+
+	  // fit the FC toy
 	  uparFC_full.Release("mu0");
 	  uparFC_full.SetValue("mu0", 0.0);
 	  uparFC_full.SetValue("mu1", 0.0);
