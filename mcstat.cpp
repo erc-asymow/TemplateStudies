@@ -279,6 +279,7 @@ int main(int argc, char* argv[])
   double mu_data_BB, err_data_BB;
   double mu_data5s_BB, err_data5s_BB;
   double mu_true, err_true;
+  double mu_true5s, err_true5s;
   double tstat, tstat5s;
   tree->Branch("mu_data",  &mu_data, "mu_data/D");
   tree->Branch("err_data", &err_data, "err_data/D");
@@ -312,6 +313,8 @@ int main(int argc, char* argv[])
   tree->Branch("err_mc", &err_mc, "err_mc/D");
   tree->Branch("mu_true",  &mu_true, "mu_true/D");
   tree->Branch("err_true", &err_true, "err_true/D");
+  tree->Branch("mu_true5s",  &mu_true5s, "mu_true5s/D");
+  tree->Branch("err_true5s", &err_true5s, "err_true5s/D");
   treeFC->Branch("tstat",  &tstat, "tstat/D");
   treeFC->Branch("tstat5s",  &tstat5s, "tstat5s/D");
    
@@ -332,8 +335,7 @@ int main(int argc, char* argv[])
   
   TH1D* h_true_tot = (TH1D*)h_true_0->Clone("h_true_tot");
   h_true_tot->Add(h_true_1, 1.0);
-  double proc_ratio = h_true_0->Integral()/h_true_1->Integral();
-  
+
   cout << "h_true_0: integral = " << h_true_0->Integral() << endl;
   cout << "h_true_1: integral = " << h_true_1->Integral() << endl;
   cout << "h_true_tot: integral = " << h_true_tot->Integral() << endl;
@@ -353,7 +355,7 @@ int main(int argc, char* argv[])
     }
   }
   for(unsigned int ir=0; ir<nbins; ir++){
-    invV_true(ir,ir) = 1./h_true_tot->GetBinContent(ir+1);
+    invV_true(ir,ir) = 1./( A_true(ir, 0) + A_true(ir, 1));
   }
 
   // A_true --> J_true
@@ -376,15 +378,27 @@ int main(int argc, char* argv[])
   
   mu_true = 0.0;
   err_true = TMath::Sqrt(C_true(0,0));
+
+  mu_true5s = mu_true + err_true*nsigmas;
   
-  /*
-  MatrixXd C_inv = MatrixXd::Zero(2, 2);
-  for(unsigned int ib=0; ib<nbins; ib++){
-    C_inv += (A_true.row(ib).transpose()*A_true.row(ib))/h_true_tot->GetBinContent(ib+1);
+  MatrixXd A_true5s = MatrixXd::Zero(nbins, 2);
+  MatrixXd invV_true5s = MatrixXd::Zero(nbins, nbins);
+  MatrixXd J_true5s = MatrixXd::Zero(nbins, 2);
+  for(unsigned int ir=0; ir<nbins; ir++){
+    A_true5s(ir, 0) = (1.0 + mu_true5s)*h_true_0->GetBinContent(ir+1);
+    A_true5s(ir, 1) = (1.0 - mu_true5s)*h_true_1->GetBinContent(ir+1);
+    J_true5s(ir, 0) = A_true5s(ir, 0);
+    J_true5s(ir, 1) = A_true5s(ir, 1);
+    if(decorrelate){
+      J_true5s(ir, 0) = A_true5s(ir, 0) - A_true5s(ir, 1);
+      J_true5s(ir, 1) = A_true5s(ir, 0) + A_true5s(ir, 1);
+    }
   }
-  MatrixXd C_alt = C_inv.inverse();
-  cout << "Errors on mu_[0,1] = [" << TMath::Sqrt(C_alt(0,0)) << "," << TMath::Sqrt(C_alt(1,1)) << "]" << endl;
-  */
+  for(unsigned int ir=0; ir<nbins; ir++){
+    invV_true5s(ir,ir) = 1./( A_true5s(ir, 0) + A_true5s(ir, 1));
+  }
+  MatrixXd C_true5s = ( J_true5s.transpose()*invV_true5s*J_true5s ).inverse();
+  err_true5s = TMath::Sqrt(C_true5s(0,0));
 
   MatrixXd A_itoy = MatrixXd::Zero(nbins, 2);
   MatrixXd J_itoy = MatrixXd::Zero(nbins, 2);
@@ -470,9 +484,9 @@ int main(int argc, char* argv[])
 	  if(idata==0)
 	    y_itoy(ir)   = rans[1+idata]->Poisson( A_true(ir,0) + A_true(ir,1) );
 	  else{
-	    y_itoy(ir)   = rans[1+idata]->Poisson( A_true(ir,0)*(1.0 + err_true*nsigmas) + A_true(ir,1) );
+	    y_itoy(ir)   = rans[1+idata]->Poisson( A_true(ir,0)*(1.0 + mu_true5s) + A_true(ir,1) );
 	    if(decorrelate)
-	      y_itoy(ir)   = rans[1+idata]->Poisson( A_true(ir,0)*(1.0 + err_true*nsigmas) + A_true(ir,1)*(1.0 - err_true*nsigmas) );
+	      y_itoy(ir)   = rans[1+idata]->Poisson( A_true(ir,0)*(1.0 + mu_true5s) + A_true(ir,1)*(1.0 - mu_true5s) );
 	  }
 	  likelihoodFC_full->set_mc0(ir, A_itoy(ir,0));
 	  likelihoodFC_full->set_mc1(ir, A_itoy(ir,1));
@@ -493,7 +507,7 @@ int main(int argc, char* argv[])
 	double mu0Hat = minFC_full.UserState().Value(0);
 	double mu1Hat = minFC_full.UserState().Value(1);
 
-	uparFC_full.SetValue("mu0", idata==0 ? 0.0 : err_true*nsigmas );
+	uparFC_full.SetValue("mu0", idata==0 ? 0.0 : mu_true5s );
 	uparFC_full.Fix("mu0");
 	MnMigrad migradFC_fullFix(*likelihoodFC_full, uparFC_full, 1);
 	FunctionMinimum minFC_fullFix = migradFC_fullFix(maxfcn, tolerance);	
@@ -618,9 +632,9 @@ int main(int argc, char* argv[])
 
 	    // cheat means that we draw the data from the ideal case
 	    if(doFCcheat){
-	      yFC_itoy(ir) = rans[1+idata]->Poisson(  ( 1.0 + (idata==1)*err_true*nsigmas)*A_true(ir,0) + A_true(ir,1) );
+	      yFC_itoy(ir) = rans[1+idata]->Poisson(  ( 1.0 + (idata==1)*mu_true5s)*A_true(ir,0) + A_true(ir,1) );
 	      if(decorrelate)
-		yFC_itoy(ir) = rans[1+idata]->Poisson(  ( 1.0 + (idata==1)*err_true*nsigmas  )*A_true(ir,0) + (1.0 - (idata==1)*err_true*nsigmas )*A_true(ir,1) );
+		yFC_itoy(ir) = rans[1+idata]->Poisson(  ( 1.0 + (idata==1)*mu_true5s  )*A_true(ir,0) + (1.0 - (idata==1)*mu_true5s )*A_true(ir,1) );
 	    }
 	    // otherwise, we draw from the best fit to the data
 	    else{
@@ -645,10 +659,11 @@ int main(int argc, char* argv[])
 	  FunctionMinimum minFC_full_itoy = migradFC_full_itoy(maxfcn, tolerance);
 	  double fval_full_itoy = double(minFC_full_itoy.Fval());
 	  uparFC_full.Fix("mu0");
-	  if(!doFCcheat)
+	  if(!doFCcheat){
 	    uparFC_full.SetValue("mu0", mu0Fix );
+	  }
 	  else{
-	    uparFC_full.SetValue("mu0", (idata==1)*err_true*nsigmas );
+	    uparFC_full.SetValue("mu0", (idata==1)*mu_true5s );
 	  }
 	  uparFC_full.SetValue("mu1", 0.0);
 	  MnMigrad migradFC_full_itoyFix(*likelihoodFC_full, uparFC_full, 1);
@@ -703,11 +718,11 @@ int main(int argc, char* argv[])
 	if( idata==0 ){
 	  if(ntoysFC<=100)
 	    cout << "t0: " << test_stat << " < " << q[0] << " ? " << "t<q0 vs eL<0<eT: " << (test_stat<=q[0]) << ":" <<  ( 0.0 >= mu0Hat+errFCLow_poisdata_BBfull && 0.0 <= mu0Hat+errFCUp_poisdata_BBfull  )  << endl;
-	  if(  0.0 >= mu0Hat+errFCLow_poisdata_BBfull && 0.0 <= mu0Hat+errFCUp_poisdata_BBfull  )
+	  if(  mu_true >= mu0Hat+errFCLow_poisdata_BBfull && mu_true <= mu0Hat+errFCUp_poisdata_BBfull  )
 	    prob_poisdata_BBfullFC += 1./ntoysFC;
 	}
 	else{
-	  if( err_true*nsigmas >= mu0Hat+errFCLow_poisdata5s_BBfull && err_true*nsigmas <= mu0Hat+errFCUp_poisdata5s_BBfull)
+	  if( mu_true5s >= mu0Hat+errFCLow_poisdata5s_BBfull && mu_true5s <= mu0Hat+errFCUp_poisdata5s_BBfull)
 	    prob_poisdata5s_BBfullFC += 1./ntoysFC;
 	}
 
@@ -785,9 +800,9 @@ int main(int argc, char* argv[])
       y_itoy(ir)   = rans[0]->Poisson( A_true.row(ir).sum() );
       
       // toy data drawn from true 5sigma 
-      y5s_itoy(ir) = rans[0]->Poisson( A_true(ir,0)*(1.0 + err_true*nsigmas) + A_true(ir,1)  );
+      y5s_itoy(ir) = rans[0]->Poisson( A_true(ir,0)*(1.0 + mu_true5s) + A_true(ir,1)  );
       if(decorrelate)
-	y5s_itoy(ir) = rans[0]->Poisson( A_true(ir,0)*(1.0 + err_true*nsigmas) + A_true(ir,1)*(1.0 - err_true*nsigmas)  );
+	y5s_itoy(ir) = rans[0]->Poisson( A_true(ir,0)*(1.0 + mu_true5s) + A_true(ir,1)*(1.0 - mu_true5s)  );
       
       // toy data drawn from "MC" 
       yMC_itoy(ir) = rans[0]->Poisson( A_itoy.row(ir).sum() );
@@ -1071,11 +1086,11 @@ int main(int argc, char* argv[])
     
     if( TMath::Abs(mu_data-mu_true)/err_data <= 1.0 )
       prob_data += 1./ntoys;
-    if( TMath::Abs(mu_data5s-(mu_true + err_true*nsigmas))/err_data5s <= 1.0 )
+    if( TMath::Abs(mu_data5s-mu_true5s)/err_data5s <= 1.0 )
       prob_data5s += 1./ntoys;
     if( TMath::Abs(mu_data_BB-mu_true)/err_data_BB <= 1.0 )
       prob_data_BB += 1./ntoys;
-    if( TMath::Abs(mu_data5s_BB-(mu_true + err_true*nsigmas))/err_data5s_BB <= 1.0 )
+    if( TMath::Abs(mu_data5s_BB- mu_true5s)/err_data5s_BB <= 1.0 )
       prob_data5s_BB += 1./ntoys;
     if( TMath::Abs(mu_mc-mu_true)/err_mc <= 1.0 )
       prob_mc += 1./ntoys;
@@ -1085,15 +1100,15 @@ int main(int argc, char* argv[])
       prob_poisdata_BB += 1./ntoys;
     if( TMath::Abs(mu_poisdata_BBfull-mu_true)/err_poisdata_BBfull <= 1.0 )
       prob_poisdata_BBfull += 1./ntoys;
-    if( TMath::Abs(mu_poisdata5s-(mu_true + err_true*nsigmas))/err_poisdata5s <= 1.0 )
+    if( TMath::Abs(mu_poisdata5s- mu_true5s)/err_poisdata5s <= 1.0 )
       prob_poisdata5s += 1./ntoys;
-    if( TMath::Abs(mu_poisdata5s_BB-(mu_true + err_true*nsigmas))/err_poisdata5s_BB <= 1.0 )
+    if( TMath::Abs(mu_poisdata5s_BB- mu_true5s)/err_poisdata5s_BB <= 1.0 )
       prob_poisdata5s_BB += 1./ntoys;
-    if( TMath::Abs(mu_poisdata5s_BBfull-(mu_true + err_true*nsigmas))/err_poisdata5s_BBfull <= 1.0 )
+    if( TMath::Abs(mu_poisdata5s_BBfull- mu_true5s)/err_poisdata5s_BBfull <= 1.0 )
       prob_poisdata5s_BBfull += 1./ntoys;
     if( mu_poisdata_BBfull >= (mu_true + errPLRLow_poisdata_BBfull) && mu_poisdata_BBfull <= (mu_true + errPLRUp_poisdata_BBfull)  )
       prob_poisdata_BBfullPLR += 1./ntoys;
-    if( mu_poisdata5s_BBfull >= (mu_true + err_true*nsigmas + errPLRLow_poisdata5s_BBfull) && mu_poisdata5s_BBfull <= (mu_true + err_true*nsigmas + errPLRUp_poisdata5s_BBfull) )
+    if( mu_poisdata5s_BBfull >= (mu_true5s + errPLRLow_poisdata5s_BBfull) && mu_poisdata5s_BBfull <= (mu_true5s + errPLRUp_poisdata5s_BBfull) )
       prob_poisdata5s_BBfullPLR += 1./ntoys;
     
     if(verbose){
@@ -1114,6 +1129,7 @@ int main(int argc, char* argv[])
   int n, nFC;
   double asym_corr, asym_cond;
   double asym_err, asym_derr, asym_med, asym_cov;
+  double asym5s_err;
   double data_err, data_derr, data_med, data_cov;
   double data5s_err, data5s_derr, data5s_med, data5s_cov;
   double dataBB_err, dataBB_derr, dataBB_med, dataBB_cov;
@@ -1134,6 +1150,7 @@ int main(int argc, char* argv[])
   treesum->Branch("asym_corr",  &asym_corr,  "asym_corr/D");
   treesum->Branch("asym_cond",  &asym_cond,  "asym_cond/D");
   treesum->Branch("asym_err",  &asym_err,  "asym_err/D");
+  treesum->Branch("asym5s_err", &asym5s_err,  "asym5s_err/D");
   treesum->Branch("asym_derr", &asym_derr, "asym_derr/D");
   treesum->Branch("asym_med",  &asym_med,  "asym_med/D");
   treesum->Branch("asym_cov",  &asym_cov,  "asym_cov/D");
@@ -1199,6 +1216,7 @@ int main(int argc, char* argv[])
   asym_corr = rho_true;
   asym_cond = condition_true;
   asym_err = TMath::Sqrt(C_true(0,0));
+  asym5s_err = TMath::Sqrt(C_true5s(0,0));
   asym_derr = 0.0;
   asym_med = asym_err;
   asym_cov = 1.0 - TMath::Prob(1.0, 1);
@@ -1207,6 +1225,7 @@ int main(int argc, char* argv[])
 
   tree->Draw("err_mc>>haux");
   cout << "Asympt. err:            " << TMath::Sqrt(C_true(0,0)) << ", coverage = " << 1.0 - TMath::Prob(1.0, 1)  << endl;
+  cout << "Asympt. err 5s:         " << TMath::Sqrt(C_true5s(0,0)) << ", coverage = " << 1.0 - TMath::Prob(1.0, 1)  << endl;
   cout << "MC:                     " << prob_mc << " +/- " << TMath::Sqrt(prob_mc*(1-prob_mc)/ntoys) <<  " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
 
