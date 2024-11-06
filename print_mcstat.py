@@ -141,6 +141,7 @@ def print_all( fname = '1_200_0p015_decorr'):
 
     for entry in t_nom:                
         print( 'Infinite MC    & Analytic & Hessian     & 0           &  ' + ('%.3f' % entry.asym_cov) + '      & ' + (' $%.3f$' % entry.asym_err) + ' \\\\'  )
+        #print( '               &          &             & $5\\sigma$   &  ' + ('%.3f' % entry.asym_cov) + '      & ' + (' $%.3f$' % entry.asym5s_err) + ' \\\\'  )
     print( '\\hline')
     
     for entry in t_Poisson:
