@@ -1083,7 +1083,7 @@ int main(int argc, char* argv[])
     err_poisdata5s_BB     = xmin_lite5sErr(0);
     mu_poisdata5s_BBfull  = xmin_full5s(0);
     err_poisdata5s_BBfull = xmin_full5sErr(0);
-    
+
     if( TMath::Abs(mu_data-mu_true)/err_data <= 1.0 )
       prob_data += 1./ntoys;
     if( TMath::Abs(mu_data5s-mu_true5s)/err_data5s <= 1.0 )

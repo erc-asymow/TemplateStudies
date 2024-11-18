@@ -90,57 +90,64 @@ def print_all( fname = '1_200_0p015_decorr'):
     asym = float((fname.split('_')[2]).split('p')[1])*1e-03
     print('Doing files '+fname)
     vals_nom = {
-        'dataPois'            : "Gaus           & Numeric  & Hessian     & 0          ",
-        'data5sPois'          : "               &          &             & $5\\sigma$  ",
-        'data'                : "Gaus           & Analytic & Hessian     & 0          ",
-        'data5s'              : "               &          &             & $5\\sigma$  ",
-        'dataBB'              : "Gaus + BB-lite & Analytic & Hessian     & 0          ",
-        'data5sBB'            : "               &          &             & $5\\sigma$  ",
-        'dataPoisBB'          : "Gaus + BB-lite & Numeric  & Hessian     & 0          ",
-        'data5sPoisBB'        : "               &          &             & $5\\sigma$  ",
-        'dataPoisBBfull'      : "Gaus + BB-full & Numeric  & Hessian     & 0          ",
-        'data5sPoisBBfull'    : "               &          &             & $5\\sigma$  ",
-        'dataPoisBBfullPLR'   : "Gaus + BB-full & Numeric  & PLR scan    & 0          ",
-        'data5sPoisBBfullPLR' : "               &          &             & $5\\sigma$  ",
-        'dataPoisBBfullFC'    : "Gaus + BB-full & Numeric  & FC Profile  & 0          ",
-        'data5sPoisBBfullFC'  : "               &          &             & $5\\sigma$  ",
+        'dataPois'            : "Gaus           & Numeric  & Hessian        & 0          ",
+        'data5sPois'          : "               &          &                & $5\\sigma$  ",
+        'data'                : "Gaus           & Analytic & Hessian        & 0          ",
+        'data5s'              : "               &          &                & $5\\sigma$  ",
+        'dataBB'              : "Gaus + BB-lite & Analytic & Hessian        & 0          ",
+        'data5sBB'            : "               &          &                & $5\\sigma$  ",
+        'dataPoisBB'          : "Gaus + BB-lite & Numeric  & Hessian        & 0          ",
+        'data5sPoisBB'        : "               &          &                & $5\\sigma$  ",
+        'dataPoisBBfull'      : "Gaus + BB-full & Numeric  & Hessian        & 0          ",
+        'data5sPoisBBfull'    : "               &          &                & $5\\sigma$  ",
+        'dataPoisBBfullPLR'   : "Gaus + BB-full & Numeric  & PLR scan       & 0          ",
+        'data5sPoisBBfullPLR' : "               &          &                & $5\\sigma$  ",
+        'dataPoisBBfullFC'    : "Gaus + BB-full & Numeric  & FC Profile all & 0          ",
+        'data5sPoisBBfullFC'  : "               &          &                & $5\\sigma$  ",
+        }
+
+    f_FCfixToTrue = ROOT.TFile( './root/mcstat_' + fname + '_FCfixToTrue.root', 'READ' )
+    t_FCfixToTrue = f_FCfixToTrue.Get('treesum')
+    vals_FCfixToTrue = {
+        'dataPoisBBfullFC'    : "Gaus + BB-full & Numeric  & FC Profile NP  & 0          ",
+        'data5sPoisBBfullFC'  : "               &          &                & $5\\sigma$  "
         }
 
     f_Poisson = ROOT.TFile( './root/mcstat_' + fname + '_Poisson.root', 'READ' )
     t_Poisson = f_Poisson.Get('treesum')
     vals_Poisson = {
-        'dataPois'            : "Poisson        & Numeric  & Hessian     & 0          ",
-        'data5sPois'          : "               &          &             & $5\\sigma$  ",
+        'dataPois'            : "Poisson        & Numeric  & Hessian        & 0          ",
+        'data5sPois'          : "               &          &                & $5\\sigma$  ",
         }
 
     f_Barlett = ROOT.TFile( './root/mcstat_' + fname + '_Barlett.root', 'READ' )
     t_Barlett = f_Barlett.Get('treesum')
     vals_Barlett = {
-        'dataPoisBBfullFC'    : "Gaus + BB-full & Numeric  & PLR+Barlett & 0          ",
-        'data5sPoisBBfullFC'  : "               &          &             & $5\\sigma$  "
+        'dataPoisBBfullFC'    : "Gaus + BB-full & Numeric  & PLR+Barlett    & 0          ",
+        'data5sPoisBBfullFC'  : "               &          &                & $5\\sigma$  "
         }
 
     f_FCCheat = ROOT.TFile( './root/mcstat_' + fname + '_FCCheat.root', 'READ' )
     t_FCCheat = f_FCCheat.Get('treesum')
     vals_FCCheat = {
-        'dataPoisBBfullFC'    : "Gaus + BB-full & Numeric  & FC Cheat    & 0          ",
-        'data5sPoisBBfullFC'  : "               &          &             & $5\\sigma$  "
+        'dataPoisBBfullFC'    : "Gaus + BB-full & Numeric  & FC Cheat       & 0          ",
+        'data5sPoisBBfullFC'  : "               &          &                & $5\\sigma$  "
         }
 
     f_Jtilde = ROOT.TFile( './root/mcstat_' + fname + '_Jtilde.root', 'READ' )
     t_Jtilde = f_Jtilde.Get('treesum')
     vals_Jtilde = {
-        'dataPoisBBfullFC'    : "Gaus + BB-full & Numeric  & {\\it a posteriori} HC  & 0        ",
-        'data5sPoisBBfullFC'  : "               &          &                        & $5\\sigma$"    
+        'dataPoisBBfullFC'    : "Gaus + BB-full & Numeric  & {\\it A posteriori} HC     & 0        ",
+        'data5sPoisBBfullFC'  : "               &          &                           & $5\\sigma$"    
         }
 
     print( '\\begin{tabular}{cccccc}' )
-    print( 'Likelihood     & Minimim. & CI method   & $\\mu_{0}^{\\rm true }$   & Coverage    &  $1\\sigma$ unc.: mean, median            \\\\')
+    print( 'Likelihood     & Minimim. & CI method       & $\\mu_{0}^{\\rm true }$   & Coverage    &  $1\\sigma$ unc.: mean, median            \\\\')
     print( '\\hline')
     print( '\\hline')
 
     for entry in t_nom:                
-        print( 'Infinite MC    & Analytic & Hessian     & 0           &  ' + ('%.3f' % entry.asym_cov) + '      & ' + (' $%.3f$' % entry.asym_err) + ' \\\\'  )
+        print( 'Infinite MC    & Analytic & Hessian        & 0           &  ' + ('%.3f' % entry.asym_cov) + '      & ' + (' $%.3f$' % entry.asym_err) + ' \\\\'  )
         #print( '               &          &             & $5\\sigma$   &  ' + ('%.3f' % entry.asym_cov) + '      & ' + (' $%.3f$' % entry.asym5s_err) + ' \\\\'  )
     print( '\\hline')
     
@@ -154,6 +161,12 @@ def print_all( fname = '1_200_0p015_decorr'):
         for key in vals_nom.keys():
             print( vals_nom[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key) ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
             if 'sigma' in vals_nom[key]:
+                print( '\\hline')
+                
+    for entry in t_FCfixToTrue:
+        for key in vals_FCfixToTrue.keys():
+            print( vals_FCfixToTrue[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key) ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
+            if 'sigma' in vals_FCfixToTrue[key]:
                 print( '\\hline')
 
     for entry in t_Barlett:
@@ -177,9 +190,9 @@ def print_all( fname = '1_200_0p015_decorr'):
     print( '\\hline')
     print( '\\end{tabular}' )
     if 'decorr' in fname:        
-        print('\\caption{ Results for $n_{{\\rm bins}}=%d$, ${\\rm MC/data}=%.0f$, and $\\alpha=%.3f$. The asymptotic correlation between the transformed POI\'s is $\\rho_{ {\\rm asym.}}=%.2f$ and the condition number of the covariance matrix is $\\mathrm{Cond}(V_{{\\rm asym.}})=%.0f$}.' % ( nbins, lumiscale, asym, entry.asym_corr, entry.asym_cond))
+        print('\\caption{ Results for $n=%d$, $k=%.0f$, and $\\alpha=%.3f$. The correlation between the transformed POI\'s is $\\mathrm{Corr}(\\mu_{0}^{\\prime},\\mu_{1}^{\\prime})=%.2f$ and the condition number of the covariance matrix is $\\mathrm{Cond}(V)=%.0f$}.' % ( nbins, lumiscale, asym, entry.asym_corr, entry.asym_cond))
     else:
-        print('\\caption{ Results for $n_{{\\rm bins}}=%d$, ${\\rm MC/data}=%.0f$, and $\\alpha=%.3f$. The asymptotic correlation between the original POI\'s is $\\rho_{ {\\rm asym.}}=%.5f$ and the condition number of the covariance matrix is $\\mathrm{Cond}(V_{{\\rm asym.}})=%.0f$}.' % ( nbins, lumiscale, asym, entry.asym_corr, entry.asym_cond))
+        print('\\caption{ Results for $n=%d$, $k=%.0f$, and $\\alpha=%.3f$. The correlation between the nominal POI\'s is $\\mathrm{Corr}{\\mu_{0}^{\\prime},\\mu_{1}^{\\prime})=%.5f$ and the condition number of the covariance matrix is $\\mathrm{Cond}(V)=%.0f$}.' % ( nbins, lumiscale, asym, entry.asym_corr, entry.asym_cond))
     return
 
 
