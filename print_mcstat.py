@@ -90,64 +90,64 @@ def print_all( fname = '1_200_0p015_decorr'):
     asym = float((fname.split('_')[2]).split('p')[1])*1e-03
     print('Doing files '+fname)
     vals_nom = {
-        'dataPois'            : "Gaus           & Numeric  & Hessian        & 0          ",
-        'data5sPois'          : "               &          &                & $5\\sigma$  ",
-        'data'                : "Gaus           & Analytic & Hessian        & 0          ",
-        'data5s'              : "               &          &                & $5\\sigma$  ",
-        'dataBB'              : "Gaus + BB-lite & Analytic & Hessian        & 0          ",
-        'data5sBB'            : "               &          &                & $5\\sigma$  ",
-        'dataPoisBB'          : "Gaus + BB-lite & Numeric  & Hessian        & 0          ",
-        'data5sPoisBB'        : "               &          &                & $5\\sigma$  ",
-        'dataPoisBBfull'      : "Gaus + BB-full & Numeric  & Hessian        & 0          ",
-        'data5sPoisBBfull'    : "               &          &                & $5\\sigma$  ",
-        'dataPoisBBfullPLR'   : "Gaus + BB-full & Numeric  & PLR scan       & 0          ",
-        'data5sPoisBBfullPLR' : "               &          &                & $5\\sigma$  ",
-        'dataPoisBBfullFC'    : "Gaus + BB-full & Numeric  & FC Profile all & 0          ",
-        'data5sPoisBBfullFC'  : "               &          &                & $5\\sigma$  ",
+        'dataPois'            : "Gauss            & Numeric  & Hessian        & 0          ",
+        'data5sPois'          : "                 &          &                & $5\\sigma$  ",
+        'data'                : "Gauss            & Analytic & Hessian        & 0          ",
+        'data5s'              : "                 &          &                & $5\\sigma$  ",
+        'dataBB'              : "Gauss + MC stat. & Analytic & Hessian        & 0          ",
+        'data5sBB'            : "                 &          &                & $5\\sigma$  ",
+        'dataPoisBB'          : "Gauss + BB-lite  & Numeric  & Hessian        & 0          ",
+        'data5sPoisBB'        : "                 &          &                & $5\\sigma$  ",
+        'dataPoisBBfull'      : "Gauss + BB       & Numeric  & Hessian        & 0          ",
+        'data5sPoisBBfull'    : "                 &          &                & $5\\sigma$  ",
+        'dataPoisBBfullPLR'   : "Gauss + BB       & Numeric  & PLR scan       & 0          ",
+        'data5sPoisBBfullPLR' : "                 &          &                & $5\\sigma$  ",
+        'dataPoisBBfullFC'    : "Gauss + BB       & Numeric  & All-profiled FC& 0          ",
+        'data5sPoisBBfullFC'  : "                 &          &                & $5\\sigma$  ",
         }
 
     f_FCfixToTrue = ROOT.TFile( './root/mcstat_' + fname + '_FCfixToTrue.root', 'READ' )
     t_FCfixToTrue = f_FCfixToTrue.Get('treesum')
     vals_FCfixToTrue = {
-        'dataPoisBBfullFC'    : "Gaus + BB-full & Numeric  & FC Profile NP  & 0          ",
-        'data5sPoisBBfullFC'  : "               &          &                & $5\\sigma$  "
+        'dataPoisBBfullFC'    : "Gauss + BB       & Numeric  & NP-profiled FC & 0          ",
+        'data5sPoisBBfullFC'  : "                 &          &                & $5\\sigma$  "
         }
 
     f_Poisson = ROOT.TFile( './root/mcstat_' + fname + '_Poisson.root', 'READ' )
     t_Poisson = f_Poisson.Get('treesum')
     vals_Poisson = {
-        'dataPois'            : "Poisson        & Numeric  & Hessian        & 0          ",
-        'data5sPois'          : "               &          &                & $5\\sigma$  ",
+        'dataPois'            : "Poisson          & Numeric  & Hessian        & 0          ",
+        'data5sPois'          : "                 &          &                & $5\\sigma$  ",
         }
 
-    f_Barlett = ROOT.TFile( './root/mcstat_' + fname + '_Barlett.root', 'READ' )
+    f_Barlett = ROOT.TFile( './root/mcstat_' + fname + '_BarlettFCfixToTrue.root', 'READ' )
     t_Barlett = f_Barlett.Get('treesum')
     vals_Barlett = {
-        'dataPoisBBfullFC'    : "Gaus + BB-full & Numeric  & PLR+Barlett    & 0          ",
-        'data5sPoisBBfullFC'  : "               &          &                & $5\\sigma$  "
+        'dataPoisBBfullFC'    : "Gauss + BB       & Numeric  & PLR+Barlett    & 0          ",
+        'data5sPoisBBfullFC'  : "                 &          &                & $5\\sigma$  "
         }
 
     f_FCCheat = ROOT.TFile( './root/mcstat_' + fname + '_FCCheat.root', 'READ' )
     t_FCCheat = f_FCCheat.Get('treesum')
     vals_FCCheat = {
-        'dataPoisBBfullFC'    : "Gaus + BB-full & Numeric  & FC Cheat       & 0          ",
-        'data5sPoisBBfullFC'  : "               &          &                & $5\\sigma$  "
+        'dataPoisBBfullFC'    : "Gauss + BB       & Numeric  & FC Cheat       & 0          ",
+        'data5sPoisBBfullFC'  : "                 &          &                & $5\\sigma$  "
         }
 
-    f_Jtilde = ROOT.TFile( './root/mcstat_' + fname + '_Jtilde.root', 'READ' )
+    f_Jtilde = ROOT.TFile( './root/mcstat_' + fname + '_JtildeFCfixToTrue.root', 'READ' )
     t_Jtilde = f_Jtilde.Get('treesum')
     vals_Jtilde = {
-        'dataPoisBBfullFC'    : "Gaus + BB-full & Numeric  & {\\it A posteriori} HC     & 0        ",
-        'data5sPoisBBfullFC'  : "               &          &                           & $5\\sigma$"    
+        'dataPoisBBfullFC'    : "Gauss + BB       & Numeric  & {\\it A posteriori} HC     & 0        ",
+        'data5sPoisBBfullFC'  : "                 &          &                           & $5\\sigma$"    
         }
 
     print( '\\begin{tabular}{cccccc}' )
-    print( 'Likelihood     & Minimim. & CI method       & $\\mu_{0}^{\\rm true }$   & Coverage    &  $1\\sigma$ unc.: mean, median            \\\\')
+    print( 'Likelihood     & Minimim. & CI method      & $\\Delta\\mu^{\\rm true }$ & Coverage    &  $1\\sigma$ error (mean, median)            \\\\')
     print( '\\hline')
     print( '\\hline')
 
     for entry in t_nom:                
-        print( 'Infinite MC    & Analytic & Hessian        & 0           &  ' + ('%.3f' % entry.asym_cov) + '      & ' + (' $%.3f$' % entry.asym_err) + ' \\\\'  )
+        print(  'Gauss + infinite MC& Analytic & Hessian      & 0           &  ' + ('%.3f' % entry.asym_cov) + '      & ' + (' $%.3f, \\; $%.3f$' % (entry.asym_err, entry.asym_err)) + ' \\\\'  )
         #print( '               &          &             & $5\\sigma$   &  ' + ('%.3f' % entry.asym_cov) + '      & ' + (' $%.3f$' % entry.asym5s_err) + ' \\\\'  )
     print( '\\hline')
     
