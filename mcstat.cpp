@@ -264,6 +264,7 @@ int main(int argc, char* argv[])
   TTree* tree = new TTree("tree", "");
   TTree* treeFC = new TTree("treeFC", "");
   double mu_data, err_data;
+  double err_adhocdata, err_adhocdata5s;
   double mu_poisdata, err_poisdata;
   double mu_poisdata_BB, err_poisdata_BB;
   double mu_poisdata_BBfull, err_poisdata_BBfull;
@@ -283,6 +284,8 @@ int main(int argc, char* argv[])
   double tstat, tstat5s;
   tree->Branch("mu_data",  &mu_data, "mu_data/D");
   tree->Branch("err_data", &err_data, "err_data/D");
+  tree->Branch("err_adhocdata", &err_adhocdata, "err_adhocdata/D");
+  tree->Branch("err_adhocdata5s", &err_adhocdata5s, "err_adhocdata5s/D");
   tree->Branch("mu_poisdata",  &mu_poisdata, "mu_poisdata/D");
   tree->Branch("err_poisdata", &err_poisdata, "err_poisdata/D");
   tree->Branch("mu_poisdata_BB",  &mu_poisdata_BB, "mu_poisdata_BB/D");
@@ -430,6 +433,9 @@ int main(int argc, char* argv[])
   double prob_poisdata5s_BBfullFC = 0.;
   double prob_mc = 0.;
 
+  double prob_adhocdata = 0.;
+  double prob_adhocdata5s = 0.;
+  
   unsigned int maxfcn(numeric_limits<unsigned int>::max());
   double tolerance(0.001);
   int verbosity = int(nevents<2);
@@ -1084,6 +1090,15 @@ int main(int argc, char* argv[])
     mu_poisdata5s_BBfull  = xmin_full5s(0);
     err_poisdata5s_BBfull = xmin_full5sErr(0);
 
+    err_adhocdata   = err_true * TMath::Sqrt( 1 + 1./lumiscale ) * (err_poisdata_BBfull / err_poisdata_BB);
+    err_adhocdata5s = err_true * TMath::Sqrt( 1 + 1./lumiscale ) * (err_poisdata5s_BBfull / err_poisdata5s_BB);
+
+    if( TMath::Abs(mu_poisdata_BBfull-mu_true)/err_adhocdata <= 1.0 )
+      prob_adhocdata += 1./ntoys;
+    if( TMath::Abs(mu_poisdata5s_BBfull-mu_true5s)/err_adhocdata5s <= 1.0 )
+      prob_adhocdata5s += 1./ntoys;
+    
+    
     if( TMath::Abs(mu_data-mu_true)/err_data <= 1.0 )
       prob_data += 1./ntoys;
     if( TMath::Abs(mu_data5s-mu_true5s)/err_data5s <= 1.0 )
@@ -1144,7 +1159,9 @@ int main(int argc, char* argv[])
   double data5sPoisBBfullPLR_err, data5sPoisBBfullPLR_derr, data5sPoisBBfullPLR_med, data5sPoisBBfullPLR_cov;
   double dataPoisBBfullFC_err, dataPoisBBfullFC_derr, dataPoisBBfullFC_med, dataPoisBBfullFC_cov;
   double data5sPoisBBfullFC_err, data5sPoisBBfullFC_derr, data5sPoisBBfullFC_med, data5sPoisBBfullFC_cov;
-
+  double adhocdata_err, adhocdata_derr, adhocdata_med, adhocdata_cov;
+  double adhocdata5s_err, adhocdata5s_derr, adhocdata5s_med, adhocdata5s_cov;
+  
   treesum->Branch("n",  &n,  "n/I");
   treesum->Branch("nFC",&nFC,  "nFC/I");
   treesum->Branch("asym_corr",  &asym_corr,  "asym_corr/D");
@@ -1210,6 +1227,14 @@ int main(int argc, char* argv[])
   treesum->Branch("data5sPoisBBfullFC_derr", &data5sPoisBBfullFC_derr, "data5sPoisBBfullFC_derr/D");
   treesum->Branch("data5sPoisBBfullFC_med",  &data5sPoisBBfullFC_med,  "data5sPoisBBfullFC_med/D");
   treesum->Branch("data5sPoisBBfullFC_cov",  &data5sPoisBBfullFC_cov,  "data5sPoisBBfullFC_cov/D");
+  treesum->Branch("adhocdata_err",  &adhocdata_err,  "adhocdata_err/D");
+  treesum->Branch("adhocdata_derr", &adhocdata_derr, "adhocdata_derr/D");
+  treesum->Branch("adhocdata_med",  &adhocdata_med,  "adhocdata_med/D");
+  treesum->Branch("adhocdata_cov",  &adhocdata_cov,  "adhocdata_cov/D");
+  treesum->Branch("adhocdata5s_err",  &adhocdata5s_err,  "adhocdata5s_err/D");
+  treesum->Branch("adhocdata5s_derr", &adhocdata5s_derr, "adhocdata5s_derr/D");
+  treesum->Branch("adhocdata5s_med",  &adhocdata5s_med,  "adhocdata5s_med/D");
+  treesum->Branch("adhocdata5s_cov",  &adhocdata5s_cov,  "adhocdata5s_cov/D");
 
   n = ntoys;
   nFC = ntoysFC;
@@ -1339,6 +1364,22 @@ int main(int argc, char* argv[])
   data5sPoisBBfullFC_med  = get_quantile(haux); 
   data5sPoisBBfullFC_cov  = prob_poisdata5s_BBfullFC;
   cout << "Data5s FC BBFull" << (doFCcheat ? "cheat:  " : " :      ") << prob_poisdata5s_BBfullFC << " +/- " << TMath::Sqrt(prob_poisdata5s_BBfullFC*(1-prob_poisdata5s_BBfullFC)/ntoysFC) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
+  haux->Reset();
+
+  tree->Draw("err_adhocdata>>haux");  
+  adhocdata_err  = haux->GetMean();
+  adhocdata_derr = haux->GetMeanError();
+  adhocdata_med  = get_quantile(haux); 
+  adhocdata_cov  = prob_adhocdata;
+  cout << "Ad hoc                  " << prob_adhocdata << " +/- " << TMath::Sqrt(prob_adhocdata*(1-prob_adhocdata)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
+  haux->Reset();
+
+  tree->Draw("err_adhocdata5s>>haux");  
+  adhocdata5s_err  = haux->GetMean();
+  adhocdata5s_derr = haux->GetMeanError();
+  adhocdata5s_med  = get_quantile(haux); 
+  adhocdata5s_cov  = prob_adhocdata5s;
+  cout << "Ad hoc                  " << prob_adhocdata5s << " +/- " << TMath::Sqrt(prob_adhocdata5s*(1-prob_adhocdata5s)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
 
   treesum->Fill();

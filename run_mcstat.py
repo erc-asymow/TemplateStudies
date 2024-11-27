@@ -21,23 +21,30 @@ def run_one_opt(options, iopt):
     else:
         os.system(options[iopt])
 
-def run_all():
+def run_all( do_m5s=False ):
 
     # default
     options_base = []
-    base_str = './mcstat --ntoys=10000 --ntoysFC=4000 --nbins=200 --nevents=2000000  --lumiscale=1  --asym=0.015  --doFC --decorrelate'
+    #base_str = './mcstat --ntoys=10000 --ntoysFC=4000 --nbins=200 --nevents=2000000  --lumiscale=1  --asym=0.015  --doFC --decorrelate'
+    base_str = './mcstat --ntoys=10000 --ntoysFC=10 --nbins=200 --nevents=2000000  --lumiscale=1  --asym=0.015  --doFC --decorrelate'
 
-    posttag = 'm5s'
-    base_str += ' --nsigmas=-5'
+    posttag = ''
 
+    posttag += 'adhoc'
+
+    if do_m5s:
+        posttag += 'm5s'
+        base_str += ' --nsigmas=-5'
+
+        
     options_base.append( base_str + '                                     --tag=1_200_0p015_decorr'+posttag )
-    options_base.append( base_str + ' --doFCcheat                         --tag=1_200_0p015_decorr'+posttag+'_FCCheat' )
-    options_base.append( base_str + ' --doBarlett                         --tag=1_200_0p015_decorr'+posttag+'_Barlett' )
-    options_base.append( base_str + ' --doPoisson                         --tag=1_200_0p015_decorr'+posttag+'_Poisson' )
-    options_base.append( base_str + ' --computeJtildeError                --tag=1_200_0p015_decorr'+posttag+'_Jtilde' )
-    options_base.append( base_str + ' --FCfixToTrue                       --tag=1_200_0p015_decorr'+posttag+'_FCfixToTrue' )
-    options_base.append( base_str + ' --doBarlett --FCfixToTrue           --tag=1_200_0p015_decorr'+posttag+'_BarlettFCfixToTrue' )
-    options_base.append( base_str + ' --computeJtildeError  --FCfixToTrue --tag=1_200_0p015_decorr'+posttag+'_JtildeFCfixToTrue' )
+    #options_base.append( base_str + ' --doFCcheat                         --tag=1_200_0p015_decorr'+posttag+'_FCCheat' )
+    #options_base.append( base_str + ' --doBarlett                         --tag=1_200_0p015_decorr'+posttag+'_Barlett' )
+    #options_base.append( base_str + ' --doPoisson                         --tag=1_200_0p015_decorr'+posttag+'_Poisson' )
+    #options_base.append( base_str + ' --computeJtildeError                --tag=1_200_0p015_decorr'+posttag+'_Jtilde' )
+    #options_base.append( base_str + ' --FCfixToTrue                       --tag=1_200_0p015_decorr'+posttag+'_FCfixToTrue' )
+    #options_base.append( base_str + ' --doBarlett --FCfixToTrue           --tag=1_200_0p015_decorr'+posttag+'_BarlettFCfixToTrue' )
+    #options_base.append( base_str + ' --computeJtildeError  --FCfixToTrue --tag=1_200_0p015_decorr'+posttag+'_JtildeFCfixToTrue' )
 
     options = []
     for iop in options_base:
@@ -69,4 +76,4 @@ def run_all():
     return
 
 if __name__ == '__main__':
-    run_all()
+    run_all( do_m5s=True )
