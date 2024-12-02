@@ -389,12 +389,16 @@ int main(int argc, char* argv[])
   MatrixXd J_true5s = MatrixXd::Zero(nbins, 2);
   for(unsigned int ir=0; ir<nbins; ir++){
     A_true5s(ir, 0) = (1.0 + mu_true5s)*h_true_0->GetBinContent(ir+1);
-    A_true5s(ir, 1) = (1.0 - mu_true5s)*h_true_1->GetBinContent(ir+1);
-    J_true5s(ir, 0) = A_true5s(ir, 0);
-    J_true5s(ir, 1) = A_true5s(ir, 1);
+    A_true5s(ir, 1) = decorrelate ? (1.0 - mu_true5s)*h_true_1->GetBinContent(ir+1) : h_true_1->GetBinContent(ir+1);
+    //J_true5s(ir, 0) = A_true5s(ir, 0);
+    //J_true5s(ir, 1) = A_true5s(ir, 1);
+    J_true5s(ir, 0) = h_true_0->GetBinContent(ir+1);
+    J_true5s(ir, 1) = h_true_1->GetBinContent(ir+1);
     if(decorrelate){
-      J_true5s(ir, 0) = A_true5s(ir, 0) - A_true5s(ir, 1);
-      J_true5s(ir, 1) = A_true5s(ir, 0) + A_true5s(ir, 1);
+      //J_true5s(ir, 0) = A_true5s(ir, 0) - A_true5s(ir, 1);
+      //J_true5s(ir, 1) = A_true5s(ir, 0) + A_true5s(ir, 1);
+      J_true5s(ir, 0) = h_true_0->GetBinContent(ir+1) - h_true_1->GetBinContent(ir+1);
+      J_true5s(ir, 1) = h_true_0->GetBinContent(ir+1) + h_true_1->GetBinContent(ir+1);
     }
   }
   for(unsigned int ir=0; ir<nbins; ir++){
@@ -1091,7 +1095,7 @@ int main(int argc, char* argv[])
     err_poisdata5s_BBfull = xmin_full5sErr(0);
 
     err_adhocdata   = err_true * TMath::Sqrt( 1 + 1./lumiscale ) * (err_poisdata_BBfull / err_poisdata_BB);
-    err_adhocdata5s = err_true * TMath::Sqrt( 1 + 1./lumiscale ) * (err_poisdata5s_BBfull / err_poisdata5s_BB);
+    err_adhocdata5s = err_true5s * TMath::Sqrt( 1 + 1./lumiscale ) * (err_poisdata5s_BBfull / err_poisdata5s_BB);
 
     if( TMath::Abs(mu_poisdata_BBfull-mu_true)/err_adhocdata <= 1.0 )
       prob_adhocdata += 1./ntoys;

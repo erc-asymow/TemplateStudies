@@ -287,19 +287,19 @@ def print_all_pm( fname = '1_200_0p015_decorr'):
     fm5_adhoc = ROOT.TFile( './root/mcstat_' + fname + 'adhocm5s.root', 'READ' )
     tm5_adhoc = fm5_adhoc.Get('treesum')
     vals_adhoc = {
-        'adhocdata'    : "Gauss + BB       & Numeric  & Ad hoc         & 0        ",
+        'adhocdata'    : "Gauss + BB       & Numeric  & {\\it Ad hoc}   & 0        ",
         'adhocdata5s'  : "                 &          &                &$+5\\sigma$"    
         }
 
     print('')
     print('')
     print( '\\begin{tabular}{cccccc}' )
-    print( 'Likelihood     & Minimim. & CI method      & $\\Delta\\mu^{\\rm true }$ & Coverage    &  $1\\sigma$ error (mean, median)            \\\\')
+    print( 'Likelihood     & Minimim. & CI method      & $\\Delta\\mu^{\\rm true }$ & Coverage    &  $1\\sigma$ (mean, median)            \\\\')
     print( '\\hline')
     print( '\\hline')
 
     for entry in t_nom:                
-        print(  'Gauss + infinite MC& Analytic & Hessian      & 0           &  ' + ('%.3f' % entry.asym_cov) + '      & ' + (' $%.3f, \\; $%.3f$' % (entry.asym_err, entry.asym_err)) + ' \\\\'  )
+        print(  'Gauss (asympt.) & Analytic & Hessian      & 0           &  ' + ('$%.3f$' % entry.asym_cov) + '      & ' + (' $%.3f, \\; %.3f$' % (entry.asym_err, entry.asym_err)) + ' \\\\'  )
     print( '\\hline')
     
     for entry in t_Poisson:
@@ -307,7 +307,7 @@ def print_all_pm( fname = '1_200_0p015_decorr'):
             if 'sigma' in vals_Poisson[key]:
                 print( vals_Poisson[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key) ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
                 for entrym5 in tm5_Poisson:
-                    print( vals_Poisson[key] + ' & ' + print_coverage( getattr(entrym5, key+'_cov'), error(entrym5, key) ) + ' & ' + print_mean( getattr(entrym5, key+'_err'), getattr(entrym5, key+'_derr'), getattr(entrym5, key+'_med' )) + ' \\\\' )
+                    print( vals_Poisson[key].replace('$+5', '$-5') + ' & ' + print_coverage( getattr(entrym5, key+'_cov'), error(entrym5, key) ) + ' & ' + print_mean( getattr(entrym5, key+'_err'), getattr(entrym5, key+'_derr'), getattr(entrym5, key+'_med' )) + ' \\\\' )
                 print( '\\hline')
             else:
                 print( vals_Poisson[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key) ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
@@ -380,7 +380,7 @@ def print_all_pm( fname = '1_200_0p015_decorr'):
     if 'decorr' in fname:        
         print('\\caption{ Results for $n=%d$, $k=%.0f$, and $\\alpha=%.3f$. The correlation between the transformed POI\'s is $\\mathrm{Corr}(\\mu_{0}^{\\prime},\\mu_{1}^{\\prime})=%.2f$ and the condition number of the covariance matrix is $\\mathrm{Cond}(V)=%.0f$.}' % ( nbins, lumiscale, asym, entry.asym_corr, entry.asym_cond))
     else:
-        print('\\caption{ Results for $n=%d$, $k=%.0f$, and $\\alpha=%.3f$. The correlation between the nominal POI\'s is $\\mathrm{Corr}{\\mu_{0}^{\\prime},\\mu_{1}^{\\prime})=%.5f$ and the condition number of the covariance matrix is $\\mathrm{Cond}(V)=%.0f$.}' % ( nbins, lumiscale, asym, entry.asym_corr, entry.asym_cond))
+        print('\\caption{ Results for $n=%d$, $k=%.0f$, and $\\alpha=%.3f$. The correlation between the nominal POI\'s is $\\mathrm{Corr}(\\mu_{0}^{\\prime},\\mu_{1}^{\\prime})=%.5f$ and the condition number of the covariance matrix is $\\mathrm{Cond}(V)=%.0f$.}' % ( nbins, lumiscale, asym, entry.asym_corr, entry.asym_cond))
 
     print( '' )
     print( '' )
