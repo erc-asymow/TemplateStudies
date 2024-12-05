@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+import math
 import copy
 import math
 import ROOT
@@ -24,9 +25,12 @@ def error(entry, key):
     relerr = math.sqrt(cov*(1-cov)/n)
     return relerr
 
-def print_coverage( val, err):
+def print_coverage( val, err, tolerance):
     err *= 1e+03
-    str = (' $%.3f(%.0f)$' % (val, err) )
+    str = (' $%.3f(%.0f)$' % (val, err) )    
+    if tolerance>0. and math.fabs(val-0.683)<=tolerance*0.683:
+        str = (' ${\\bf %.3f}(%.0f)$' % (val, err) )
+    str = str.replace('(0)', '(1)')
     return str
 def print_mean( val, err, med):
     err *= 1e+04
@@ -208,7 +212,7 @@ def print_all( fname = '1_200_0p015_decorr'):
     
     return
 
-def print_all_pm( fname = '1_200_0p015_decorr'):
+def print_all_pm( fname = '1_200_0p015_decorr', tolerance=0.03):
 
     f_nom = ROOT.TFile( './root/mcstat_' + fname + '.root', 'READ' )
     t_nom = f_nom.Get('treesum')
@@ -221,20 +225,20 @@ def print_all_pm( fname = '1_200_0p015_decorr'):
     asym = float((fname.split('_')[2]).split('p')[1])*1e-03
     print('Doing files '+fname)
     vals_nom = {
-        'dataPois'            : "Gauss            & Numeric  & Hessian        & 0          ",
-        'data5sPois'          : "                 &          &                &$+5\\sigma$  ",
-        'data'                : "Gauss            & Analytic & Hessian        & 0          ",
-        'data5s'              : "                 &          &                &$+5\\sigma$  ",
-        'dataBB'              : "Gauss + MC stat. & Analytic & Hessian        & 0          ",
-        'data5sBB'            : "                 &          &                &$+5\\sigma$  ",
-        'dataPoisBB'          : "Gauss + BB-lite  & Numeric  & Hessian        & 0          ",
-        'data5sPoisBB'        : "                 &          &                &$+5\\sigma$  ",
-        'dataPoisBBfull'      : "Gauss + BB       & Numeric  & Hessian        & 0          ",
-        'data5sPoisBBfull'    : "                 &          &                &$+5\\sigma$  ",
-        'dataPoisBBfullPLR'   : "Gauss + BB       & Numeric  & PLR scan       & 0          ",
-        'data5sPoisBBfullPLR' : "                 &          &                &$+5\\sigma$  ",
-        'dataPoisBBfullFC'    : "Gauss + BB       & Numeric  & All-profiled FC& 0          ",
-        'data5sPoisBBfullFC'  : "                 &          &                &$+5\\sigma$  ",
+        'dataPois'            : "Gauss            & Numeric  & Hessian        & 0                    ",
+        'data5sPois'          : "                 &          &                &$+5\\sigma_{\\infty }$  ",
+        'data'                : "Gauss            & Analytic & Hessian        & 0                    ",
+        'data5s'              : "                 &          &                &$+5\\sigma_{\\infty }$  ",
+        'dataBB'              : "Gauss + MC stat. & Analytic & Hessian        & 0                    ",
+        'data5sBB'            : "                 &          &                &$+5\\sigma_{\\infty }$  ",
+        'dataPoisBB'          : "Gauss + BB-lite  & Numeric  & Hessian        & 0                    ",
+        'data5sPoisBB'        : "                 &          &                &$+5\\sigma_{\\infty }$  ",
+        'dataPoisBBfull'      : "Gauss + BB       & Numeric  & Hessian        & 0                    ",
+        'data5sPoisBBfull'    : "                 &          &                &$+5\\sigma_{\\infty }$  ",
+        'dataPoisBBfullPLR'   : "Gauss + BB       & Numeric  & PLR scan       & 0                    ",
+        'data5sPoisBBfullPLR' : "                 &          &                &$+5\\sigma_{\\infty }$  ",
+        'dataPoisBBfullFC'    : "Gauss + BB       & Numeric  & All-profiled FC& 0                    ",
+        'data5sPoisBBfullFC'  : "                 &          &                &$+5\\sigma_{\\infty }$  ",
         }
 
     f_FCfixToTrue = ROOT.TFile( './root/mcstat_' + fname + '_FCfixToTrue.root', 'READ' )
@@ -242,8 +246,8 @@ def print_all_pm( fname = '1_200_0p015_decorr'):
     fm5_FCfixToTrue = ROOT.TFile( './root/mcstat_' + fname + 'm5s_FCfixToTrue.root', 'READ' )
     tm5_FCfixToTrue = fm5_FCfixToTrue.Get('treesum')
     vals_FCfixToTrue = {
-        'dataPoisBBfullFC'    : "Gauss + BB       & Numeric  & NP-profiled FC & 0          ",
-        'data5sPoisBBfullFC'  : "                 &          &                &$+5\\sigma$  "
+        'dataPoisBBfullFC'    : "Gauss + BB       & Numeric  & NP-profiled FC & 0                    ",
+        'data5sPoisBBfullFC'  : "                 &          &                &$+5\\sigma_{\\infty }$  "
         }
 
     f_Poisson = ROOT.TFile( './root/mcstat_' + fname + '_Poisson.root', 'READ' )
@@ -251,8 +255,8 @@ def print_all_pm( fname = '1_200_0p015_decorr'):
     fm5_Poisson = ROOT.TFile( './root/mcstat_' + fname + 'm5s_Poisson.root', 'READ' )
     tm5_Poisson = fm5_Poisson.Get('treesum')
     vals_Poisson = {
-        'dataPois'            : "Poisson          & Numeric  & Hessian        & 0          ",
-        'data5sPois'          : "                 &          &                &$+5\\sigma$  ",
+        'dataPois'            : "Poisson          & Numeric  & Hessian        & 0                    ",
+        'data5sPois'          : "                 &          &                &$+5\\sigma_{\\infty }$  ",
         }
 
     f_Barlett = ROOT.TFile( './root/mcstat_' + fname + '_BarlettFCfixToTrue.root', 'READ' )
@@ -260,8 +264,8 @@ def print_all_pm( fname = '1_200_0p015_decorr'):
     fm5_Barlett = ROOT.TFile( './root/mcstat_' + fname + 'm5s_BarlettFCfixToTrue.root', 'READ' )
     tm5_Barlett = fm5_Barlett.Get('treesum')
     vals_Barlett = {
-        'dataPoisBBfullFC'    : "Gauss + BB       & Numeric  & PLR+Barlett    & 0          ",
-        'data5sPoisBBfullFC'  : "                 &          &                &$+5\\sigma$  "
+        'dataPoisBBfullFC'    : "Gauss + BB       & Numeric  & PLR+Barlett    & 0                    ",
+        'data5sPoisBBfullFC'  : "                 &          &                &$+5\\sigma_{\\infty }$  "
         }
 
     f_FCCheat = ROOT.TFile( './root/mcstat_' + fname + '_FCCheat.root', 'READ' )
@@ -269,8 +273,8 @@ def print_all_pm( fname = '1_200_0p015_decorr'):
     fm5_FCCheat = ROOT.TFile( './root/mcstat_' + fname + 'm5s_FCCheat.root', 'READ' )
     tm5_FCCheat = fm5_FCCheat.Get('treesum')
     vals_FCCheat = {
-        'dataPoisBBfullFC'    : "Gauss + BB       & Numeric  & FC Cheat       & 0          ",
-        'data5sPoisBBfullFC'  : "                 &          &                &$+5\\sigma$  "
+        'dataPoisBBfullFC'    : "Gauss + BB       & Numeric  & FC Cheat       & 0                    ",
+        'data5sPoisBBfullFC'  : "                 &          &                &$+5\\sigma_{\\infty }$  "
         }
 
     f_Jtilde = ROOT.TFile( './root/mcstat_' + fname + '_JtildeFCfixToTrue.root', 'READ' )
@@ -278,109 +282,115 @@ def print_all_pm( fname = '1_200_0p015_decorr'):
     fm5_Jtilde = ROOT.TFile( './root/mcstat_' + fname + 'm5s_JtildeFCfixToTrue.root', 'READ' )
     tm5_Jtilde = fm5_Jtilde.Get('treesum')
     vals_Jtilde = {
-        'dataPoisBBfullFC'    : "Gauss + BB       & Numeric  & {\\it A posteriori} HC     & 0        ",
-        'data5sPoisBBfullFC'  : "                 &          &                           &$+5\\sigma$"    
+        'dataPoisBBfullFC'    : "Gauss + BB       & Numeric  & {\\it A posteriori} HC     & 0                  ",
+        'data5sPoisBBfullFC'  : "                 &          &                           &$+5\\sigma_{\\infty }$"    
         }
 
-    f_adhoc = ROOT.TFile( './root/mcstat_' + fname + 'adhoc.root', 'READ' )
+    f_adhoc = ROOT.TFile( './root/mcstat_' + fname + '.root', 'READ' )
     t_adhoc = f_adhoc.Get('treesum')
-    fm5_adhoc = ROOT.TFile( './root/mcstat_' + fname + 'adhocm5s.root', 'READ' )
+    fm5_adhoc = ROOT.TFile( './root/mcstat_' + fname + 'm5s.root', 'READ' )
     tm5_adhoc = fm5_adhoc.Get('treesum')
     vals_adhoc = {
-        'adhocdata'    : "Gauss + BB       & Numeric  & {\\it Ad hoc}   & 0        ",
-        'adhocdata5s'  : "                 &          &                &$+5\\sigma$"    
+        'adhocdata'    : "Gauss + BB       & Numeric  & {\\it Ad hoc}   & 0                  ",
+        'adhocdata5s'  : "                 &          &                &$+5\\sigma_{\\infty }$"    
         }
 
     print('')
     print('')
     print( '\\begin{tabular}{cccccc}' )
-    print( 'Likelihood     & Minimim. & CI method      & $\\Delta\\mu^{\\rm true }$ & Coverage    &  $1\\sigma$ (mean, median)            \\\\')
+    print( 'Likelihood     & Minimim. & CI method      & $\\Delta\\mu$ & Coverage    &  $\\hat{\\sigma}$ (mean, median)          \\\\')
     print( '\\hline')
     print( '\\hline')
 
     for entry in t_nom:                
-        print(  'Gauss (asympt.) & Analytic & Hessian      & 0           &  ' + ('$%.3f$' % entry.asym_cov) + '      & ' + (' $%.3f, \\; %.3f$' % (entry.asym_err, entry.asym_err)) + ' \\\\'  )
+        print(  'Gauss (asympt.)  & Analytic & Hessian        & 0                     &  ' + ('$%.3f$' % entry.asym_cov)  + '    & ' + (' $%.3f, \\; %.3f$' % (entry.asym_err, entry.asym_err)) + ' \\\\'  )
+    for entry in t_nom:                
+        print(  '                 &          &                &$+5\\sigma_{\\infty }$   &  ' + ('$%.3f$' % entry.asym_cov) + '    & ' + (' $%.3f, \\; %.3f$' % (entry.asym5s_err, entry.asym5s_err)) + ' \\\\'  )
+    for entry in tm5_nom:                
+        print(  '                 &          &                &$-5\\sigma_{\\infty }$   &  ' + ('$%.3f$' % entry.asym_cov) + '    & ' + (' $%.3f, \\; %.3f$' % (entry.asym5s_err, entry.asym5s_err)) + ' \\\\'  )
     print( '\\hline')
     
     for entry in t_Poisson:
         for key in vals_Poisson.keys():
             if 'sigma' in vals_Poisson[key]:
-                print( vals_Poisson[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key) ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
+                print( vals_Poisson[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key), tolerance ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
                 for entrym5 in tm5_Poisson:
-                    print( vals_Poisson[key].replace('$+5', '$-5') + ' & ' + print_coverage( getattr(entrym5, key+'_cov'), error(entrym5, key) ) + ' & ' + print_mean( getattr(entrym5, key+'_err'), getattr(entrym5, key+'_derr'), getattr(entrym5, key+'_med' )) + ' \\\\' )
+                    print( vals_Poisson[key].replace('$+5', '$-5') + ' & ' + print_coverage( getattr(entrym5, key+'_cov'), error(entrym5, key), tolerance ) + ' & ' + print_mean( getattr(entrym5, key+'_err'), getattr(entrym5, key+'_derr'), getattr(entrym5, key+'_med' )) + ' \\\\' )
                 print( '\\hline')
             else:
-                print( vals_Poisson[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key) ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
+                print( vals_Poisson[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key), tolerance ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
 
     for entry in t_nom:
         for key in vals_nom.keys():
             if 'sigma' in vals_nom[key]:
-                print( vals_nom[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key) ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
+                print( vals_nom[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key), tolerance ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
                 for entrym5 in tm5_nom:
-                    print( vals_nom[key].replace('$+5', '$-5') + ' & ' + print_coverage( getattr(entrym5, key+'_cov'), error(entrym5, key) ) + ' & ' + print_mean( getattr(entrym5, key+'_err'), getattr(entrym5, key+'_derr'), getattr(entrym5, key+'_med' )) + ' \\\\' )  
+                    print( vals_nom[key].replace('$+5', '$-5') + ' & ' + print_coverage( getattr(entrym5, key+'_cov'), error(entrym5, key), tolerance ) + ' & ' + print_mean( getattr(entrym5, key+'_err'), getattr(entrym5, key+'_derr'), getattr(entrym5, key+'_med' )) + ' \\\\' )  
                 print( '\\hline')
             else:
-                print( vals_nom[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key) ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
+                print( vals_nom[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key), tolerance ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
             
                     
     for entry in t_FCfixToTrue:
         for key in vals_FCfixToTrue.keys():
             if 'sigma' in vals_FCfixToTrue[key]:
-                print( vals_FCfixToTrue[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key) ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
+                print( vals_FCfixToTrue[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key), tolerance ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
                 for entrym5 in tm5_FCfixToTrue:
-                    print( vals_FCfixToTrue[key].replace('$+5', '$-5') + ' & ' + print_coverage( getattr(entrym5, key+'_cov'), error(entrym5, key) ) + ' & ' + print_mean( getattr(entrym5, key+'_err'), getattr(entrym5, key+'_derr'), getattr(entrym5, key+'_med' )) + ' \\\\' )  
+                    print( vals_FCfixToTrue[key].replace('$+5', '$-5') + ' & ' + print_coverage( getattr(entrym5, key+'_cov'), error(entrym5, key), tolerance ) + ' & ' + print_mean( getattr(entrym5, key+'_err'), getattr(entrym5, key+'_derr'), getattr(entrym5, key+'_med' )) + ' \\\\' )  
                 print( '\\hline')
             else:
-                print( vals_FCfixToTrue[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key) ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
+                print( vals_FCfixToTrue[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key), tolerance ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
                 
 
     for entry in t_Barlett:
         for key in vals_Barlett.keys():
             if 'sigma' in vals_Barlett[key]:
-                print( vals_Barlett[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key) ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
+                print( vals_Barlett[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key), tolerance ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
                 for entrym5 in tm5_Barlett:
-                    print( vals_Barlett[key].replace('$+5', '$-5') + ' & ' + print_coverage( getattr(entrym5, key+'_cov'), error(entrym5, key) ) + ' & ' + print_mean( getattr(entrym5, key+'_err'), getattr(entrym5, key+'_derr'), getattr(entrym5, key+'_med' )) + ' \\\\' )
+                    print( vals_Barlett[key].replace('$+5', '$-5') + ' & ' + print_coverage( getattr(entrym5, key+'_cov'), error(entrym5, key), tolerance ) + ' & ' + print_mean( getattr(entrym5, key+'_err'), getattr(entrym5, key+'_derr'), getattr(entrym5, key+'_med' )) + ' \\\\' )
                 print( '\\hline')
             else:
-                print( vals_Barlett[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key) ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
+                print( vals_Barlett[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key), tolerance ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
 
     for entry in t_Jtilde:
         for key in vals_Jtilde.keys():
             if 'sigma' in vals_Jtilde[key]:
-                print( vals_Jtilde[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key) ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
+                print( vals_Jtilde[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key), tolerance ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
                 for entrym5 in tm5_Jtilde:
-                    print( vals_Jtilde[key].replace('$+5', '$-5') + ' & ' + print_coverage( getattr(entrym5, key+'_cov'), error(entrym5, key) ) + ' & ' + print_mean( getattr(entrym5, key+'_err'), getattr(entrym5, key+'_derr'), getattr(entrym5, key+'_med' )) + ' \\\\' ) 
+                    print( vals_Jtilde[key].replace('$+5', '$-5') + ' & ' + print_coverage( getattr(entrym5, key+'_cov'), error(entrym5, key), tolerance ) + ' & ' + print_mean( getattr(entrym5, key+'_err'), getattr(entrym5, key+'_derr'), getattr(entrym5, key+'_med' )) + ' \\\\' ) 
                 print( '\\hline')
             else:
-                print( vals_Jtilde[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key) ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
+                print( vals_Jtilde[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key), tolerance ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
                 
     for entry in t_FCCheat:
         for key in vals_FCCheat.keys():
             if 'sigma' in vals_FCCheat[key]:
-                print( vals_FCCheat[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key) ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
+                print( vals_FCCheat[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key), tolerance ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
                 for entrym5 in tm5_FCCheat:
-                    print( vals_FCCheat[key].replace('$+5', '$-5') + ' & ' + print_coverage( getattr(entrym5, key+'_cov'), error(entrym5, key) ) + ' & ' + print_mean( getattr(entrym5, key+'_err'), getattr(entrym5, key+'_derr'), getattr(entrym5, key+'_med' )) + ' \\\\' )
+                    print( vals_FCCheat[key].replace('$+5', '$-5') + ' & ' + print_coverage( getattr(entrym5, key+'_cov'), error(entrym5, key), tolerance ) + ' & ' + print_mean( getattr(entrym5, key+'_err'), getattr(entrym5, key+'_derr'), getattr(entrym5, key+'_med' )) + ' \\\\' )
                 print( '\\hline')
             else:
-                print( vals_FCCheat[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key) ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
+                print( vals_FCCheat[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key), tolerance ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
 
     for entry in t_adhoc:
         for key in vals_adhoc.keys():
             if 'sigma' in vals_adhoc[key]:
-                print( vals_adhoc[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key) ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
+                print( vals_adhoc[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key), tolerance ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
                 for entrym5 in tm5_adhoc:
-                    print( vals_adhoc[key].replace('$+5', '$-5') + ' & ' + print_coverage( getattr(entrym5, key+'_cov'), error(entrym5, key) ) + ' & ' + print_mean( getattr(entrym5, key+'_err'), getattr(entrym5, key+'_derr'), getattr(entrym5, key+'_med' )) + ' \\\\' )
+                    print( vals_adhoc[key].replace('$+5', '$-5') + ' & ' + print_coverage( getattr(entrym5, key+'_cov'), error(entrym5, key), tolerance ) + ' & ' + print_mean( getattr(entrym5, key+'_err'), getattr(entrym5, key+'_derr'), getattr(entrym5, key+'_med' )) + ' \\\\' )
                 print( '\\hline')
             else:
-                print( vals_adhoc[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key) ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
+                print( vals_adhoc[key] + ' & ' + print_coverage( getattr(entry, key+'_cov'), error(entry, key), tolerance ) + ' & ' + print_mean( getattr(entry, key+'_err'), getattr(entry, key+'_derr'), getattr(entry, key+'_med' )) + ' \\\\' )
 
                 
     print( '\\hline')
     print( '\\end{tabular}' )
     if 'decorr' in fname:        
-        print('\\caption{ Results for $n=%d$, $k=%.0f$, and $\\alpha=%.3f$. The correlation between the transformed POI\'s is $\\mathrm{Corr}(\\mu_{0}^{\\prime},\\mu_{1}^{\\prime})=%.2f$ and the condition number of the covariance matrix is $\\mathrm{Cond}(V)=%.0f$.}' % ( nbins, lumiscale, asym, entry.asym_corr, entry.asym_cond))
+        #print('\\caption{ Results for $n=%d$, $k=%.0f$, and $\\alpha=%.3f$. The correlation between the transformed POI\'s is $\\mathrm{Corr}(\\mu_{0}^{\\prime},\\mu_{1}^{\\prime})=%.2f$ and the condition number of the covariance matrix is $\\mathrm{Cond}(V)=%.0f$.}' % ( nbins, lumiscale, asym, entry.asym_corr, entry.asym_cond))
+        #print('\\caption{ Results for $n=%d$, $k=%.0f$, and $\\alpha=%.3f$. The correlation between the transformed POI\'s is $\\mathrm{Corr}(\\mu_{0}^{\\prime},\\mu_{1}^{\\prime})=%.2f$ and the condition number of the covariance matrix is $\\mathrm{Cond}(V)=%.0f$.}' % ( nbins, lumiscale, asym, entry.asym_corr, entry.asym_cond))
+        print(('\\caption{ Coverage, mean, and median of the $1\\sigma$ confidence interval for $\\mu=\\mu^{\\prime}_{0}$ for the toy model with $n=%d$, $k=%.0f$, and $\\alpha=%.3f$. Cases where the observed coverage agrees with the expectation of 0.683 within $%.0f' % ( nbins, lumiscale, asym, tolerance*1e+02) ) +'\\%$ are highlighted with a bold font.}' )
     else:
-        print('\\caption{ Results for $n=%d$, $k=%.0f$, and $\\alpha=%.3f$. The correlation between the nominal POI\'s is $\\mathrm{Corr}(\\mu_{0}^{\\prime},\\mu_{1}^{\\prime})=%.5f$ and the condition number of the covariance matrix is $\\mathrm{Cond}(V)=%.0f$.}' % ( nbins, lumiscale, asym, entry.asym_corr, entry.asym_cond))
+        print(('\\caption{ Coverage, mean, and median of the $1\\sigma$ confidence interval for $\\mu=\\mu_{0}$ for the toy model with $n=%d$, $k=%.0f$, and $\\alpha=%.3f$. Cases where the observed coverage agrees with the expectation of 0.683 within $%.0f' % ( nbins, lumiscale, asym, tolerance*1e+02) ) +'\\%$ are highlighted with a bold font.}' )
 
     print( '' )
     print( '' )
@@ -396,4 +406,4 @@ def print_all_pm( fname = '1_200_0p015_decorr'):
 
 if __name__ == '__main__':
     #print_one( args.file )
-    print_all_pm( args.file )
+    print_all_pm( args.file, tolerance=0.05 )
