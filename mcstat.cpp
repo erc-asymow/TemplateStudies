@@ -265,6 +265,7 @@ int main(int argc, char* argv[])
   TTree* treeFC = new TTree("treeFC", "");
   double mu_data, err_data;
   double err_adhocdata, err_adhocdata5s;
+  double err_propdata, err_propdata5s;
   double mu_poisdata, err_poisdata;
   double mu_poisdata_BB, err_poisdata_BB;
   double mu_poisdata_BBfull, err_poisdata_BBfull;
@@ -286,6 +287,8 @@ int main(int argc, char* argv[])
   tree->Branch("err_data", &err_data, "err_data/D");
   tree->Branch("err_adhocdata", &err_adhocdata, "err_adhocdata/D");
   tree->Branch("err_adhocdata5s", &err_adhocdata5s, "err_adhocdata5s/D");
+  tree->Branch("err_propdata", &err_propdata, "err_propdata/D");
+  tree->Branch("err_propdata5s", &err_propdata5s, "err_propdata5s/D");
   tree->Branch("mu_poisdata",  &mu_poisdata, "mu_poisdata/D");
   tree->Branch("err_poisdata", &err_poisdata, "err_poisdata/D");
   tree->Branch("mu_poisdata_BB",  &mu_poisdata_BB, "mu_poisdata_BB/D");
@@ -410,6 +413,8 @@ int main(int argc, char* argv[])
   MatrixXd A_itoy = MatrixXd::Zero(nbins, 2);
   MatrixXd J_itoy = MatrixXd::Zero(nbins, 2);
   MatrixXd invV_itoy      = MatrixXd::Zero(nbins, nbins);
+  MatrixXd invsqrtV_itoy  = MatrixXd::Zero(nbins, nbins);
+  MatrixXd invsqrtV5s_itoy = MatrixXd::Zero(nbins, nbins);
   MatrixXd invV5s_itoy    = MatrixXd::Zero(nbins, nbins);
   MatrixXd invV_BB_itoy   = MatrixXd::Zero(nbins, nbins);
   MatrixXd invV5s_BB_itoy = MatrixXd::Zero(nbins, nbins);
@@ -439,6 +444,8 @@ int main(int argc, char* argv[])
 
   double prob_adhocdata = 0.;
   double prob_adhocdata5s = 0.;
+  double prob_propdata = 0.;
+  double prob_propdata5s = 0.;
   
   unsigned int maxfcn(numeric_limits<unsigned int>::max());
   double tolerance(0.001);
@@ -818,6 +825,8 @@ int main(int argc, char* argv[])
       yMC_itoy(ir) = rans[0]->Poisson( A_itoy.row(ir).sum() );
 
       invV_itoy(ir,ir)      = 1./y_itoy(ir);
+      invsqrtV_itoy(ir,ir)  = 1./TMath::Sqrt(y_itoy(ir));
+      invsqrtV5s_itoy(ir,ir)  = 1./TMath::Sqrt(y5s_itoy(ir));
       invV5s_itoy(ir,ir)    = 1./y5s_itoy(ir);
       invV_BB_itoy(ir,ir)   = 1./(y_itoy(ir)   + ynom_itoy(ir)/lumiscale);
       invV5s_BB_itoy(ir,ir) = 1./(y5s_itoy(ir) + ynom_itoy(ir)/lumiscale);
@@ -870,6 +879,43 @@ int main(int argc, char* argv[])
     VectorXd xMC_itoy    = CMC_itoy*J_itoy.transpose()*invVMC_itoy*(yMC_itoy - ynom_itoy);
     VectorXd x_BB_itoy   = C_BB_itoy*J_itoy.transpose()*invV_BB_itoy*(y_itoy - ynom_itoy);
     VectorXd x5s_BB_itoy = C5s_BB_itoy*J_itoy.transpose()*invV5s_BB_itoy*(y5s_itoy - ynom_itoy);
+
+    if(true){
+      MatrixXd W_templ = C_itoy;
+      MatrixXd A_templ = invsqrtV_itoy*J_itoy;
+      MatrixXd A5s_templ = invsqrtV5s_itoy*J_itoy;
+      VectorXd r_templ   = invsqrtV_itoy*(y_itoy - ynom_itoy);
+      VectorXd r5s_templ = invsqrtV5s_itoy*(y5s_itoy - ynom_itoy);
+      VectorXd rstar_templ   = r_templ - A_templ*x_itoy;
+      VectorXd rstar5s_templ = r5s_templ - A5s_templ*x5s_itoy;
+      double var_templ = 0.;
+      double var5s_templ = 0.;
+      for( unsigned int it_i = 0; it_i<y_itoy.size(); it_i++ ){
+	for( unsigned int it_j = 0; it_j<x_itoy.size(); it_j++ ){
+	  VectorXd vij = VectorXd::Zero( x_itoy.size() );
+	  VectorXd v5sij = VectorXd::Zero( x_itoy.size() );
+	  for(unsigned int it_k = 0; it_k < x_itoy.size(); it_k++){
+	    vij(it_k) = - x_itoy(it_j)*A_templ(it_i, it_k);
+	    if( it_k == it_j) vij(it_k) += rstar_templ(it_i);  
+	    v5sij(it_k) = - x5s_itoy(it_j)*A5s_templ(it_i, it_k);
+	    if( it_k == it_j) v5sij(it_k) += rstar5s_templ(it_i);  
+	  }
+	  double gij = (W_templ*vij)(0);
+	  double varij = decorrelate ? A_itoy(it_i,0) + A_itoy(it_i,1) :  A_itoy(it_i,it_j);
+	  varij /= (lumiscale*y_itoy(it_i));
+	  var_templ += gij*gij*varij;
+
+	  double g5sij = (W_templ*v5sij)(0);
+	  double var5sij = decorrelate ? A_itoy(it_i,0) + A_itoy(it_i,1) :  A_itoy(it_i,it_j);
+	  var5sij /= (lumiscale*y5s_itoy(it_i));
+	  var5s_templ += g5sij*g5sij*var5sij;
+	}
+      }
+      //cout << "Stat.: " << TMath::Sqrt(C_itoy(0,0)) << ", from templates: " << TMath::Sqrt(var_templ) << endl;
+      err_propdata   = TMath::Sqrt( C_itoy(0,0) + var_templ );
+      err_propdata5s = TMath::Sqrt( C_itoy(0,0) + var5s_templ );
+    }
+
     mu_data      = x_itoy(0);
     mu_data5s    = x5s_itoy(0);
     mu_data_BB   = x_BB_itoy(0);
@@ -1101,6 +1147,10 @@ int main(int argc, char* argv[])
       prob_adhocdata += 1./ntoys;
     if( TMath::Abs(mu_poisdata5s_BBfull-mu_true5s)/err_adhocdata5s <= 1.0 )
       prob_adhocdata5s += 1./ntoys;
+    if( TMath::Abs(mu_data-mu_true)/err_propdata <= 1.0 )
+      prob_propdata += 1./ntoys;
+    if( TMath::Abs(mu_data5s-mu_true5s)/err_propdata5s <= 1.0 )
+      prob_propdata5s += 1./ntoys;
     
     
     if( TMath::Abs(mu_data-mu_true)/err_data <= 1.0 )
@@ -1165,6 +1215,8 @@ int main(int argc, char* argv[])
   double data5sPoisBBfullFC_err, data5sPoisBBfullFC_derr, data5sPoisBBfullFC_med, data5sPoisBBfullFC_cov;
   double adhocdata_err, adhocdata_derr, adhocdata_med, adhocdata_cov;
   double adhocdata5s_err, adhocdata5s_derr, adhocdata5s_med, adhocdata5s_cov;
+  double propdata_err, propdata_derr, propdata_med, propdata_cov;
+  double propdata5s_err, propdata5s_derr, propdata5s_med, propdata5s_cov;
   
   treesum->Branch("n",  &n,  "n/I");
   treesum->Branch("nFC",&nFC,  "nFC/I");
@@ -1239,6 +1291,14 @@ int main(int argc, char* argv[])
   treesum->Branch("adhocdata5s_derr", &adhocdata5s_derr, "adhocdata5s_derr/D");
   treesum->Branch("adhocdata5s_med",  &adhocdata5s_med,  "adhocdata5s_med/D");
   treesum->Branch("adhocdata5s_cov",  &adhocdata5s_cov,  "adhocdata5s_cov/D");
+  treesum->Branch("propdata_err",  &propdata_err,  "propdata_err/D");
+  treesum->Branch("propdata_derr", &propdata_derr, "propdata_derr/D");
+  treesum->Branch("propdata_med",  &propdata_med,  "propdata_med/D");
+  treesum->Branch("propdata_cov",  &propdata_cov,  "propdata_cov/D");
+  treesum->Branch("propdata5s_err",  &propdata5s_err,  "propdata5s_err/D");
+  treesum->Branch("propdata5s_derr", &propdata5s_derr, "propdata5s_derr/D");
+  treesum->Branch("propdata5s_med",  &propdata5s_med,  "propdata5s_med/D");
+  treesum->Branch("propdata5s_cov",  &propdata5s_cov,  "propdata5s_cov/D");
 
   n = ntoys;
   nFC = ntoysFC;
@@ -1384,6 +1444,22 @@ int main(int argc, char* argv[])
   adhocdata5s_med  = get_quantile(haux); 
   adhocdata5s_cov  = prob_adhocdata5s;
   cout << "Ad hoc                  " << prob_adhocdata5s << " +/- " << TMath::Sqrt(prob_adhocdata5s*(1-prob_adhocdata5s)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
+  haux->Reset();
+
+  tree->Draw("err_propdata>>haux");  
+  propdata_err  = haux->GetMean();
+  propdata_derr = haux->GetMeanError();
+  propdata_med  = get_quantile(haux); 
+  propdata_cov  = prob_propdata;
+  cout << "Prop                  " << prob_propdata << " +/- " << TMath::Sqrt(prob_propdata*(1-prob_propdata)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
+  haux->Reset();
+
+  tree->Draw("err_propdata5s>>haux");  
+  propdata5s_err  = haux->GetMean();
+  propdata5s_derr = haux->GetMeanError();
+  propdata5s_med  = get_quantile(haux); 
+  propdata5s_cov  = prob_propdata5s;
+  cout << "Prop                  " << prob_propdata5s << " +/- " << TMath::Sqrt(prob_propdata5s*(1-prob_propdata5s)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
 
   treesum->Fill();
