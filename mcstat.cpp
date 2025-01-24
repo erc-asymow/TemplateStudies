@@ -213,6 +213,7 @@ int main(int argc, char* argv[])
 	("doPoisson",      bool_switch()->default_value(false), "doPoisson")
 	("decorrelate",    bool_switch()->default_value(false), "decorrelate")
 	("computeJtildeError", bool_switch()->default_value(false), "computeJtildeError")
+	("computePropError", bool_switch()->default_value(false), "computePropError")
 	("nbins",       value<int>()->default_value(200), "nbins")
 	("nsigmas",     value<int>()->default_value(5), "nsigmas")
 	("frac",       value<float>()->default_value(0.5), "frac")
@@ -254,6 +255,7 @@ int main(int argc, char* argv[])
   bool decorrelate = vm["decorrelate"].as<bool>();
   bool doPoisson = vm["doPoisson"].as<bool>();
   bool computeJtildeError = vm["computeJtildeError"].as<bool>();
+  bool computePropError = vm["computePropError"].as<bool>();
   
   std::vector<TRandom3*> rans = {};
   for(unsigned int i = 0; i < 10; i++){
@@ -880,24 +882,36 @@ int main(int argc, char* argv[])
     VectorXd x_BB_itoy   = C_BB_itoy*J_itoy.transpose()*invV_BB_itoy*(y_itoy - ynom_itoy);
     VectorXd x5s_BB_itoy = C5s_BB_itoy*J_itoy.transpose()*invV5s_BB_itoy*(y5s_itoy - ynom_itoy);
 
-    if(true){
+    if(computePropError){
+      
+      VectorXd x_templ   = C_itoy*J_itoy.transpose()*invV_itoy*y_itoy;
+      VectorXd x5s_templ = C5s_itoy*J_itoy.transpose()*invV5s_itoy*y5s_itoy;
+
+      //x_templ(0) = decorrelate ? 0.0 : 1.0;
+      //x_templ(1) = 1.0;
+
       MatrixXd W_templ = C_itoy;
+
       MatrixXd A_templ = invsqrtV_itoy*J_itoy;
+      //VectorXd r_templ = invsqrtV_itoy*(y_itoy - ynom_itoy);
+      VectorXd r_templ = invsqrtV_itoy*y_itoy;
+      VectorXd rstar_templ = r_templ - A_templ*x_templ;
+
       MatrixXd A5s_templ = invsqrtV5s_itoy*J_itoy;
-      VectorXd r_templ   = invsqrtV_itoy*(y_itoy - ynom_itoy);
-      VectorXd r5s_templ = invsqrtV5s_itoy*(y5s_itoy - ynom_itoy);
-      VectorXd rstar_templ   = r_templ - A_templ*x_itoy;
-      VectorXd rstar5s_templ = r5s_templ - A5s_templ*x5s_itoy;
+      //VectorXd r5s_templ = invsqrtV5s_itoy*(y5s_itoy - ynom_itoy);
+      VectorXd r5s_templ = invsqrtV5s_itoy*y5s_itoy;
+      VectorXd rstar5s_templ = r5s_templ - A5s_templ*x5s_templ;
+
       double var_templ = 0.;
       double var5s_templ = 0.;
       for( unsigned int it_i = 0; it_i<y_itoy.size(); it_i++ ){
-	for( unsigned int it_j = 0; it_j<x_itoy.size(); it_j++ ){
-	  VectorXd vij = VectorXd::Zero( x_itoy.size() );
-	  VectorXd v5sij = VectorXd::Zero( x_itoy.size() );
-	  for(unsigned int it_k = 0; it_k < x_itoy.size(); it_k++){
-	    vij(it_k) = - x_itoy(it_j)*A_templ(it_i, it_k);
+	for( unsigned int it_j = 0; it_j<x_templ.size(); it_j++ ){
+	  VectorXd vij = VectorXd::Zero( x_templ.size() );
+	  VectorXd v5sij = VectorXd::Zero( x_templ.size() );
+	  for(unsigned int it_k = 0; it_k < x_templ.size(); it_k++){
+	    vij(it_k) = - x_templ(it_j)*A_templ(it_i, it_k);
 	    if( it_k == it_j) vij(it_k) += rstar_templ(it_i);  
-	    v5sij(it_k) = - x5s_itoy(it_j)*A5s_templ(it_i, it_k);
+	    v5sij(it_k) = - x5s_templ(it_j)*A5s_templ(it_i, it_k);
 	    if( it_k == it_j) v5sij(it_k) += rstar5s_templ(it_i);  
 	  }
 	  double gij = (W_templ*vij)(0);
@@ -1451,7 +1465,7 @@ int main(int argc, char* argv[])
   propdata_derr = haux->GetMeanError();
   propdata_med  = get_quantile(haux); 
   propdata_cov  = prob_propdata;
-  cout << "Prop                  " << prob_propdata << " +/- " << TMath::Sqrt(prob_propdata*(1-prob_propdata)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
+  cout << "Prop                    " << prob_propdata << " +/- " << TMath::Sqrt(prob_propdata*(1-prob_propdata)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
 
   tree->Draw("err_propdata5s>>haux");  
@@ -1459,7 +1473,7 @@ int main(int argc, char* argv[])
   propdata5s_derr = haux->GetMeanError();
   propdata5s_med  = get_quantile(haux); 
   propdata5s_cov  = prob_propdata5s;
-  cout << "Prop                  " << prob_propdata5s << " +/- " << TMath::Sqrt(prob_propdata5s*(1-prob_propdata5s)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
+  cout << "Prop                    " << prob_propdata5s << " +/- " << TMath::Sqrt(prob_propdata5s*(1-prob_propdata5s)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
   haux->Reset();
 
   treesum->Fill();
