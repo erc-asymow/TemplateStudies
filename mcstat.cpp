@@ -214,6 +214,8 @@ int main(int argc, char* argv[])
 	("decorrelate",    bool_switch()->default_value(false), "decorrelate")
 	("computeJtildeError", bool_switch()->default_value(false), "computeJtildeError")
 	("computePropError", bool_switch()->default_value(false), "computePropError")
+	("computePropErrorTrue", bool_switch()->default_value(false), "computePropErrorTrue")
+	("computePropErrorBB", bool_switch()->default_value(false), "computePropErrorBB")
 	("nbins",       value<int>()->default_value(200), "nbins")
 	("nsigmas",     value<int>()->default_value(5), "nsigmas")
 	("frac",       value<float>()->default_value(0.5), "frac")
@@ -256,6 +258,8 @@ int main(int argc, char* argv[])
   bool doPoisson = vm["doPoisson"].as<bool>();
   bool computeJtildeError = vm["computeJtildeError"].as<bool>();
   bool computePropError = vm["computePropError"].as<bool>();
+  bool computePropErrorTrue = vm["computePropErrorTrue"].as<bool>();
+  bool computePropErrorBB = vm["computePropErrorBB"].as<bool>();
   
   std::vector<TRandom3*> rans = {};
   for(unsigned int i = 0; i < 10; i++){
@@ -420,6 +424,9 @@ int main(int argc, char* argv[])
   MatrixXd invV5s_itoy    = MatrixXd::Zero(nbins, nbins);
   MatrixXd invV_BB_itoy   = MatrixXd::Zero(nbins, nbins);
   MatrixXd invV5s_BB_itoy = MatrixXd::Zero(nbins, nbins);
+  MatrixXd invsqrtV_BB_itoy  = MatrixXd::Zero(nbins, nbins);
+  MatrixXd invsqrtV5s_BB_itoy = MatrixXd::Zero(nbins, nbins);
+  
   MatrixXd invVMC_itoy    = MatrixXd::Zero(nbins, nbins);
   VectorXd y_itoy(nbins);
   VectorXd yFC_itoy(nbins);
@@ -829,6 +836,8 @@ int main(int argc, char* argv[])
       invV_itoy(ir,ir)      = 1./y_itoy(ir);
       invsqrtV_itoy(ir,ir)  = 1./TMath::Sqrt(y_itoy(ir));
       invsqrtV5s_itoy(ir,ir)  = 1./TMath::Sqrt(y5s_itoy(ir));
+      invsqrtV_BB_itoy(ir,ir)   = 1./TMath::Sqrt(y_itoy(ir)   + ynom_itoy(ir)/lumiscale);
+      invsqrtV5s_BB_itoy(ir,ir) = 1./TMath::Sqrt(y5s_itoy(ir) + ynom_itoy(ir)/lumiscale);
       invV5s_itoy(ir,ir)    = 1./y5s_itoy(ir);
       invV_BB_itoy(ir,ir)   = 1./(y_itoy(ir)   + ynom_itoy(ir)/lumiscale);
       invV5s_BB_itoy(ir,ir) = 1./(y5s_itoy(ir) + ynom_itoy(ir)/lumiscale);
@@ -884,22 +893,25 @@ int main(int argc, char* argv[])
 
     if(computePropError){
       
-      VectorXd x_templ   = C_itoy*J_itoy.transpose()*invV_itoy*y_itoy;
-      VectorXd x5s_templ = C5s_itoy*J_itoy.transpose()*invV5s_itoy*y5s_itoy;
+      MatrixXd J_templ   = computePropErrorTrue ? J_true : J_itoy;
+      MatrixXd W_templ   = computePropErrorTrue ? C_true   : (computePropErrorBB ?  C_BB_itoy   : C_itoy );
+      MatrixXd W5s_templ = computePropErrorTrue ? C_true5s : (computePropErrorBB ?  C5s_BB_itoy : C5s_itoy);
+      MatrixXd invsqrtV_templ   = computePropErrorBB ? invsqrtV_BB_itoy : invsqrtV_itoy;
+      MatrixXd invsqrtV5s_templ = computePropErrorBB ? invsqrtV5s_BB_itoy : invsqrtV5s_itoy;
+      MatrixXd invV_templ       = computePropErrorBB ? invV_BB_itoy : invV_itoy;
+      MatrixXd invV5s_templ     = computePropErrorBB ? invV5s_BB_itoy : invV5s_itoy;
+      
+      VectorXd x_templ   = W_templ*J_templ.transpose()*invV_templ*y_itoy;
+      VectorXd x5s_templ = W5s_templ*J_templ.transpose()*invV5s_templ*y5s_itoy;
 
-      //x_templ(0) = decorrelate ? 0.0 : 1.0;
-      //x_templ(1) = 1.0;
-
-      MatrixXd W_templ = C_itoy;
-
-      MatrixXd A_templ = invsqrtV_itoy*J_itoy;
-      //VectorXd r_templ = invsqrtV_itoy*(y_itoy - ynom_itoy);
-      VectorXd r_templ = invsqrtV_itoy*y_itoy;
+      MatrixXd A_templ = invsqrtV_templ*J_templ;
+      //VectorXd r_templ = invsqrtV_templ*(y_itoy - ynom_itoy);
+      VectorXd r_templ = invsqrtV_templ*y_itoy;
       VectorXd rstar_templ = r_templ - A_templ*x_templ;
 
-      MatrixXd A5s_templ = invsqrtV5s_itoy*J_itoy;
-      //VectorXd r5s_templ = invsqrtV5s_itoy*(y5s_itoy - ynom_itoy);
-      VectorXd r5s_templ = invsqrtV5s_itoy*y5s_itoy;
+      MatrixXd A5s_templ = invsqrtV5s_templ*J_templ;
+      //VectorXd r5s_templ = invsqrtV5s_templ*(y5s_itoy - ynom_itoy);
+      VectorXd r5s_templ = invsqrtV5s_templ*y5s_itoy;
       VectorXd rstar5s_templ = r5s_templ - A5s_templ*x5s_templ;
 
       double var_templ = 0.;
@@ -916,18 +928,20 @@ int main(int argc, char* argv[])
 	  }
 	  double gij = (W_templ*vij)(0);
 	  double varij = decorrelate ? A_itoy(it_i,0) + A_itoy(it_i,1) :  A_itoy(it_i,it_j);
-	  varij /= (lumiscale*y_itoy(it_i));
+	  varij /= (lumiscale*(computePropErrorBB ? y_itoy(it_i) + ynom_itoy(it_i)/lumiscale : y_itoy(it_i) ) );
 	  var_templ += gij*gij*varij;
 
 	  double g5sij = (W_templ*v5sij)(0);
 	  double var5sij = decorrelate ? A_itoy(it_i,0) + A_itoy(it_i,1) :  A_itoy(it_i,it_j);
-	  var5sij /= (lumiscale*y5s_itoy(it_i));
+	  var5sij /= (lumiscale*(computePropErrorBB ? y5s_itoy(it_i) + ynom_itoy(it_i)/lumiscale : y5s_itoy(it_i)));
 	  var5s_templ += g5sij*g5sij*var5sij;
 	}
       }
-      //cout << "Stat.: " << TMath::Sqrt(C_itoy(0,0)) << ", from templates: " << TMath::Sqrt(var_templ) << endl;
-      err_propdata   = TMath::Sqrt( C_itoy(0,0) + var_templ );
-      err_propdata5s = TMath::Sqrt( C_itoy(0,0) + var5s_templ );
+      cout << "Stat.: " << TMath::Sqrt(W_templ(0,0)) << ", from templates: " << TMath::Sqrt(var_templ) << endl;
+      err_propdata   = TMath::Sqrt( W_templ(0,0) + var_templ );
+      err_propdata5s = TMath::Sqrt( W5s_templ(0,0) + var5s_templ );
+      //err_propdata = TMath::Sqrt(var_templ);
+      //err_propdata5s = TMath::Sqrt(var5s_templ);
     }
 
     mu_data      = x_itoy(0);
