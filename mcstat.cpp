@@ -939,6 +939,7 @@ int main(int argc, char* argv[])
       }
       cout << "Stat.: " << TMath::Sqrt(W_templ(0,0)) << ", from templates: " << TMath::Sqrt(var_templ) << endl;
       err_propdata   = TMath::Sqrt( W_templ(0,0) + var_templ );
+      //cout << "\t" << err_propdata << endl;
       err_propdata5s = TMath::Sqrt( W5s_templ(0,0) + var5s_templ );
       //err_propdata = TMath::Sqrt(var_templ);
       //err_propdata5s = TMath::Sqrt(var5s_templ);
