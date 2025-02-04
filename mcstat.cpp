@@ -937,7 +937,7 @@ int main(int argc, char* argv[])
 	  var5s_templ += g5sij*g5sij*var5sij;
 	}
       }
-      cout << "Stat.: " << TMath::Sqrt(W_templ(0,0)) << ", from templates: " << TMath::Sqrt(var_templ) << endl;
+      //cout << "Stat.: " << TMath::Sqrt(W_templ(0,0)) << ", from templates: " << TMath::Sqrt(var_templ) << endl;
       err_propdata   = TMath::Sqrt( W_templ(0,0) + var_templ );
       //cout << "\t" << err_propdata << endl;
       err_propdata5s = TMath::Sqrt( W5s_templ(0,0) + var5s_templ );
@@ -1480,9 +1480,15 @@ int main(int argc, char* argv[])
   propdata_derr = haux->GetMeanError();
   propdata_med  = get_quantile(haux); 
   propdata_cov  = prob_propdata;
-  cout << "Prop                    " << prob_propdata << " +/- " << TMath::Sqrt(prob_propdata*(1-prob_propdata)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")" << endl;
+  cout << "Prop                    " << prob_propdata << " +/- " << TMath::Sqrt(prob_propdata*(1-prob_propdata)/ntoys) << " (err=" << haux->GetMean() << " +/- " << haux->GetMeanError() << ", median: " << get_quantile(haux) <<  ")";
   haux->Reset();
 
+  tree->Draw("TMath::Sqrt(err_propdata*err_propdata - err_data*err_data)>>haux");  
+  double jvar_propdata_err  = haux->GetMean();
+  double jvar_propdata_derr = haux->GetMeanError();
+  cout << ":  jac var =  " << haux->GetMean() << " +/- " << haux->GetMeanError() << " => r = " << haux->GetMean()/(data_err/TMath::Sqrt(lumiscale)) << endl;
+  haux->Reset();
+  
   tree->Draw("err_propdata5s>>haux");  
   propdata5s_err  = haux->GetMean();
   propdata5s_derr = haux->GetMeanError();
