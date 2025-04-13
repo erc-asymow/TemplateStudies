@@ -212,6 +212,8 @@ int main(int argc, char* argv[])
 	("profileMCNP",      bool_switch()->default_value(false), "profileMCNP")
 	("doPoisson",      bool_switch()->default_value(false), "doPoisson")
 	("decorrelate",    bool_switch()->default_value(false), "decorrelate")
+	("bExact",    bool_switch()->default_value(false), "bExact")
+	("jExact",    bool_switch()->default_value(false), "jExact")
 	("computeJtildeError", bool_switch()->default_value(false), "computeJtildeError")
 	("computePropError", bool_switch()->default_value(false), "computePropError")
 	("computePropErrorTrue", bool_switch()->default_value(false), "computePropErrorTrue")
@@ -220,6 +222,7 @@ int main(int argc, char* argv[])
 	("nsigmas",     value<int>()->default_value(5), "nsigmas")
 	("frac",       value<float>()->default_value(0.5), "frac")
 	("asym",       value<float>()->default_value(0.015), "asym")
+	("alpha",       value<float>()->default_value(45.), "alpha")
 	("lumiscale",   value<float>()->default_value(1.0), "lumiscale")
 	("seed",        value<int>()->default_value(4357), "seed");
 
@@ -246,6 +249,7 @@ int main(int argc, char* argv[])
   int nsigmas     = vm["nsigmas"].as<int>();
   float frac      = vm["frac"].as<float>();
   float asym      = vm["asym"].as<float>();
+  float alpha      = vm["alpha"].as<float>();
   float lumiscale    = vm["lumiscale"].as<float>();
   bool doFC     = vm["doFC"].as<bool>();
   bool doFCcheat = vm["doFCcheat"].as<bool>();
@@ -255,11 +259,15 @@ int main(int argc, char* argv[])
   bool verbose     = vm["verbose"].as<bool>();
   bool profileMCNP = vm["profileMCNP"].as<bool>();
   bool decorrelate = vm["decorrelate"].as<bool>();
+  bool bExact = vm["bExact"].as<bool>();
+  bool jExact = vm["jExact"].as<bool>();
   bool doPoisson = vm["doPoisson"].as<bool>();
   bool computeJtildeError = vm["computeJtildeError"].as<bool>();
   bool computePropError = vm["computePropError"].as<bool>();
   bool computePropErrorTrue = vm["computePropErrorTrue"].as<bool>();
   bool computePropErrorBB = vm["computePropErrorBB"].as<bool>();
+
+  alpha *= (TMath::Pi()/180.);
   
   std::vector<TRandom3*> rans = {};
   for(unsigned int i = 0; i < 10; i++){
@@ -359,11 +367,12 @@ int main(int argc, char* argv[])
   for(unsigned int ir=0; ir<nbins; ir++){
     A_true(ir, 0) = h_true_0->GetBinContent(ir+1);
     A_true(ir, 1) = h_true_1->GetBinContent(ir+1);
+    //cout << A_true(ir, 0) << " : " << A_true(ir, 1) << endl;
     J_true(ir, 0) = A_true(ir, 0);
     J_true(ir, 1) = A_true(ir, 1);
     if(decorrelate){
-      J_true(ir, 0) = A_true(ir, 0) - A_true(ir, 1);
-      J_true(ir, 1) = A_true(ir, 0) + A_true(ir, 1);
+      J_true(ir, 0) = TMath::Sqrt(2.)*(TMath::Cos(alpha)*A_true(ir, 0) - TMath::Sin(alpha)*A_true(ir, 1));
+      J_true(ir, 1) = TMath::Sqrt(2.)*(TMath::Sin(alpha)*A_true(ir, 0) + TMath::Cos(alpha)*A_true(ir, 1));
     }
   }
   for(unsigned int ir=0; ir<nbins; ir++){
@@ -815,9 +824,12 @@ int main(int argc, char* argv[])
       J_itoy(ir,0) = A_itoy(ir,0);
       J_itoy(ir,1) = A_itoy(ir,1);
       if(decorrelate){
-	J_itoy(ir,0) = A_itoy(ir,0) - A_itoy(ir,1);
-	J_itoy(ir,1) = A_itoy(ir,0) + A_itoy(ir,1);
+	J_itoy(ir,0) = TMath::Sqrt(2.)*(TMath::Cos(alpha)*A_itoy(ir,0) - TMath::Sin(alpha)*A_itoy(ir,1));
+	J_itoy(ir,1) = TMath::Sqrt(2.)*(TMath::Sin(alpha)*A_itoy(ir,0) + TMath::Cos(alpha)*A_itoy(ir,1));
       }
+      
+      if(bExact) J_itoy(ir,0) = J_true(ir,0);
+      if(jExact) J_itoy(ir,1) = J_true(ir,1);
       
       // "MC" template drawn from true nominal, including lumi scale
       ynom_itoy(ir) = A_itoy.row(ir).sum();
