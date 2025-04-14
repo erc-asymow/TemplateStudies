@@ -69,3 +69,6 @@ massscales_data: massscales_data.cpp
 
 mcstat: mcstat.cpp
 	$(GCC) $(CXXFLAGS) -o $(BINDIR)/mcstat mcstat.cpp  
+
+eigentest: eigentest.cpp
+	$(GCC) $(CXXFLAGS) -o $(BINDIR)/eigentest eigentest.cpp  
