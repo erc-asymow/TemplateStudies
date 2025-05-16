@@ -1,0 +1,162 @@
+import ROOT
+
+import os.path
+from sys import argv
+#argv.append( '-b-' )
+#ROOT.gROOT.SetBatch(True)
+#argv.remove( '-b-' )
+import math
+import argparse
+
+parser = argparse.ArgumentParser(description='run')
+
+parser.add_argument('--none', action='store_true'  , help = 'none')
+parser.add_argument('--dryrun', action='store_true'  , help = 'dry run')
+parser.add_argument('-f', '--file', default='1_20_0p015_decorr'  , help = '')
+
+args = parser.parse_args()
+
+
+def plot_tstat(fname = "1_200_0p015_decorr"):
+    c = ROOT.TCanvas("c", "canvas", 600, 600)
+    c.SetLogy(1)
+    leg1 = ROOT.TLegend(0.40,0.70, 0.85, 0.85, "","brNDC")
+    leg1.SetFillStyle(0)
+    leg1.SetBorderSize(0)
+    leg1.SetTextSize(0.04)
+    leg1.SetFillColor(10)
+    xmin = 0.
+    xmax = 10.
+    fin = ROOT.TFile("root/mcstat_"+fname+".root", "READ")
+    tree = fin.Get("treeFC")
+    h = ROOT.TH1D("h", "; t_{#mu} ", 20, xmin, xmax)
+    h.GetYaxis().SetTitleOffset(0.75)
+    h.GetYaxis().SetTitleSize(0.06)
+    h.GetXaxis().SetTitleOffset(0.73)
+    h.GetXaxis().SetTitleSize(0.06)
+    tree.Draw("tstat>>h")
+    h.SetStats(0)
+    h.Scale( 1./tree.GetEntries() )
+    h.Scale( 1./h.GetXaxis().GetBinWidth(1) )
+    h.SetMaximum(1.0)
+    h.SetMinimum(0.001)
+    h.SetLineWidth(2)
+    c.cd()
+    h.Draw("HISTE")
+    leg1.AddEntry(h, 'Sampling distribution', 'LE')
+    chi2 = ROOT.TF1("chi2", "1./TMath::Sqrt(2*x*TMath::Pi())*TMath::Exp(-0.5*x)", xmin, xmax)
+    chi2.SetNpx(10000)
+    chi2.Draw("SAME")
+    chi2.SetLineStyle(ROOT.kDashed)
+    leg1.AddEntry(chi2, '#chi^{2}_{1}', 'L')
+    leg1.Draw()
+    c.SaveAs('tstat.png')
+    c.SaveAs('tstat.pdf')
+    input()
+
+def plot_muerr(var = "mu",  fname = "1_200_0p015_decorr"):
+    c = ROOT.TCanvas("c", "canvas", 600, 600)
+    c.SetLogy(1)
+    leg1 = ROOT.TLegend(0.45,0.75, 0.85, 0.90, "","brNDC")
+    leg1.SetFillStyle(0)
+    leg1.SetBorderSize(0)
+    leg1.SetTextSize(0.04)
+    leg1.SetFillColor(10)
+    xmin = -2 if var=="mu" else +0.05
+    xmax = +4 if var=="mu" else +0.35
+    fin = ROOT.TFile("root/mcstat_"+fname+".root", "READ")
+    tree = fin.Get("tree")
+    h = ROOT.TH1D("h", "; #hat{#mu} - 1 " if var=="mu" else "; #hat{#sigma} ", 40, xmin, xmax)
+    h.GetYaxis().SetTitleOffset(0.75)
+    h.GetYaxis().SetTitleSize(0.06)
+    h.GetXaxis().SetTitleOffset(0.70)
+    h.GetXaxis().SetTitleSize(0.06)
+    h.SetLineWidth(2)
+    tree.Draw(var+"_poisdata_BBfull>>h")
+    #tree.Draw("errFCUp_poisdata_BBfull>>h")
+    h.SetStats(0)
+    #h.Scale( 1./tree.GetEntries() )
+    #h.SetMaximum(1.0)
+    #h.SetMinimum(0.001)
+    c.cd()
+    h.Draw("HISTE")
+    leg1.AddEntry(h, 'Sampling distribution', 'LE')
+    chi2 = ROOT.TF1("chi2", "[0]/TMath::Sqrt(2*TMath::Pi())/[1]*TMath::Exp(-0.5*(x-[2])*(x-[2])/[1]/[1])", xmin, xmax)        
+    chi2.SetNpx(10000)
+    chi2.SetParameter(0, h.GetEntries())
+    chi2.SetParameter(1, h.GetRMS())
+    chi2.SetParameter(2, h.GetMean())
+    h.Fit(chi2, 'RQ')
+    chi2.Draw("SAME")
+    chi2.SetLineStyle(ROOT.kDashed)
+    leg1.AddEntry(chi2, 'Gauss fit', 'L')
+    leg1.Draw()
+    c.SaveAs('hatmu.png' if var=="mu" else 'haterr.png')
+    c.SaveAs('hatmu.pdf' if var=="mu" else 'haterr.pdf')
+    input()
+
+def plot_model(fname = "", eps = 0.03, N = 2e+06, k = 1, nbins = 200):
+    ran = ROOT.TRandom3();
+    c = ROOT.TCanvas("c", "canvas", 600, 600)
+    #c.SetLogy(1)
+    leg1 = ROOT.TLegend(0.70,0.75, 0.85, 0.85, "","brNDC")
+    leg1.SetFillStyle(0)
+    leg1.SetBorderSize(0)
+    leg1.SetTextSize(0.04)
+    leg1.SetFillColor(10)
+    leg1.SetNColumns(2) 
+    xmin = 0.
+    xmax = 1.
+    h1 = ROOT.TH1D("h1", "; bin number; ", nbins,0, nbins)
+    h1.GetYaxis().SetNdivisions(5)
+    h1.GetXaxis().SetNdivisions(5)
+    h2 = ROOT.TH1D("h2", " ", nbins,0, nbins)
+    h1t = ROOT.TH1D("h1t", " ", nbins,0, nbins)
+    h2t = ROOT.TH1D("h2t", " ", nbins,0, nbins)
+    for ibin in range(200):
+        h1.SetBinContent(ibin+1, 1.0)
+        h2.SetBinContent(ibin+1, 1.0+eps if ibin+1<nbins/2 else 1.0)
+    totint = h1.Integral() + h2.Integral();
+    h1.Scale( N/totint )
+    h2.Scale( N/totint )
+
+    for ibin in range(200):
+        h1t.SetBinContent(ibin+1, ran.Poisson(h1.GetBinContent(ibin+1)*k)/k )
+        h2t.SetBinContent(ibin+1, ran.Poisson(h2.GetBinContent(ibin+1)*k)/k )
+        
+    h1.GetYaxis().SetTitleOffset(0.75)
+    h1.GetYaxis().SetTitleSize(0.06)
+    h1.GetXaxis().SetTitleOffset(0.73)
+    h1.GetXaxis().SetTitleSize(0.06)
+    h1.SetStats(0)
+    h1.SetMaximum( h1.GetMinimum()*1.08 )
+    h1.SetMinimum( h1.GetMinimum()*0.94)
+    h1.SetLineWidth(3)
+    h1.SetLineStyle(ROOT.kDashed)
+    h2.SetLineStyle(ROOT.kDashed)
+    h1.SetLineColor(ROOT.kBlue)
+    h2.SetLineWidth(3)
+    h2.SetLineColor(ROOT.kBlack)
+    h1t.SetLineWidth(1)
+    h1t.SetLineColor(ROOT.kBlue)
+    h2t.SetLineWidth(1)
+    h2t.SetLineColor(ROOT.kBlack)
+    c.cd()
+    h1.Draw("HIST")
+    h2.Draw("HISTSAME")
+    h1t.Draw("HISTSAME")
+    h2t.Draw("HISTSAME")
+    leg1.AddEntry(h1, '#nu_{1i}', 'L')
+    leg1.AddEntry(h1t, 'T_{1i}', 'LE')
+    leg1.AddEntry(h2, '#nu_{2i}', 'L')
+    leg1.AddEntry(h2t, 'T_{2i}', 'LE')
+    leg1.Draw()
+    #c.SaveAs('model.png')
+    c.SaveAs(fname+'.pdf')
+    #input()
+
+
+if __name__ == '__main__':
+    #plot_tstat( fname=args.file )
+    plot_model( fname="model_k10", k=10)
+    #plot_muerr( var = "mu", fname=args.file)
