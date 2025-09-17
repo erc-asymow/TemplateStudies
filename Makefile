@@ -72,3 +72,6 @@ mcstat: mcstat.cpp
 
 eigentest: eigentest.cpp
 	$(GCC) $(CXXFLAGS) -o $(BINDIR)/eigentest eigentest.cpp  
+
+relaxation: relaxation.cpp
+	$(GCC) $(CXXFLAGS) -o $(BINDIR)/relaxation relaxation.cpp  
